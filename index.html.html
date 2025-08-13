@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KLMZ MUSIC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* dark:bg-gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* dark:bg-gray-600 */
+            border-radius: 4px;
+        }
+        html.light ::-webkit-scrollbar-track {
+            background: #f3f4f6; /* light:bg-gray-100 */
+        }
+        html.light ::-webkit-scrollbar-thumb {
+            background: #d1d5db; /* light:bg-gray-300 */
+        }
+        /* Custom styles for the progress bar input */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ec4899; /* pink-500 */
+            cursor: pointer;
+            margin-top: -6px; /* You need to specify a margin in Chrome, but not in Firefox */
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ec4899; /* pink-500 */
+            cursor: pointer;
+        }
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+    <!-- Header -->
+    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-40 shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <svg class="w-8 h-8 text-pink-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
+                    <path d="M12 18C15.31 18 18 15.31 18 12H16C16 14.21 14.21 16 12 16V18Z" fill="currentColor"/>
+                    <path d="M10 12.5C10 13.33 9.33 14 8.5 14C7.67 14 7 13.33 7 12.5C7 11.67 7.67 11 8.5 11C9.33 11 10 11.67 10 12.5Z" fill="currentColor"/>
+                    <path d="M17 12.5C17 13.33 16.33 14 15.5 14C14.67 14 14 13.33 14 12.5C14 11.67 14.67 11 15.5 11C16.33 11 17 11.67 17 12.5Z" fill="currentColor"/>
+                </svg>
+                <h1 class="text-2xl font-bold tracking-tight">KLMZ MUSIC</h1>
+            </div>
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                <!-- Sun and Moon Icons -->
+                <svg id="theme-icon-light" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <svg id="theme-icon-dark" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 md:p-8">
+        
+        <!-- Album Grid View -->
+        <div id="album-grid-view">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold">Mis Álbumes</h2>
+                <button id="add-album-btn" class="bg-pink-500 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-pink-600 transition-transform transform hover:scale-105">
+                    + Añadir Álbum
+                </button>
+            </div>
+            <div id="album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                <!-- Albums will be dynamically inserted here -->
+            </div>
+            <p id="no-albums-msg" class="text-center text-gray-500 dark:text-gray-400 mt-12 text-lg hidden">No tienes álbumes todavía. ¡Añade uno para empezar!</p>
+        </div>
+
+        <!-- Album Detail View -->
+        <div id="album-detail-view" class="hidden">
+            <button id="back-to-grid-btn" class="mb-6 flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-pink-500 dark:hover:text-pink-400 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                Volver a Álbumes
+            </button>
+            <div class="flex flex-col md:flex-row gap-8">
+                <div class="md:w-1/3 flex-shrink-0">
+                    <img id="detail-album-cover" src="" alt="Album Cover" class="w-full aspect-square rounded-xl shadow-2xl object-cover">
+                    <h2 id="detail-album-title" class="text-3xl font-bold mt-4"></h2>
+                    <p id="detail-song-count" class="text-gray-500 dark:text-gray-400 mt-1"></p>
+                    <button id="delete-album-btn" class="mt-4 w-full bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                        Eliminar Álbum
+                    </button>
+                </div>
+                <div class="md:w-2/3">
+                    <h3 class="text-2xl font-semibold mb-4">Canciones</h3>
+                    <ul id="song-list" class="space-y-2">
+                        <!-- Songs will be dynamically inserted here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Music Player (Fixed at bottom) -->
+    <footer id="player" class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-[0_-2px_10px_rgba(0,0,0,0.1)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.5)] transform translate-y-full transition-transform duration-500">
+        <div class="container mx-auto px-4 py-3">
+            <!-- Progress Bar -->
+            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <span id="current-time">0:00</span>
+                <input type="range" id="progress-bar" value="0" step="1" class="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer" style="background-size: 0% 100%;">
+                <span id="duration">0:00</span>
+            </div>
+            <div class="flex items-center justify-between mt-2">
+                <!-- Song Info -->
+                <div class="flex items-center gap-3 w-1/3">
+                    <img id="player-album-cover" src="https://placehold.co/64x64/1f2937/a7a7a7?text=KLMZ" alt="Album Art" class="w-12 h-12 md:w-16 md:h-16 rounded-md object-cover">
+                    <div>
+                        <p id="player-song-title" class="font-bold text-sm md:text-base truncate">Selecciona una canción</p>
+                        <p id="player-album-title" class="text-xs md:text-sm text-gray-500 dark:text-gray-400 truncate">KLMZ MUSIC</p>
+                    </div>
+                </div>
+                <!-- Player Controls -->
+                <div class="flex items-center justify-center gap-2 md:gap-4 w-1/3">
+                    <button id="prev-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-6 h-6 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M8.445 14.832A1 1 0 0010 14.032V5.968a1 1 0 00-1.555-.832L4.12 9.168a1 1 0 000 1.664l4.325 4.001zM14.445 14.832A1 1 0 0016 14.032V5.968a1 1 0 00-1.555-.832L10.12 9.168a1 1 0 000 1.664l4.325 4.001z"></path></svg>
+                    </button>
+                    <button id="play-pause-btn" class="p-3 bg-pink-500 text-white rounded-full shadow-lg hover:bg-pink-600 transition-transform transform hover:scale-110 disabled:opacity-50 disabled:bg-pink-400">
+                        <svg id="play-icon" class="w-6 h-6 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.032v3.936a1 1 0 001.555.832l3.333-1.968a1 1 0 000-1.664L9.555 7.168z" clip-rule="evenodd"></path></svg>
+                        <svg id="pause-icon" class="w-6 h-6 md:w-8 md:h-8 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h1a1 1 0 001-1V8a1 1 0 00-1-1H8zm5 0a1 1 0 00-1 1v4a1 1 0 001 1h1a1 1 0 001-1V8a1 1 0 00-1-1h-1z" clip-rule="evenodd"></path></svg>
+                    </button>
+                    <button id="next-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-6 h-6 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5.555 5.168A1 1 0 004 5.968v8.064a1 1 0 001.555.832L9.88 10.832a1 1 0 000-1.664L5.555 5.168zM11.555 5.168A1 1 0 0010 5.968v8.064a1 1 0 001.555.832l4.325-4.001a1 1 0 000-1.664l-4.325-4.001z"></path></svg>
+                    </button>
+                </div>
+                <!-- Volume Control -->
+                <div class="hidden md:flex items-center gap-2 w-1/3 justify-end">
+                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                    <input type="range" id="volume-control" min="0" max="1" step="0.01" value="1" class="w-24 h-1 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Add Album Modal -->
+    <div id="add-album-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8 w-11/12 max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Nuevo Álbum</h3>
+                <button id="close-modal-btn" class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
+            </div>
+            <form id="add-album-form" class="flex-grow overflow-y-auto pr-2">
+                <div class="space-y-4">
+                    <div>
+                        <label for="album-title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título del Álbum</label>
+                        <input type="text" id="album-title" required class="mt-1 block w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                    <div>
+                        <label for="album-cover" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Portada del Álbum</label>
+                        <input type="file" id="album-cover" accept="image/*" required class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 dark:file:bg-gray-700 dark:file:text-pink-300 dark:hover:file:bg-gray-600">
+                        <img id="cover-preview" src="#" alt="Vista previa" class="mt-2 rounded-lg hidden w-32 h-32 object-cover"/>
+                    </div>
+                    <div>
+                        <label for="album-songs" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Canciones (MP3, WAV)</label>
+                        <input type="file" id="album-songs" accept=".mp3,.wav" multiple required class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 dark:file:bg-gray-700 dark:file:text-pink-300 dark:hover:file:bg-gray-600">
+                    </div>
+                    <div id="upload-progress-container" class="hidden">
+                        <p class="text-sm font-medium">Subiendo canciones...</p>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-1">
+                            <div id="upload-progress-bar" class="bg-pink-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p id="upload-status" class="text-xs text-gray-500 mt-1"></p>
+                    </div>
+                </div>
+            </form>
+            <div class="mt-6 flex justify-end gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <button type="button" id="cancel-modal-btn" class="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                <button type="submit" form="add-album-form" class="bg-pink-500 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-wait">Guardar Álbum</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Audio Element -->
+    <audio id="audio-player" class="hidden"></audio>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const albumGridView = document.getElementById('album-grid-view');
+        const albumDetailView = document.getElementById('album-detail-view');
+        const albumGrid = document.getElementById('album-grid');
+        const noAlbumsMsg = document.getElementById('no-albums-msg');
+        const backToGridBtn = document.getElementById('back-to-grid-btn');
+        const addAlbumBtn = document.getElementById('add-album-btn');
+        const addAlbumModal = document.getElementById('add-album-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const cancelModalBtn = document.getElementById('cancel-modal-btn');
+        const addAlbumForm = document.getElementById('add-album-form');
+        const coverPreview = document.getElementById('cover-preview');
+        const albumCoverInput = document.getElementById('album-cover');
+        const player = document.getElementById('player');
+        const audioPlayer = document.getElementById('audio-player');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationEl = document.getElementById('duration');
+        const volumeControl = document.getElementById('volume-control');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIconLight = document.getElementById('theme-icon-light');
+        const themeIconDark = document.getElementById('theme-icon-dark');
+        const uploadProgressContainer = document.getElementById('upload-progress-container');
+        const uploadProgressBar = document.getElementById('upload-progress-bar');
+        const uploadStatus = document.getElementById('upload-status');
+
+        // --- State ---
+        let albums = [];
+        let currentAlbum = null;
+        let currentSongIndex = -1;
+        let isPlaying = false;
+
+        // --- Data Persistence ---
+        const DB_NAME = 'klmz_music_db';
+
+        function loadAlbumsFromLocalStorage() {
+            const data = localStorage.getItem(DB_NAME);
+            try {
+                albums = data ? JSON.parse(data) : [];
+            } catch (error) {
+                console.error("Error parsing albums from localStorage:", error);
+                albums = [];
+            }
+        }
+
+        function saveAlbumsToLocalStorage() {
+            try {
+                localStorage.setItem(DB_NAME, JSON.stringify(albums));
+            } catch (error) {
+                console.error("Error saving to localStorage:", error);
+                alert("No se pudo guardar la música. Es posible que el almacenamiento esté lleno.");
+            }
+        }
+
+        // --- Rendering ---
+        function renderAlbumGrid() {
+            albumGrid.innerHTML = '';
+            if (albums.length === 0) {
+                noAlbumsMsg.classList.remove('hidden');
+                return;
+            }
+            noAlbumsMsg.classList.add('hidden');
+
+            albums.forEach((album, index) => {
+                const albumEl = document.createElement('div');
+                albumEl.className = 'group cursor-pointer';
+                albumEl.innerHTML = `
+                    <div class="aspect-square rounded-lg overflow-hidden shadow-lg transform group-hover:scale-105 transition-transform duration-300">
+                        <img src="${album.cover}" alt="${album.title}" class="w-full h-full object-cover">
+                    </div>
+                    <p class="mt-2 font-semibold truncate">${album.title}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${album.songs.length} canci${album.songs.length === 1 ? 'ón' : 'ones'}</p>
+                `;
+                albumEl.addEventListener('click', () => showAlbumDetail(index));
+                albumGrid.appendChild(albumEl);
+            });
+        }
+
+        function renderAlbumDetail(albumIndex) {
+            currentAlbum = albums[albumIndex];
+            document.getElementById('detail-album-cover').src = currentAlbum.cover;
+            document.getElementById('detail-album-title').textContent = currentAlbum.title;
+            document.getElementById('detail-song-count').textContent = `${currentAlbum.songs.length} canci${currentAlbum.songs.length === 1 ? 'ón' : 'ones'}`;
+            
+            const songList = document.getElementById('song-list');
+            songList.innerHTML = '';
+            currentAlbum.songs.forEach((song, index) => {
+                const songEl = document.createElement('li');
+                songEl.className = 'flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors';
+                songEl.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-8 text-center text-gray-500 dark:text-gray-400">
+                             <span class="song-index">${index + 1}</span>
+                             <svg class="w-6 h-6 text-pink-500 hidden animate-spin-slow song-playing-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <span class="font-medium">${song.title}</span>
+                    </div>
+                    <!-- Duration could be added here if we pre-process files -->
+                `;
+                songEl.addEventListener('click', () => playSong(albumIndex, index));
+                songList.appendChild(songEl);
+            });
+
+            document.getElementById('delete-album-btn').onclick = () => {
+                if (confirm(`¿Estás seguro de que quieres eliminar el álbum "${currentAlbum.title}"?`)) {
+                    deleteAlbum(albumIndex);
+                }
+            };
+        }
+        
+        function updatePlayingUI() {
+            const allSongItems = document.querySelectorAll('#song-list li');
+            allSongItems.forEach((item, index) => {
+                const songIndex = item.querySelector('.song-index');
+                const playingIcon = item.querySelector('.song-playing-icon');
+                if (index === currentSongIndex) {
+                    item.classList.add('bg-pink-50', 'dark:bg-pink-900/50');
+                    songIndex.classList.add('hidden');
+                    playingIcon.classList.remove('hidden');
+                } else {
+                    item.classList.remove('bg-pink-50', 'dark:bg-pink-900/50');
+                    songIndex.classList.remove('hidden');
+                    playingIcon.classList.add('hidden');
+                }
+            });
+        }
+
+
+        // --- View Management ---
+        function showGridView() {
+            albumGridView.classList.remove('hidden');
+            albumDetailView.classList.add('hidden');
+        }
+
+        function showAlbumDetail(albumIndex) {
+            renderAlbumDetail(albumIndex);
+            albumGridView.classList.add('hidden');
+            albumDetailView.classList.remove('hidden');
+        }
+
+        // --- Modal Management ---
+        function openModal() {
+            addAlbumForm.reset();
+            coverPreview.classList.add('hidden');
+            uploadProgressContainer.classList.add('hidden');
+            addAlbumModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            addAlbumModal.classList.add('hidden');
+        }
+        
+        albumCoverInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    coverPreview.src = event.target.result;
+                    coverPreview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // --- Album CRUD ---
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Guardando...';
+
+            const title = document.getElementById('album-title').value;
+            const coverFile = document.getElementById('album-cover').files[0];
+            const songFiles = document.getElementById('album-songs').files;
+
+            uploadProgressContainer.classList.remove('hidden');
+
+            try {
+                const cover = await fileToBase64(coverFile);
+                const songs = [];
+                for (let i = 0; i < songFiles.length; i++) {
+                    uploadStatus.textContent = `Procesando ${i + 1} de ${songFiles.length}: ${songFiles[i].name}`;
+                    const songData = await fileToBase64(songFiles[i]);
+                    songs.push({ title: songFiles[i].name, data: songData });
+                    uploadProgressBar.style.width = `${((i + 1) / songFiles.length) * 100}%`;
+                }
+
+                const newAlbum = {
+                    id: Date.now(),
+                    title,
+                    cover,
+                    songs
+                };
+
+                albums.push(newAlbum);
+                saveAlbumsToLocalStorage();
+                renderAlbumGrid();
+                closeModal();
+            } catch (error) {
+                console.error("Error creating album:", error);
+                alert("Ocurrió un error al crear el álbum. Revisa la consola para más detalles.");
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Guardar Álbum';
+                uploadProgressContainer.classList.add('hidden');
+            }
+        }
+        
+        function deleteAlbum(albumIndex) {
+            albums.splice(albumIndex, 1);
+            saveAlbumsToLocalStorage();
+            
+            // If the deleted album was being played, stop the music
+            if (currentAlbum && currentAlbum.id === albums[albumIndex]?.id) {
+                stopPlayback();
+            }
+            
+            renderAlbumGrid();
+            showGridView();
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // --- Music Player Logic ---
+        function playSong(albumIndex, songIndex) {
+            currentAlbum = albums[albumIndex];
+            currentSongIndex = songIndex;
+
+            const song = currentAlbum.songs[currentSongIndex];
+            audioPlayer.src = song.data;
+            audioPlayer.play();
+            isPlaying = true;
+
+            updatePlayerUI(song);
+            updatePlayPauseIcon();
+            updatePlayingUI();
+            
+            player.classList.remove('translate-y-full');
+        }
+        
+        function stopPlayback() {
+            audioPlayer.pause();
+            audioPlayer.src = '';
+            isPlaying = false;
+            currentAlbum = null;
+            currentSongIndex = -1;
+            player.classList.add('translate-y-full');
+            updatePlayPauseIcon();
+        }
+
+
+        function togglePlayPause() {
+            if (!audioPlayer.src) return;
+            if (isPlaying) {
+                audioPlayer.pause();
+            } else {
+                audioPlayer.play();
+            }
+            isPlaying = !isPlaying;
+            updatePlayPauseIcon();
+        }
+
+        function playNext() {
+            if (currentAlbum) {
+                let nextIndex = currentSongIndex + 1;
+                if (nextIndex >= currentAlbum.songs.length) {
+                    nextIndex = 0; // Loop back to the first song
+                }
+                playSong(albums.indexOf(currentAlbum), nextIndex);
+            }
+        }
+
+        function playPrev() {
+            if (currentAlbum) {
+                let prevIndex = currentSongIndex - 1;
+                if (prevIndex < 0) {
+                    prevIndex = currentAlbum.songs.length - 1; // Loop to the last song
+                }
+                playSong(albums.indexOf(currentAlbum), prevIndex);
+            }
+        }
+
+        function updatePlayerUI(song) {
+            document.getElementById('player-album-cover').src = currentAlbum.cover;
+            document.getElementById('player-song-title').textContent = song.title;
+            document.getElementById('player-album-title').textContent = currentAlbum.title;
+        }
+
+        function updatePlayPauseIcon() {
+            if (isPlaying) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            } else {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            }
+        }
+        
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            const { currentTime, duration } = audioPlayer;
+            if (duration) {
+                const progressPercent = (currentTime / duration) * 100;
+                progressBar.value = currentTime;
+                progressBar.style.backgroundSize = `${progressPercent}% 100%`;
+                currentTimeEl.textContent = formatTime(currentTime);
+            }
+        });
+        
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            progressBar.max = audioPlayer.duration;
+            durationEl.textContent = formatTime(audioPlayer.duration);
+        });
+        
+        progressBar.addEventListener('input', (e) => {
+            audioPlayer.currentTime = e.target.value;
+        });
+        
+        volumeControl.addEventListener('input', (e) => {
+            audioPlayer.volume = e.target.value;
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            playNext(); // Continuous play
+        });
+
+        // --- Theme Toggle ---
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeIconLight.classList.add('hidden');
+                themeIconDark.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIconLight.classList.remove('hidden');
+                themeIconDark.classList.add('hidden');
+            }
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const newTheme = isDark ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
+
+        // --- Initial Setup ---
+        function init() {
+            // Load theme
+            const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark
+            applyTheme(savedTheme);
+            
+            // Load data
+            loadAlbumsFromLocalStorage();
+            renderAlbumGrid();
+
+            // Event Listeners
+            addAlbumBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelModalBtn.addEventListener('click', closeModal);
+            backToGridBtn.addEventListener('click', showGridView);
+            addAlbumForm.addEventListener('submit', handleFormSubmit);
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            nextBtn.addEventListener('click', playNext);
+            prevBtn.addEventListener('click', playPrev);
+        }
+
+        init();
+    });
+    </script>
+</body>
+</html>
