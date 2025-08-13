@@ -40,6 +40,7 @@
                     <span id="user-email" class="text-sm text-gray-600 dark:text-gray-300 hidden md:block"></span>
                     <button id="logout-btn" class="bg-pink-500 text-white font-semibold px-3 py-1.5 rounded-lg text-sm hover:bg-pink-600 transition-colors">Salir</button>
                 </div>
+                <button id="login-btn" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Admin Login</button>
                 <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                     <svg id="theme-icon-light" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                     <svg id="theme-icon-dark" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
@@ -48,11 +49,12 @@
         </div>
     </header>
 
-    <!-- Auth View -->
-    <div id="auth-view" class="container mx-auto p-8 flex items-center justify-center" style="min-height: 80vh;">
+    <!-- Auth View (Modal) -->
+    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="w-full max-w-md">
-            <div class="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-8">
-                <h2 id="auth-title" class="text-3xl font-bold text-center mb-6">Iniciar Sesión</h2>
+            <div class="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-8 relative">
+                <button id="close-auth-modal-btn" class="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
+                <h2 id="auth-title" class="text-3xl font-bold text-center mb-6">Admin Login</h2>
                 <form id="auth-form">
                     <div class="space-y-4">
                         <div>
@@ -71,25 +73,22 @@
                         </button>
                     </div>
                 </form>
-                <div class="mt-4 text-center">
-                    <a href="#" id="toggle-auth-mode" class="text-sm text-pink-500 hover:underline">¿No tienes cuenta? Regístrate</a>
-                </div>
             </div>
         </div>
     </div>
 
     <!-- Main App View -->
-    <main id="app-view" class="container mx-auto p-4 md:p-8 hidden">
+    <main id="app-view" class="container mx-auto p-4 md:p-8">
         <!-- Album Grid View -->
         <div id="album-grid-view">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-bold">Mis Álbumes</h2>
-                <button id="add-album-btn" class="bg-pink-500 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-pink-600 transition-transform transform hover:scale-105">
+                <h2 class="text-3xl font-bold">Álbumes</h2>
+                <button id="add-album-btn" class="bg-pink-500 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-pink-600 transition-transform transform hover:scale-105 hidden">
                     + Añadir Álbum
                 </button>
             </div>
             <div id="album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6"></div>
-            <p id="no-albums-msg" class="text-center text-gray-500 dark:text-gray-400 mt-12 text-lg hidden">No tienes álbumes todavía. ¡Añade uno para empezar!</p>
+            <p id="no-albums-msg" class="text-center text-gray-500 dark:text-gray-400 mt-12 text-lg hidden">No hay álbumes todavía. Inicia sesión como admin para añadir música.</p>
         </div>
         <!-- Album Detail View -->
         <div id="album-detail-view" class="hidden">
@@ -102,7 +101,7 @@
                     <img id="detail-album-cover" src="" alt="Album Cover" class="w-full aspect-square rounded-xl shadow-2xl object-cover">
                     <h2 id="detail-album-title" class="text-3xl font-bold mt-4"></h2>
                     <p id="detail-song-count" class="text-gray-500 dark:text-gray-400 mt-1"></p>
-                    <button id="delete-album-btn" class="mt-4 w-full bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                    <button id="delete-album-btn" class="mt-4 w-full bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors hidden">
                         Eliminar Álbum
                     </button>
                 </div>
@@ -175,23 +174,32 @@
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
-        // --- CONFIGURACIÓN DE SUPABASE ---
-        // 🔥🔥🔥 ¡IMPORTANTE! PEGA AQUÍ TUS CLAVES DE SUPABASE 🔥🔥🔥
+        // --- CONFIGURACIÓN DE SUPABASE Y ADMIN ---
+        // 🔥🔥🔥 ¡IMPORTANTE! PEGA AQUÍ TUS CLAVES DE SUPABASE Y TU ADMIN ID 🔥🔥🔥
         const SUPABASE_URL = 'https://lvrkifepqhxxmdcasncf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
-        // ---------------------------------
+        const ADMIN_UID = '412b0dc4-87d1-43f0-8b6e-a5a606f5e91a'; // Pega el User UID que copiaste
+        // -----------------------------------------
 
         const { createClient } = supabase;
-        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let _supabase;
+
+        try {
+            _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (error) {
+            console.error("Error inicializando Supabase:", error);
+            alert("Error en la configuración de Supabase. Revisa las claves en el archivo HTML.");
+        }
+
 
         // --- DOM Elements ---
         const globalLoader = document.getElementById('global-loader');
-        const authView = document.getElementById('auth-view');
+        const authModal = document.getElementById('auth-modal');
+        const closeAuthModalBtn = document.getElementById('close-auth-modal-btn');
+        const loginBtn = document.getElementById('login-btn');
         const appView = document.getElementById('app-view');
         const authForm = document.getElementById('auth-form');
-        const authTitle = document.getElementById('auth-title');
         const authSubmitBtn = document.getElementById('auth-submit-btn');
-        const toggleAuthModeLink = document.getElementById('toggle-auth-mode');
         const authError = document.getElementById('auth-error');
         const userSession = document.getElementById('user-session');
         const userEmailEl = document.getElementById('user-email');
@@ -201,6 +209,7 @@
         const albumGrid = document.getElementById('album-grid');
         const noAlbumsMsg = document.getElementById('no-albums-msg');
         const addAlbumBtn = document.getElementById('add-album-btn');
+        const deleteAlbumBtn = document.getElementById('delete-album-btn');
         const addAlbumModal = document.getElementById('add-album-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const cancelModalBtn = document.getElementById('cancel-modal-btn');
@@ -229,70 +238,35 @@
         let currentSongIndex = -1;
         let isPlaying = false;
         let currentUser = null;
-        let isRegisterMode = false;
 
-        // --- Auth Logic ---
-        const checkUser = async () => {
-            const { data: { session } } = await _supabase.auth.getSession();
-            currentUser = session?.user || null;
+        // --- Auth & UI Control ---
+        const updateUserStatus = (user) => {
+            currentUser = user;
+            const isAdmin = user && user.id === ADMIN_UID;
+
+            addAlbumBtn.classList.toggle('hidden', !isAdmin);
+            // We need to check if the detail view is visible to toggle the delete button
+            const isDetailViewVisible = !albumDetailView.classList.contains('hidden');
+            deleteAlbumBtn.classList.toggle('hidden', !isAdmin || !isDetailViewVisible);
+
+            userSession.classList.toggle('hidden', !isAdmin);
+            loginBtn.classList.toggle('hidden', isAdmin);
             
-            globalLoader.classList.add('hidden');
-            if (currentUser) {
-                authView.classList.add('hidden');
-                appView.classList.remove('hidden');
-                userSession.classList.remove('hidden');
-                userEmailEl.textContent = currentUser.email;
-                fetchAlbums();
-            } else {
-                authView.classList.remove('hidden');
-                appView.classList.add('hidden');
-                userSession.classList.add('hidden');
-                albums = [];
-                renderAlbumGrid();
+            if (isAdmin) {
+                userEmailEl.textContent = user.email;
+                authModal.classList.add('hidden');
             }
         };
 
-        _supabase.auth.onAuthStateChange((event, session) => {
-            currentUser = session?.user || null;
-            checkUser();
-        });
-
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            authError.textContent = '';
-            authSubmitBtn.disabled = true;
-
-            try {
-                let error;
-                if (isRegisterMode) {
-                    ({ error } = await _supabase.auth.signUp({ email, password }));
-                } else {
-                    ({ error } = await _supabase.auth.signInWithPassword({ email, password }));
-                }
-                if (error) throw error;
-            } catch (error) {
-                authError.textContent = "Error: " + error.message;
-            } finally {
-                authSubmitBtn.disabled = false;
-            }
-        });
-
-        toggleAuthModeLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            isRegisterMode = !isRegisterMode;
-            authTitle.textContent = isRegisterMode ? 'Registrarse' : 'Iniciar Sesión';
-            authSubmitBtn.textContent = isRegisterMode ? 'Crear Cuenta' : 'Iniciar Sesión';
-            toggleAuthModeLink.textContent = isRegisterMode ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate';
-            authError.textContent = '';
-        });
-
-        logoutBtn.addEventListener('click', () => _supabase.auth.signOut());
+        const checkUser = async () => {
+            if (!_supabase) return;
+            const { data: { session } } = await _supabase.auth.getSession();
+            updateUserStatus(session?.user);
+            await fetchAlbums(); 
+        };
 
         // --- App Logic ---
         const fetchAlbums = async () => {
-            if (!currentUser) return;
             globalLoader.classList.remove('hidden');
             try {
                 const { data, error } = await _supabase.from('albums').select('*').order('created_at', { ascending: false });
@@ -301,7 +275,7 @@
                 renderAlbumGrid();
             } catch (error) {
                 console.error("Error fetching albums:", error);
-                alert("No se pudieron cargar los álbumes.");
+                alert("No se pudieron cargar los álbumes. Revisa la consola para más detalles.");
             } finally {
                 globalLoader.classList.add('hidden');
             }
@@ -309,7 +283,7 @@
 
         const handleFormSubmit = async (e) => {
             e.preventDefault();
-            if (!currentUser) return;
+            if (!currentUser || currentUser.id !== ADMIN_UID) return;
 
             const title = document.getElementById('album-title').value;
             const coverFile = document.getElementById('album-cover').files[0];
@@ -325,14 +299,12 @@
             uploadProgressContainer.classList.remove('hidden');
 
             try {
-                // 1. Upload cover
                 uploadStatus.textContent = 'Subiendo portada...';
                 const coverPath = `${currentUser.id}/${Date.now()}_${coverFile.name}`;
                 const { error: coverError } = await _supabase.storage.from('media').upload(coverPath, coverFile);
                 if (coverError) throw coverError;
                 const { data: { publicUrl: coverUrl } } = _supabase.storage.from('media').getPublicUrl(coverPath);
 
-                // 2. Upload songs
                 const songs = [];
                 for (let i = 0; i < songFiles.length; i++) {
                     const songFile = songFiles[i];
@@ -344,7 +316,6 @@
                     songs.push({ title: songFile.name.replace(/\.[^/.]+$/, ""), url: songUrl, path: songPath });
                 }
 
-                // 3. Save album to database
                 uploadStatus.textContent = 'Guardando álbum...';
                 const { error: dbError } = await _supabase.from('albums').insert({
                     user_id: currentUser.id, title, cover_url: coverUrl, cover_path: coverPath, songs
@@ -352,7 +323,7 @@
                 if (dbError) throw dbError;
 
                 closeModal();
-                fetchAlbums();
+                await fetchAlbums();
 
             } catch (error) {
                 console.error("Error creating album:", error);
@@ -369,19 +340,17 @@
 
             globalLoader.classList.remove('hidden');
             try {
-                // Delete files from Storage
                 const filesToDelete = [album.cover_path, ...album.songs.map(s => s.path)];
                 await _supabase.storage.from('media').remove(filesToDelete);
-                
-                // Delete doc from database
                 await _supabase.from('albums').delete().match({ id: albumId });
                 
                 showGridView();
-                fetchAlbums();
+                await fetchAlbums();
 
             } catch (error) {
                 console.error("Error deleting album:", error);
                 alert("No se pudo eliminar el álbum.");
+            } finally {
                 globalLoader.classList.add('hidden');
             }
         };
@@ -432,6 +401,7 @@
             
             albumGridView.classList.add('hidden');
             albumDetailView.classList.remove('hidden');
+            updateUserStatus(currentUser); // Update admin buttons visibility
             updatePlayingUI();
         };
 
@@ -440,8 +410,7 @@
             albumDetailView.classList.add('hidden');
             currentAlbum = null;
         };
-
-        // --- Modal ---
+        
         const openModal = () => {
             addAlbumForm.reset();
             coverPreview.classList.add('hidden');
@@ -463,70 +432,39 @@
             const song = currentAlbum.songs[currentSongIndex];
             audioPlayer.src = song.url;
             audioPlayer.play();
-            isPlaying = true;
-            updatePlayerUI(song);
-            updatePlayPauseIcon();
-            updatePlayingUI();
-            player.classList.remove('translate-y-full');
         };
-
-        const togglePlayPause = () => {
-            if (!audioPlayer.src) return;
-            isPlaying ? audioPlayer.pause() : audioPlayer.play();
-        };
-
-        const playNext = () => {
-            if (!currentAlbum) return;
-            currentSongIndex = (currentSongIndex + 1) % currentAlbum.songs.length;
-            playSong(currentSongIndex);
-        };
-
-        const playPrev = () => {
-            if (!currentAlbum) return;
-            currentSongIndex = (currentSongIndex - 1 + currentAlbum.songs.length) % currentAlbum.songs.length;
-            playSong(currentSongIndex);
-        };
-
+        const togglePlayPause = () => { if (!audioPlayer.src) return; isPlaying ? audioPlayer.pause() : audioPlayer.play(); };
+        const playNext = () => { if (!currentAlbum) return; currentSongIndex = (currentSongIndex + 1) % currentAlbum.songs.length; playSong(currentSongIndex); };
+        const playPrev = () => { if (!currentAlbum) return; currentSongIndex = (currentSongIndex - 1 + currentAlbum.songs.length) % currentAlbum.songs.length; playSong(currentSongIndex); };
         const updatePlayerUI = (song) => {
             document.getElementById('player-album-cover').src = currentAlbum.cover_url;
             document.getElementById('player-song-title').textContent = song.title;
             document.getElementById('player-album-title').textContent = currentAlbum.title;
+            player.classList.remove('translate-y-full');
         };
-
-        const updatePlayPauseIcon = () => {
-            playIcon.classList.toggle('hidden', isPlaying);
-            pauseIcon.classList.toggle('hidden', !isPlaying);
-        };
-
+        const updatePlayPauseIcon = () => { playIcon.classList.toggle('hidden', isPlaying); pauseIcon.classList.toggle('hidden', !isPlaying); };
         const updatePlayingUI = () => {
             if (!albumDetailView.classList.contains('hidden')) {
                 document.querySelectorAll('#song-list li').forEach((item, index) => {
                     const isCurrent = currentAlbum && currentAlbum.songs[index] && audioPlayer.src === currentAlbum.songs[index].url;
-                    item.classList.toggle('bg-pink-50', isCurrent);
-                    item.classList.toggle('dark:bg-pink-900/50', isCurrent);
+                    item.classList.toggle('bg-pink-50', isCurrent); item.classList.toggle('dark:bg-pink-900/50', isCurrent);
                     item.querySelector('.song-index').classList.toggle('hidden', isCurrent);
                     item.querySelector('.song-playing-icon').classList.toggle('hidden', !isCurrent);
                 });
             }
         };
-
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
-
-        audioPlayer.addEventListener('play', () => { isPlaying = true; updatePlayPauseIcon(); });
+        audioPlayer.addEventListener('play', () => { isPlaying = true; updatePlayPauseIcon(); updatePlayerUI(currentAlbum.songs[currentSongIndex]); });
         audioPlayer.addEventListener('pause', () => { isPlaying = false; updatePlayPauseIcon(); });
         audioPlayer.addEventListener('ended', playNext);
         audioPlayer.addEventListener('timeupdate', () => {
             const { currentTime, duration } = audioPlayer;
             if (duration) {
-                progressBar.value = currentTime;
-                progressBar.style.backgroundSize = `${(currentTime / duration) * 100}% 100%`;
+                progressBar.value = currentTime; progressBar.style.backgroundSize = `${(currentTime / duration) * 100}% 100%`;
                 currentTimeEl.textContent = formatTime(currentTime);
             }
         });
-        audioPlayer.addEventListener('loadedmetadata', () => {
-            progressBar.max = audioPlayer.duration;
-            durationEl.textContent = formatTime(audioPlayer.duration);
-        });
+        audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationEl.textContent = formatTime(audioPlayer.duration); });
         progressBar.addEventListener('input', (e) => audioPlayer.currentTime = e.target.value);
         volumeControl.addEventListener('input', (e) => audioPlayer.volume = e.target.value);
 
@@ -552,10 +490,29 @@
             localStorage.setItem('theme', newTheme);
             applyTheme(newTheme);
         });
-        applyTheme(localStorage.getItem('theme') || 'dark');
-
+        
         // --- Initial Load ---
-        checkUser();
+        function main() {
+            if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY')) {
+                alert('¡CONFIGURACIÓN NECESARIA!\n\nPor favor, abre el archivo index.html y reemplaza los valores de "SUPABASE_URL" y "SUPABASE_ANON_KEY" con tus propias claves de Supabase.');
+                globalLoader.classList.add('hidden');
+                return;
+            }
+            if (ADMIN_UID.includes('TU_USER_ID_AQUÍ')) {
+                alert('¡CONFIGURACIÓN DE ADMIN NECESARIA!\n\nPor favor, abre el archivo index.html y reemplaza el valor de "ADMIN_UID" con tu User ID de Supabase.');
+            }
+            
+            applyTheme(localStorage.getItem('theme') || 'dark');
+            
+            if (_supabase) {
+                _supabase.auth.onAuthStateChange((event, session) => {
+                    updateUserStatus(session?.user);
+                });
+                checkUser();
+            }
+        }
+        
+        main();
     </script>
 </body>
 </html>
