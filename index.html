@@ -175,29 +175,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
         // --- CONFIGURACIÓN DE SUPABASE Y ADMIN ---
-        // 🔥🔥🔥 ¡IMPORTANTE! PEGA AQUÍ TUS CLAVES DE SUPABASE Y TU ADMIN ID 🔥🔥🔥
         const SUPABASE_URL = 'https://lvrkifepqhxxmdcasncf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
-        const ADMIN_UID = '412b0dc4-87d1-43f0-8b6e-a5a606f5e91a'; // Pega el User UID que copiaste
+        const ADMIN_UID = '412b0dc4-87d1-43f0-8b6e-a5a606f5e91a';
         // -----------------------------------------
 
         const { createClient } = supabase;
         let _supabase;
-
-        try {
-            _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch (error) {
-            console.error("Error inicializando Supabase:", error);
-            alert("Error en la configuración de Supabase. Revisa las claves en el archivo HTML.");
-        }
-
 
         // --- DOM Elements ---
         const globalLoader = document.getElementById('global-loader');
         const authModal = document.getElementById('auth-modal');
         const closeAuthModalBtn = document.getElementById('close-auth-modal-btn');
         const loginBtn = document.getElementById('login-btn');
-        const appView = document.getElementById('app-view');
         const authForm = document.getElementById('auth-form');
         const authSubmitBtn = document.getElementById('auth-submit-btn');
         const authError = document.getElementById('auth-error');
@@ -245,7 +235,6 @@
             const isAdmin = user && user.id === ADMIN_UID;
 
             addAlbumBtn.classList.toggle('hidden', !isAdmin);
-            // We need to check if the detail view is visible to toggle the delete button
             const isDetailViewVisible = !albumDetailView.classList.contains('hidden');
             deleteAlbumBtn.classList.toggle('hidden', !isAdmin || !isDetailViewVisible);
 
@@ -259,7 +248,6 @@
         };
 
         const checkUser = async () => {
-            if (!_supabase) return;
             const { data: { session } } = await _supabase.auth.getSession();
             updateUserStatus(session?.user);
             await fetchAlbums(); 
@@ -401,7 +389,7 @@
             
             albumGridView.classList.add('hidden');
             albumDetailView.classList.remove('hidden');
-            updateUserStatus(currentUser); // Update admin buttons visibility
+            updateUserStatus(currentUser);
             updatePlayingUI();
         };
 
@@ -418,14 +406,7 @@
             addAlbumModal.classList.remove('hidden');
         };
         const closeModal = () => addAlbumModal.classList.add('hidden');
-        albumCoverInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                coverPreview.src = URL.createObjectURL(file);
-                coverPreview.classList.remove('hidden');
-            }
-        });
-
+        
         // --- Player Logic ---
         const playSong = (songIndex) => {
             currentSongIndex = songIndex;
@@ -454,43 +435,74 @@
             }
         };
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
-        audioPlayer.addEventListener('play', () => { isPlaying = true; updatePlayPauseIcon(); updatePlayerUI(currentAlbum.songs[currentSongIndex]); });
-        audioPlayer.addEventListener('pause', () => { isPlaying = false; updatePlayPauseIcon(); });
-        audioPlayer.addEventListener('ended', playNext);
-        audioPlayer.addEventListener('timeupdate', () => {
-            const { currentTime, duration } = audioPlayer;
-            if (duration) {
-                progressBar.value = currentTime; progressBar.style.backgroundSize = `${(currentTime / duration) * 100}% 100%`;
-                currentTimeEl.textContent = formatTime(currentTime);
-            }
-        });
-        audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationEl.textContent = formatTime(audioPlayer.duration); });
-        progressBar.addEventListener('input', (e) => audioPlayer.currentTime = e.target.value);
-        volumeControl.addEventListener('input', (e) => audioPlayer.volume = e.target.value);
 
-        // --- Event Listeners ---
-        addAlbumBtn.addEventListener('click', openModal);
-        closeModalBtn.addEventListener('click', closeModal);
-        cancelModalBtn.addEventListener('click', closeModal);
-        addAlbumForm.addEventListener('submit', handleFormSubmit);
-        backToGridBtn.addEventListener('click', showGridView);
-        playPauseBtn.addEventListener('click', togglePlayPause);
-        nextBtn.addEventListener('click', playNext);
-        prevBtn.addEventListener('click', playPrev);
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            authForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                authError.textContent = '';
+                authSubmitBtn.disabled = true;
+                try {
+                    const { error } = await _supabase.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                } catch (error) {
+                    authError.textContent = "Error: " + error.message;
+                } finally {
+                    authSubmitBtn.disabled = false;
+                }
+            });
 
-        // --- Theme Toggle ---
-        const themeToggle = document.getElementById('theme-toggle');
-        const applyTheme = (theme) => {
-            document.documentElement.classList.toggle('dark', theme === 'dark');
-            document.getElementById('theme-icon-light').classList.toggle('hidden', theme === 'dark');
-            document.getElementById('theme-icon-dark').classList.toggle('hidden', theme !== 'dark');
-        };
-        themeToggle.addEventListener('click', () => {
-            const newTheme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light';
-            localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
-        });
-        
+            loginBtn.addEventListener('click', () => authModal.classList.remove('hidden'));
+            closeAuthModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+            logoutBtn.addEventListener('click', () => _supabase.auth.signOut());
+            
+            addAlbumBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelModalBtn.addEventListener('click', closeModal);
+            addAlbumForm.addEventListener('submit', handleFormSubmit);
+            backToGridBtn.addEventListener('click', showGridView);
+            albumCoverInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    coverPreview.src = URL.createObjectURL(file);
+                    coverPreview.classList.remove('hidden');
+                }
+            });
+
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            nextBtn.addEventListener('click', playNext);
+            prevBtn.addEventListener('click', playPrev);
+
+            audioPlayer.addEventListener('play', () => { isPlaying = true; updatePlayPauseIcon(); updatePlayerUI(currentAlbum.songs[currentSongIndex]); });
+            audioPlayer.addEventListener('pause', () => { isPlaying = false; updatePlayPauseIcon(); });
+            audioPlayer.addEventListener('ended', playNext);
+            audioPlayer.addEventListener('timeupdate', () => {
+                const { currentTime, duration } = audioPlayer;
+                if (duration) {
+                    progressBar.value = currentTime; progressBar.style.backgroundSize = `${(currentTime / duration) * 100}% 100%`;
+                    currentTimeEl.textContent = formatTime(currentTime);
+                }
+            });
+            audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationEl.textContent = formatTime(audioPlayer.duration); });
+            progressBar.addEventListener('input', (e) => audioPlayer.currentTime = e.target.value);
+            volumeControl.addEventListener('input', (e) => audioPlayer.volume = e.target.value);
+
+            const themeToggle = document.getElementById('theme-toggle');
+            const applyTheme = (theme) => {
+                document.documentElement.classList.toggle('dark', theme === 'dark');
+                document.getElementById('theme-icon-light').classList.toggle('hidden', theme === 'dark');
+                document.getElementById('theme-icon-dark').classList.toggle('hidden', theme !== 'dark');
+            };
+            themeToggle.addEventListener('click', () => {
+                const newTheme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+            applyTheme(localStorage.getItem('theme') || 'dark');
+        }
+
         // --- Initial Load ---
         function main() {
             if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY')) {
@@ -500,15 +512,21 @@
             }
             if (ADMIN_UID.includes('TU_USER_ID_AQUÍ')) {
                 alert('¡CONFIGURACIÓN DE ADMIN NECESARIA!\n\nPor favor, abre el archivo index.html y reemplaza el valor de "ADMIN_UID" con tu User ID de Supabase.');
+                globalLoader.classList.add('hidden');
+                return;
             }
-            
-            applyTheme(localStorage.getItem('theme') || 'dark');
-            
-            if (_supabase) {
+
+            try {
+                _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 _supabase.auth.onAuthStateChange((event, session) => {
                     updateUserStatus(session?.user);
                 });
+                setupEventListeners();
                 checkUser();
+            } catch (error) {
+                console.error("Error inicializando Supabase:", error);
+                alert("Error en la configuración de Supabase. Revisa las claves en el archivo HTML.");
+                globalLoader.classList.add('hidden');
             }
         }
         
