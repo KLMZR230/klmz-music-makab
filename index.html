@@ -254,7 +254,7 @@
             authError.textContent = '';
             authSubmitBtn.disabled = true;
             try {
-                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+                const { error } = await _supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
             } catch (error) {
                 authError.textContent = "Error: " + error.message;
@@ -266,7 +266,6 @@
         // --- App Logic ---
         const fetchAlbums = async () => {
             if (!_supabase) return;
-            globalLoader.classList.remove('hidden');
             try {
                 const { data, error } = await _supabase.from('albums').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
@@ -275,8 +274,6 @@
             } catch (error) {
                 console.error("Error fetching albums:", error);
                 alert("No se pudieron cargar los álbumes. Revisa la consola para más detalles.");
-            } finally {
-                globalLoader.classList.add('hidden');
             }
         };
 
@@ -345,7 +342,6 @@
                 
                 showGridView();
                 await fetchAlbums();
-
             } catch (error) {
                 console.error("Error deleting album:", error);
                 alert("No se pudo eliminar el álbum.");
@@ -447,9 +443,8 @@
         };
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 
-        // --- Initial Load ---
-        async function initializeApp() {
-            // Setup static event listeners that don't depend on state
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
             authForm.addEventListener('submit', handleLogin);
             loginBtn.addEventListener('click', () => authModal.classList.remove('hidden'));
             closeAuthModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
@@ -498,8 +493,10 @@
                 applyTheme(newTheme);
             });
             applyTheme(localStorage.getItem('theme') || 'dark');
+        }
 
-            // Check config and initialize Supabase
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', async () => {
             if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY')) {
                 alert('¡CONFIGURACIÓN NECESARIA!\n\nPor favor, abre el archivo index.html y reemplaza los valores de "SUPABASE_URL" y "SUPABASE_ANON_KEY" con tus propias claves de Supabase.');
                 globalLoader.classList.add('hidden');
@@ -513,18 +510,19 @@
 
             try {
                 _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
-                // Set up the real-time listener for auth changes
-                _supabase.auth.onAuthStateChange(async (event, session) => {
+                setupEventListeners();
+
+                // Listen for auth changes
+                _supabase.auth.onAuthStateChange((event, session) => {
                     const user = session?.user || null;
                     updateUserStatus(user);
-                    
+                    // Re-fetch albums on sign in/out to reflect correct permissions
                     if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-                        await fetchAlbums();
+                        fetchAlbums();
                     }
                 });
-
-                // Perform the initial load
+                
+                // Initial check
                 const { data: { session } } = await _supabase.auth.getSession();
                 updateUserStatus(session?.user);
                 await fetchAlbums();
@@ -533,12 +531,10 @@
                 console.error("Error inicializando la aplicación:", error);
                 alert("Error en la configuración de Supabase. Revisa las claves en el archivo HTML.");
             } finally {
-                // Ensure the loader is always hidden after initialization attempt
+                // This is the crucial part: ALWAYS hide the loader after the initial setup.
                 globalLoader.classList.add('hidden');
             }
-        }
-        
-        initializeApp();
+        });
     </script>
 </body>
 </html>
