@@ -20,7 +20,7 @@
             font-family: 'Inter', sans-serif; 
             /* --- FONDO PERSONALIZADO --- */
             /* Reemplaza la URL de abajo con el "Direct Link" de tu imagen en Imgur */
-            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=2070&auto=format&fit=crop');
+            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://i.imgur.com/your-image-id.jpeg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -444,7 +444,6 @@
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Assign all DOM elements once the document is ready
             Object.assign(dom, {
                 loader: document.getElementById('global-loader'),
                 gridLoader: document.getElementById('grid-loader'),
@@ -496,11 +495,6 @@
                 themeToggle: document.getElementById('theme-toggle'),
             });
 
-            // Start the application
-            main();
-        });
-
-        async function main() {
             if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY') || ADMIN_UID.includes('TU_USER_ID_AQUÍ')) {
                 alert('ERROR: Debes pegar tus claves de Supabase y tu Admin UID en el archivo HTML.');
                 dom.loader.classList.add('hidden');
@@ -542,17 +536,25 @@
                     if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
                 });
 
-                const { data: { session } } = await _supabase.auth.getSession();
-                updateUserStatus(session?.user);
-                await fetchAlbums();
+                (async () => {
+                    try {
+                        const { data: { session } } = await _supabase.auth.getSession();
+                        updateUserStatus(session?.user);
+                        await fetchAlbums();
+                    } catch (error) {
+                        console.error("Error en la carga inicial:", error);
+                        alert("No se pudo conectar con el servidor. Revisa tu conexión o las claves de Supabase.");
+                    } finally {
+                        dom.loader.classList.add('hidden');
+                    }
+                })();
 
             } catch (error) {
                 console.error("Error inicializando la aplicación:", error);
                 alert("Error en la configuración de Supabase. Revisa las claves en el HTML.");
-            } finally {
                 dom.loader.classList.add('hidden');
             }
-        }
+        });
     </script>
 </body>
 </html>
