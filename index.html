@@ -281,7 +281,7 @@
                 alert("No se pudieron cargar los álbumes.");
             }
         };
-
+        
         const handleLogin = async (e) => {
             e.preventDefault();
             dom.authError.textContent = '';
@@ -361,8 +361,11 @@
                 const updatedSongs = [...album.songs, ...newSongs];
                 await _supabase.from('albums').update({ songs: updatedSongs }).match({ id: album.id });
                 closeModal('addSongs');
-                await fetchAlbums();
+                // Optimistic UI update
+                album.songs = updatedSongs;
                 showAlbumDetail(album.id);
+                // Fetch in background to ensure consistency
+                fetchAlbums();
             } catch (error) {
                 console.error("Error adding songs:", error);
                 alert("Ocurrió un error al añadir las canciones.");
