@@ -194,7 +194,7 @@
         const userSession = document.getElementById('user-session');
         const userEmailEl = document.getElementById('user-email');
         const logoutBtn = document.getElementById('logout-btn');
-        const albumGridView = document.getElementById('album-grid-view')
+        const albumGridView = document.getElementById('album-grid-view');
         const albumDetailView = document.getElementById('album-detail-view');
         const albumGrid = document.getElementById('album-grid');
         const noAlbumsMsg = document.getElementById('no-albums-msg');
@@ -256,7 +256,6 @@
             try {
                 const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                // onAuthStateChange will handle the UI update automatically
             } catch (error) {
                 authError.textContent = "Error: " + error.message;
             } finally {
@@ -448,8 +447,9 @@
         };
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 
-        // --- Event Listeners Setup ---
-        function setupEventListeners() {
+        // --- Initial Load ---
+        async function initializeApp() {
+            // Setup static event listeners that don't depend on state
             authForm.addEventListener('submit', handleLogin);
             loginBtn.addEventListener('click', () => authModal.classList.remove('hidden'));
             closeAuthModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
@@ -498,10 +498,8 @@
                 applyTheme(newTheme);
             });
             applyTheme(localStorage.getItem('theme') || 'dark');
-        }
 
-        // --- Initial Load ---
-        async function main() {
+            // Check config and initialize Supabase
             if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY')) {
                 alert('¡CONFIGURACIÓN NECESARIA!\n\nPor favor, abre el archivo index.html y reemplaza los valores de "SUPABASE_URL" y "SUPABASE_ANON_KEY" con tus propias claves de Supabase.');
                 globalLoader.classList.add('hidden');
@@ -515,32 +513,32 @@
 
             try {
                 _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                setupEventListeners();
-
+                
+                // Set up the real-time listener for auth changes
                 _supabase.auth.onAuthStateChange(async (event, session) => {
                     const user = session?.user || null;
                     updateUserStatus(user);
                     
-                    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+                    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
                         await fetchAlbums();
                     }
-                    
-                    if (event === 'SIGNED_OUT') {
-                        albums = [];
-                        renderAlbumGrid();
-                        await fetchAlbums(); // Re-fetch public albums after logout
-                    }
-                    
-                    globalLoader.classList.add('hidden');
                 });
+
+                // Perform the initial load
+                const { data: { session } } = await _supabase.auth.getSession();
+                updateUserStatus(session?.user);
+                await fetchAlbums();
+
             } catch (error) {
                 console.error("Error inicializando la aplicación:", error);
                 alert("Error en la configuración de Supabase. Revisa las claves en el archivo HTML.");
+            } finally {
+                // Ensure the loader is always hidden after initialization attempt
                 globalLoader.classList.add('hidden');
             }
         }
         
-        main();
+        initializeApp();
     </script>
 </body>
 </html>
