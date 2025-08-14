@@ -247,10 +247,21 @@
             }
         };
 
-        const checkUser = async () => {
-            const { data: { session } } = await _supabase.auth.getSession();
-            updateUserStatus(session?.user);
-            await fetchAlbums(); 
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            authError.textContent = '';
+            authSubmitBtn.disabled = true;
+            try {
+                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                // The onAuthStateChange listener will handle the UI update
+            } catch (error) {
+                authError.textContent = "Error: " + error.message;
+            } finally {
+                authSubmitBtn.disabled = false;
+            }
         };
 
         // --- App Logic ---
@@ -438,22 +449,7 @@
 
         // --- Event Listeners Setup ---
         function setupEventListeners() {
-            authForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                authError.textContent = '';
-                authSubmitBtn.disabled = true;
-                try {
-                    const { error } = await _supabase.auth.signInWithPassword({ email, password });
-                    if (error) throw error;
-                } catch (error) {
-                    authError.textContent = "Error: " + error.message;
-                } finally {
-                    authSubmitBtn.disabled = false;
-                }
-            });
-
+            authForm.addEventListener('submit', handleLogin);
             loginBtn.addEventListener('click', () => authModal.classList.remove('hidden'));
             closeAuthModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
             logoutBtn.addEventListener('click', () => _supabase.auth.signOut());
@@ -504,7 +500,7 @@
         }
 
         // --- Initial Load ---
-        function main() {
+        async function main() {
             if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY')) {
                 alert('¡CONFIGURACIÓN NECESARIA!\n\nPor favor, abre el archivo index.html y reemplaza los valores de "SUPABASE_URL" y "SUPABASE_ANON_KEY" con tus propias claves de Supabase.');
                 globalLoader.classList.add('hidden');
@@ -518,14 +514,24 @@
 
             try {
                 _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                _supabase.auth.onAuthStateChange((event, session) => {
+                
+                _supabase.auth.onAuthStateChange(async (event, session) => {
                     updateUserStatus(session?.user);
+                    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                        await fetchAlbums();
+                    }
                 });
+
                 setupEventListeners();
-                checkUser();
+                
+                const { data: { session } } = await _supabase.auth.getSession();
+                updateUserStatus(session?.user);
+                await fetchAlbums();
+                
             } catch (error) {
-                console.error("Error inicializando Supabase:", error);
+                console.error("Error inicializando la aplicación:", error);
                 alert("Error en la configuración de Supabase. Revisa las claves en el archivo HTML.");
+            } finally {
                 globalLoader.classList.add('hidden');
             }
         }
