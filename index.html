@@ -6,8 +6,25 @@
     <title>KLMZ MUSIC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#ec4899">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KLMZ MUSIC">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/ec4899/white?text=KLMZ">
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIktMTVogTVVTSUMiLAogICJzaG9ydF9uYW1lIjogIktMTVogTVVTSUMiLAogICJkZXNjcmlwdGlvbiI6ICJUdSBwbGF0YWZvcm1hIGRlIG3DunNpY2EgcGVyc29uYWwuIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxMTE4MjciLAogICJ0aGVtZV9jb2xvciI6ICIlZWM0ODk5IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9wbGFjZWhvbGQuY28vMTkyeDE5Mi9lYzQ4OTkvd2hpdGU/dGV4dD1LTExaIiwKICAgICAgInNpemVzIjogIjE5MngxOTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciCiAgICB9LAogICAgewogICAgICAic3JjIjogImh0dHBzOi8vcGxhY2Vob2xkLmNvLzUxMng1MTIvZWM0ODk5L3doaXRlP3RleHQ9S0xNWiIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogICAgfQogIF0KfQ==">
+
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* --- FONDO PERSONALIZADO --- */
+            /* Reemplaza la URL de abajo con el "Direct Link" de tu imagen en Imgur */
+            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
         .hidden { display: none; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1f2937; }
@@ -21,12 +38,7 @@
         .animate-spin-slow { animation: spin 3s linear infinite; }
     </style>
 </head>
-<body class="bg-slate-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-
-    <!-- Panel de Diagnóstico -->
-    <div id="debug-log" class="fixed top-0 left-0 bg-black text-white p-2 z-[200] text-xs font-mono max-h-screen overflow-y-auto w-full md:w-1/3">
-        <p class="font-bold border-b border-gray-600 pb-1 mb-1">Panel de Diagnóstico:</p>
-    </div>
+<body class="text-gray-900 dark:text-gray-100 transition-colors duration-300">
 
     <!-- Global Loader -->
     <div id="global-loader" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[100]">
@@ -217,13 +229,6 @@
             currentUser: null,
         };
         
-        const log = (message) => {
-            console.log(message);
-            const p = document.createElement('p');
-            p.textContent = `> ${message}`;
-            document.getElementById('debug-log').appendChild(p);
-        };
-
         const updateUserStatus = (user) => {
             state.currentUser = user;
             const isAdmin = user && user.id === ADMIN_UID;
@@ -240,7 +245,6 @@
         };
 
         const fetchAlbums = async () => {
-            log("Intentando cargar álbumes...");
             dom.gridLoader.classList.remove('hidden');
             dom.albumGrid.innerHTML = ''; 
             dom.noAlbumsMsg.classList.add('hidden');
@@ -249,10 +253,8 @@
                 if (error) throw error;
                 state.albums = data;
                 renderAlbumGrid();
-                log(`Álbumes cargados: ${state.albums.length}`);
             } catch (error) {
                 console.error("Error fetching albums:", error);
-                log(`ERROR al cargar álbumes: ${error.message}`);
                 dom.albumGrid.innerHTML = `<p class="col-span-full text-center text-red-500">No se pudieron cargar los álbumes.</p>`;
             } finally {
                 dom.gridLoader.classList.add('hidden');
@@ -442,6 +444,7 @@
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Assign all DOM elements once the document is ready
             Object.assign(dom, {
                 loader: document.getElementById('global-loader'),
                 gridLoader: document.getElementById('grid-loader'),
@@ -493,6 +496,11 @@
                 themeToggle: document.getElementById('theme-toggle'),
             });
 
+            // Start the application
+            main();
+        });
+
+        async function main() {
             if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY') || ADMIN_UID.includes('TU_USER_ID_AQUÍ')) {
                 alert('ERROR: Debes pegar tus claves de Supabase y tu Admin UID en el archivo HTML.');
                 dom.loader.classList.add('hidden');
@@ -534,25 +542,17 @@
                     if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
                 });
 
-                (async () => {
-                    try {
-                        const { data: { session } } = await _supabase.auth.getSession();
-                        updateUserStatus(session?.user);
-                        await fetchAlbums();
-                    } catch (error) {
-                        console.error("Error en la carga inicial:", error);
-                        alert("No se pudo conectar con el servidor. Revisa tu conexión o las claves de Supabase.");
-                    } finally {
-                        dom.loader.classList.add('hidden');
-                    }
-                })();
+                const { data: { session } } = await _supabase.auth.getSession();
+                updateUserStatus(session?.user);
+                await fetchAlbums();
 
             } catch (error) {
                 console.error("Error inicializando la aplicación:", error);
                 alert("Error en la configuración de Supabase. Revisa las claves en el HTML.");
+            } finally {
                 dom.loader.classList.add('hidden');
             }
-        });
+        }
     </script>
 </body>
 </html>
