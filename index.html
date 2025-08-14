@@ -87,7 +87,13 @@
                     + Añadir Álbum
                 </button>
             </div>
-            <div id="album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6"></div>
+            <div id="album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                <!-- Grid Loader -->
+                <div id="grid-loader" class="col-span-full flex flex-col items-center justify-center text-center py-12">
+                    <div class="w-12 h-12 border-4 border-t-pink-500 border-gray-200 dark:border-gray-600 rounded-full animate-spin"></div>
+                    <p class="mt-4 text-gray-500 dark:text-gray-400">Cargando álbumes...</p>
+                </div>
+            </div>
             <p id="no-albums-msg" class="text-center text-gray-500 dark:text-gray-400 mt-12 text-lg hidden">No hay álbumes todavía. Inicia sesión como admin para añadir música.</p>
         </div>
         <!-- Album Detail View -->
@@ -199,6 +205,7 @@
 
         const dom = {
             loader: document.getElementById('global-loader'),
+            gridLoader: document.getElementById('grid-loader'),
             authModal: document.getElementById('auth-modal'),
             closeAuthModalBtn: document.getElementById('close-auth-modal-btn'),
             loginBtn: document.getElementById('login-btn'),
@@ -271,6 +278,9 @@
         };
 
         const fetchAlbums = async () => {
+            dom.gridLoader.classList.remove('hidden');
+            dom.albumGrid.innerHTML = ''; 
+            dom.noAlbumsMsg.classList.add('hidden');
             try {
                 const { data, error } = await _supabase.from('albums').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
@@ -278,7 +288,9 @@
                 renderAlbumGrid();
             } catch (error) {
                 console.error("Error fetching albums:", error);
-                alert("No se pudieron cargar los álbumes.");
+                dom.albumGrid.innerHTML = `<p class="col-span-full text-center text-red-500">No se pudieron cargar los álbumes.</p>`;
+            } finally {
+                dom.gridLoader.classList.add('hidden');
             }
         };
         
@@ -389,7 +401,7 @@
 
         const renderAlbumGrid = () => {
             dom.albumGrid.innerHTML = '';
-            dom.noAlbumsMsg.classList.toggle('hidden', state.albums.length > 0);
+            dom.noAlbumsMsg.classList.toggle('hidden', state.albums.length === 0);
             state.albums.forEach(album => {
                 const el = document.createElement('div');
                 el.className = 'group cursor-pointer';
