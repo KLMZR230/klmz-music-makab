@@ -19,9 +19,12 @@
         body { 
             font-family: 'Inter', sans-serif; 
             /* --- FONDO PERSONALIZADO --- */
-            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://imgur.com/a/zpvZyH9');
-            background-size: cover;
-            background-position: center;
+            /* Reemplaza la URL de abajo con el "Direct Link" de tu imagen en Imgur */
+            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url(https://imgur.com/eReDORh);
+            background-size: cover
+
+            background-position: center
+
             background-attachment: fixed;
         }
         .hidden { display: none; }
@@ -209,7 +212,6 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <script type="module">
         // --- CONFIGURACIÓN DE SUPABASE Y ADMIN ---
         const SUPABASE_URL = 'https://lvrkifepqhxxmdcasncf.supabase.co';
@@ -443,7 +445,7 @@
         };
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             Object.assign(dom, {
                 loader: document.getElementById('global-loader'),
                 gridLoader: document.getElementById('grid-loader'),
@@ -536,14 +538,22 @@
                     if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
                 });
 
-                const { data: { session } } = await _supabase.auth.getSession();
-                updateUserStatus(session?.user);
-                await fetchAlbums();
+                (async () => {
+                    try {
+                        const { data: { session } } = await _supabase.auth.getSession();
+                        updateUserStatus(session?.user);
+                        await fetchAlbums();
+                    } catch (error) {
+                        console.error("Error en la carga inicial:", error);
+                        alert("No se pudo conectar con el servidor. Revisa tu conexión o las claves de Supabase.");
+                    } finally {
+                        dom.loader.classList.add('hidden');
+                    }
+                })();
 
             } catch (error) {
                 console.error("Error inicializando la aplicación:", error);
                 alert("Error en la configuración de Supabase. Revisa las claves en el HTML.");
-            } finally {
                 dom.loader.classList.add('hidden');
             }
         });
