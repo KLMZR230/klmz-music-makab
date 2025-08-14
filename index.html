@@ -312,16 +312,14 @@
             try {
                 dom.uploadStatus.textContent = 'Subiendo portada...';
                 const coverPath = `${user.id}/${Date.now()}_${coverFile.name}`;
-                const { error: coverError } = await _supabase.storage.from('media').upload(coverPath, coverFile);
-                if (coverError) throw coverError;
+                await _supabase.storage.from('media').upload(coverPath, coverFile);
                 const { data: { publicUrl: coverUrl } } = _supabase.storage.from('media').getPublicUrl(coverPath);
                 const songs = [];
                 for (let i = 0; i < songFiles.length; i++) {
                     const songFile = songFiles[i];
                     dom.uploadStatus.textContent = `Subiendo canción ${i + 1}/${songFiles.length}...`;
                     const songPath = `${user.id}/${Date.now()}_${songFile.name}`;
-                    const { error: songError } = await _supabase.storage.from('media').upload(songPath, songFile);
-                    if (songError) throw songError;
+                    await _supabase.storage.from('media').upload(songPath, songFile);
                     const { data: { publicUrl: songUrl } } = _supabase.storage.from('media').getPublicUrl(songPath);
                     songs.push({ title: songFile.name.replace(/\.[^/.]+$/, ""), url: songUrl, path: songPath });
                 }
@@ -352,8 +350,7 @@
                     const songFile = songFiles[i];
                     dom.addSongsStatus.textContent = `Subiendo canción ${i + 1}/${songFiles.length}...`;
                     const songPath = `${user.id}/${Date.now()}_${songFile.name}`;
-                    const { error: songError } = await _supabase.storage.from('media').upload(songPath, songFile);
-                    if (songError) throw songError;
+                    await _supabase.storage.from('media').upload(songPath, songFile);
                     const { data: { publicUrl: songUrl } } = _supabase.storage.from('media').getPublicUrl(songPath);
                     newSongs.push({ title: songFile.name.replace(/\.[^/.]+$/, ""), url: songUrl, path: songPath });
                 }
@@ -477,6 +474,7 @@
             try {
                 _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
+                // Setup Event Listeners
                 dom.authForm.addEventListener('submit', handleLogin);
                 dom.loginBtn.addEventListener('click', () => dom.authModal.classList.remove('hidden'));
                 dom.closeAuthModalBtn.addEventListener('click', () => dom.authModal.classList.add('hidden'));
@@ -504,11 +502,13 @@
                 dom.themeToggle.addEventListener('click', () => { const newTheme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
                 applyTheme(localStorage.getItem('theme') || 'dark');
 
+                // Auth Listener
                 _supabase.auth.onAuthStateChange(async (event, session) => {
                     updateUserStatus(session?.user);
                     if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
                 });
 
+                // Initial Load
                 const { data: { session } } = await _supabase.auth.getSession();
                 updateUserStatus(session?.user);
                 await fetchAlbums();
