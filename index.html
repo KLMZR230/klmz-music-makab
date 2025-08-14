@@ -389,7 +389,7 @@
 
         const renderAlbumGrid = () => {
             dom.albumGrid.innerHTML = '';
-            dom.noAlbumsMsg.classList.toggle('hidden', state.albums.length > 0);
+            dom.noAlbumsMsg.classList.toggle('hidden', state.albums.length === 0);
             state.albums.forEach(album => {
                 const el = document.createElement('div');
                 el.className = 'group cursor-pointer';
@@ -474,7 +474,6 @@
             try {
                 _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // Setup Event Listeners
                 dom.authForm.addEventListener('submit', handleLogin);
                 dom.loginBtn.addEventListener('click', () => dom.authModal.classList.remove('hidden'));
                 dom.closeAuthModalBtn.addEventListener('click', () => dom.authModal.classList.add('hidden'));
@@ -502,13 +501,11 @@
                 dom.themeToggle.addEventListener('click', () => { const newTheme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
                 applyTheme(localStorage.getItem('theme') || 'dark');
 
-                // Auth Listener
                 _supabase.auth.onAuthStateChange(async (event, session) => {
                     updateUserStatus(session?.user);
                     if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
                 });
 
-                // Initial Load
                 const { data: { session } } = await _supabase.auth.getSession();
                 updateUserStatus(session?.user);
                 await fetchAlbums();
