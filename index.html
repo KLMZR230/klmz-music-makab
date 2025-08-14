@@ -18,7 +18,8 @@
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url(https://imgur.com/eReDORh);
+            /* --- FONDO PERSONALIZADO --- */
+            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://imgur.com/a/zpvZyH9');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -208,19 +209,6 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Service Worker Script (invisible) -->
-    <script id="sw-script" type="text/plain">
-        self.addEventListener('install', (event) => {
-          // console.log('Service Worker installing.');
-        });
-
-        self.addEventListener('fetch', (event) => {
-          // This is a pass-through service worker.
-          // It's only here to make the app installable.
-          event.respondWith(fetch(event.request));
-        });
-    </script>
     
     <script type="module">
         // --- CONFIGURACIÓN DE SUPABASE Y ADMIN ---
@@ -455,7 +443,7 @@
         };
         const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             Object.assign(dom, {
                 loader: document.getElementById('global-loader'),
                 gridLoader: document.getElementById('grid-loader'),
@@ -513,59 +501,50 @@
                 return;
             }
 
-            _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            
-            dom.authForm.addEventListener('submit', handleLogin);
-            dom.loginBtn.addEventListener('click', () => dom.authModal.classList.remove('hidden'));
-            dom.closeAuthModalBtn.addEventListener('click', () => dom.authModal.classList.add('hidden'));
-            dom.logoutBtn.addEventListener('click', () => _supabase.auth.signOut());
-            dom.addAlbumBtn.addEventListener('click', () => openModal('addAlbum'));
-            dom.closeModalBtn.addEventListener('click', () => closeModal('addAlbum'));
-            dom.cancelModalBtn.addEventListener('click', () => closeModal('addAlbum'));
-            dom.addAlbumForm.addEventListener('submit', handleFormSubmit);
-            dom.closeAddSongsModalBtn.addEventListener('click', () => closeModal('addSongs'));
-            dom.cancelAddSongsBtn.addEventListener('click', () => closeModal('addSongs'));
-            dom.addSongsForm.addEventListener('submit', handleAddSongsSubmit);
-            dom.backToGridBtn.addEventListener('click', showGridView);
-            dom.albumCoverInput.addEventListener('change', (e) => { if (e.target.files[0]) { dom.coverPreview.src = URL.createObjectURL(e.target.files[0]); dom.coverPreview.classList.remove('hidden'); } });
-            dom.playPauseBtn.addEventListener('click', togglePlayPause);
-            dom.nextBtn.addEventListener('click', playNext);
-            dom.prevBtn.addEventListener('click', playPrev);
-            dom.audioPlayer.addEventListener('play', () => { state.isPlaying = true; updatePlayPauseIcon(); updatePlayerUI(state.currentAlbum.songs[state.currentSongIndex]); });
-            dom.audioPlayer.addEventListener('pause', () => { state.isPlaying = false; updatePlayPauseIcon(); });
-            dom.audioPlayer.addEventListener('ended', playNext);
-            dom.audioPlayer.addEventListener('timeupdate', () => { const { currentTime, duration } = dom.audioPlayer; if (duration) { dom.progressBar.value = currentTime; dom.progressBar.style.backgroundSize = `${(currentTime / duration) * 100}% 100%`; dom.currentTime.textContent = formatTime(currentTime); } });
-            dom.audioPlayer.addEventListener('loadedmetadata', () => { dom.progressBar.max = dom.audioPlayer.duration; dom.duration.textContent = formatTime(dom.audioPlayer.duration); });
-            dom.progressBar.addEventListener('input', (e) => dom.audioPlayer.currentTime = e.target.value);
-            dom.volumeControl.addEventListener('input', (e) => dom.audioPlayer.volume = e.target.value);
-            const applyTheme = (theme) => { document.documentElement.classList.toggle('dark', theme === 'dark'); dom.themeToggle.querySelector('#theme-icon-light').classList.toggle('hidden', theme === 'dark'); dom.themeToggle.querySelector('#theme-icon-dark').classList.toggle('hidden', theme !== 'dark'); };
-            dom.themeToggle.addEventListener('click', () => { const newTheme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
-            applyTheme(localStorage.getItem('theme') || 'dark');
+            try {
+                _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                dom.authForm.addEventListener('submit', handleLogin);
+                dom.loginBtn.addEventListener('click', () => dom.authModal.classList.remove('hidden'));
+                dom.closeAuthModalBtn.addEventListener('click', () => dom.authModal.classList.add('hidden'));
+                dom.logoutBtn.addEventListener('click', () => _supabase.auth.signOut());
+                dom.addAlbumBtn.addEventListener('click', () => openModal('addAlbum'));
+                dom.closeModalBtn.addEventListener('click', () => closeModal('addAlbum'));
+                dom.cancelModalBtn.addEventListener('click', () => closeModal('addAlbum'));
+                dom.addAlbumForm.addEventListener('submit', handleFormSubmit);
+                dom.closeAddSongsModalBtn.addEventListener('click', () => closeModal('addSongs'));
+                dom.cancelAddSongsBtn.addEventListener('click', () => closeModal('addSongs'));
+                dom.addSongsForm.addEventListener('submit', handleAddSongsSubmit);
+                dom.backToGridBtn.addEventListener('click', showGridView);
+                dom.albumCoverInput.addEventListener('change', (e) => { if (e.target.files[0]) { dom.coverPreview.src = URL.createObjectURL(e.target.files[0]); dom.coverPreview.classList.remove('hidden'); } });
+                dom.playPauseBtn.addEventListener('click', togglePlayPause);
+                dom.nextBtn.addEventListener('click', playNext);
+                dom.prevBtn.addEventListener('click', playPrev);
+                dom.audioPlayer.addEventListener('play', () => { state.isPlaying = true; updatePlayPauseIcon(); updatePlayerUI(state.currentAlbum.songs[state.currentSongIndex]); });
+                dom.audioPlayer.addEventListener('pause', () => { state.isPlaying = false; updatePlayPauseIcon(); });
+                dom.audioPlayer.addEventListener('ended', playNext);
+                dom.audioPlayer.addEventListener('timeupdate', () => { const { currentTime, duration } = dom.audioPlayer; if (duration) { dom.progressBar.value = currentTime; dom.progressBar.style.backgroundSize = `${(currentTime / duration) * 100}% 100%`; dom.currentTime.textContent = formatTime(currentTime); } });
+                dom.audioPlayer.addEventListener('loadedmetadata', () => { dom.progressBar.max = dom.audioPlayer.duration; dom.duration.textContent = formatTime(dom.audioPlayer.duration); });
+                dom.progressBar.addEventListener('input', (e) => dom.audioPlayer.currentTime = e.target.value);
+                dom.volumeControl.addEventListener('input', (e) => dom.audioPlayer.volume = e.target.value);
+                const applyTheme = (theme) => { document.documentElement.classList.toggle('dark', theme === 'dark'); dom.themeToggle.querySelector('#theme-icon-light').classList.toggle('hidden', theme === 'dark'); dom.themeToggle.querySelector('#theme-icon-dark').classList.toggle('hidden', theme !== 'dark'); };
+                dom.themeToggle.addEventListener('click', () => { const newTheme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
+                applyTheme(localStorage.getItem('theme') || 'dark');
 
-            _supabase.auth.onAuthStateChange(async (event, session) => {
-                updateUserStatus(session?.user);
-                if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
-            });
-
-            (async () => {
-                try {
-                    const { data: { session } } = await _supabase.auth.getSession();
+                _supabase.auth.onAuthStateChange(async (event, session) => {
                     updateUserStatus(session?.user);
-                    await fetchAlbums();
-                } catch (error) {
-                    console.error("Error en la carga inicial:", error);
-                    alert("No se pudo conectar con el servidor. Revisa tu conexión o las claves de Supabase.");
-                } finally {
-                    dom.loader.classList.add('hidden');
-                }
-            })();
-            
-            // Register Service Worker for PWA
-            if ('serviceWorker' in navigator) {
-                const swScript = document.getElementById('sw-script').textContent;
-                const swBlob = new Blob([swScript], {type: 'application/javascript'});
-                const swUrl = URL.createObjectURL(swBlob);
-                navigator.serviceWorker.register(swUrl).then(reg => console.log('Service Worker registered.', reg)).catch(err => console.error('Service Worker registration failed:', err));
+                    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
+                });
+
+                const { data: { session } } = await _supabase.auth.getSession();
+                updateUserStatus(session?.user);
+                await fetchAlbums();
+
+            } catch (error) {
+                console.error("Error inicializando la aplicación:", error);
+                alert("Error en la configuración de Supabase. Revisa las claves en el HTML.");
+            } finally {
+                dom.loader.classList.add('hidden');
             }
         });
     </script>
