@@ -194,7 +194,7 @@
         const userSession = document.getElementById('user-session');
         const userEmailEl = document.getElementById('user-email');
         const logoutBtn = document.getElementById('logout-btn');
-        const albumGridView = document.getElementById('album-grid-view');
+        const albumGridView = document.getElementById('album-grid-view')
         const albumDetailView = document.getElementById('album-detail-view');
         const albumGrid = document.getElementById('album-grid');
         const noAlbumsMsg = document.getElementById('no-albums-msg');
@@ -256,7 +256,7 @@
             try {
                 const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                // The onAuthStateChange listener will handle the UI update
+                // onAuthStateChange will handle the UI update automatically
             } catch (error) {
                 authError.textContent = "Error: " + error.message;
             } finally {
@@ -266,6 +266,7 @@
 
         // --- App Logic ---
         const fetchAlbums = async () => {
+            if (!_supabase) return;
             globalLoader.classList.remove('hidden');
             try {
                 const { data, error } = await _supabase.from('albums').select('*').order('created_at', { ascending: false });
@@ -514,24 +515,27 @@
 
             try {
                 _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
+                setupEventListeners();
+
                 _supabase.auth.onAuthStateChange(async (event, session) => {
-                    updateUserStatus(session?.user);
-                    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                    const user = session?.user || null;
+                    updateUserStatus(user);
+                    
+                    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
                         await fetchAlbums();
                     }
+                    
+                    if (event === 'SIGNED_OUT') {
+                        albums = [];
+                        renderAlbumGrid();
+                        await fetchAlbums(); // Re-fetch public albums after logout
+                    }
+                    
+                    globalLoader.classList.add('hidden');
                 });
-
-                setupEventListeners();
-                
-                const { data: { session } } = await _supabase.auth.getSession();
-                updateUserStatus(session?.user);
-                await fetchAlbums();
-                
             } catch (error) {
                 console.error("Error inicializando la aplicación:", error);
                 alert("Error en la configuración de Supabase. Revisa las claves en el archivo HTML.");
-            } finally {
                 globalLoader.classList.add('hidden');
             }
         }
