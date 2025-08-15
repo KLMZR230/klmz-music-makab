@@ -1,42 +1,177 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Test Login Supabase</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8">
+<title>♫ KLMZ MUSIC</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: #121212; color: #fff; margin: 0; padding: 0; }
+  header { background: #1db954; padding: 15px; font-size: 24px; font-weight: bold; }
+  main { padding: 20px; }
+  .album { background: #181818; padding: 15px; margin: 10px; display: inline-block; width: 180px; cursor: pointer; border-radius: 8px; }
+  .album img { width: 100%; border-radius: 5px; }
+  .hidden { display: none; }
+  button { background: #1db954; border: none; padding: 10px 15px; cursor: pointer; color: #fff; border-radius: 5px; }
+  input, label { margin: 5px 0; }
+  .player { position: fixed; bottom: 0; left: 0; right: 0; background: #282828; padding: 10px; display: flex; align-items: center; gap: 10px; }
+  audio { width: 100%; }
+</style>
 </head>
-<body style="font-family:sans-serif;">
-  <h1>Test Login</h1>
-  <input type="email" id="email" placeholder="Email"><br>
-  <input type="password" id="password" placeholder="Contraseña"><br>
-  <button onclick="login()">Entrar</button>
-  <p id="result"></p>
+<body>
+
+<header>♫ KLMZ MUSIC</header>
+
+<main>
+  <!-- Login -->
+  <div id="login-section">
+    <h2>Iniciar sesión</h2>
+    <input type="email" id="email" placeholder="Email"><br>
+    <input type="password" id="password" placeholder="Contraseña"><br>
+    <button onclick="login()">Entrar</button>
+    <p id="login-result"></p>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="admin-panel" class="hidden">
+    <h2>Subir Álbum</h2>
+    <input type="text" id="album-title" placeholder="Título del álbum"><br>
+    <input type="file" id="album-cover"><br>
+    <button onclick="uploadAlbum()">Subir Álbum</button>
+
+    <h2>Subir Canción</h2>
+    <select id="album-select"></select><br>
+    <input type="text" id="song-title" placeholder="Título de la canción"><br>
+    <input type="file" id="song-file"><br>
+    <button onclick="uploadSong()">Subir Canción</button>
+  </div>
+
+  <!-- Listado de álbumes -->
+  <h2>Álbumes</h2>
+  <div id="albums-container"></div>
+</main>
+
+<!-- Reproductor -->
+<div class="player">
+  <span id="current-song">Nada reproduciéndose</span>
+  <audio id="audio-player" controls></audio>
+  <button onclick="goFullScreen()">Pantalla completa</button>
+</div>
 
 <script>
-  // ⚠️ Cambia estos valores por los tuyos
-  const SUPABASE_URL = "https://nqbldvpnqhngdtalvzov.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
-  const ADMIN_EMAIL = "klmzr@gmail.com";
+const SUPABASE_URL = "https://nqbldvpnqhngdtalvzov.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
+const ADMIN_EMAIL = "klmzr@gmail.com";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let isAdmin = false;
 
-  async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      document.getElementById("result").innerText = "❌ Error: " + error.message;
-      return;
-    }
-
-    if (email === ADMIN_EMAIL) {
-      document.getElementById("result").innerText = "✅ Hola Admin";
-    } else {
-      document.getElementById("result").innerText = "✅ Login correcto, pero no eres admin";
-    }
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    document.getElementById("login-result").innerText = "❌ " + error.message;
+    return;
   }
+  isAdmin = (email === ADMIN_EMAIL);
+  document.getElementById("login-section").classList.add("hidden");
+  if (isAdmin) {
+    document.getElementById("admin-panel").classList.remove("hidden");
+  }
+  loadAlbums();
+}
+
+async function loadAlbums() {
+  const { data, error } = await supabaseClient.from("albums").select("*");
+  if (error) { console.error(error); return; }
+
+  const container = document.getElementById("albums-container");
+  container.innerHTML = "";
+  const select = document.getElementById("album-select");
+  select.innerHTML = "";
+
+  data.forEach(album => {
+    const div = document.createElement("div");
+    div.className = "album";
+    div.innerHTML = `<img src="${album.cover_url}" alt="${album.title}">
+                     <p>${album.title}</p>`;
+    div.onclick = () => loadSongs(album.id);
+    container.appendChild(div);
+
+    if (isAdmin) {
+      const opt = document.createElement("option");
+      opt.value = album.id;
+      opt.textContent = album.title;
+      select.appendChild(opt);
+    }
+  });
+}
+
+async function loadSongs(albumId) {
+  const { data, error } = await supabaseClient.from("songs").select("*").eq("album_id", albumId);
+  if (error) { console.error(error); return; }
+  if (data.length > 0) {
+    const song = data[0];
+    playSong(song.song_url, song.title);
+  }
+}
+
+function playSong(url, title) {
+  const audio = document.getElementById("audio-player");
+  document.getElementById("current-song").innerText = title;
+  audio.src = url;
+  audio.play();
+}
+
+function goFullScreen() {
+  const player = document.getElementById("audio-player");
+  if (player.requestFullscreen) {
+    player.requestFullscreen();
+  }
+}
+
+async function uploadAlbum() {
+  const title = document.getElementById("album-title").value;
+  const file = document.getElementById("album-cover").files[0];
+  if (!title || !file) return alert("Completa todos los campos");
+
+  const filePath = `${Date.now()}-${file.name}`;
+  const { data: storageData, error: storageError } = await supabaseClient.storage
+    .from("covers")
+    .upload(filePath, file);
+  if (storageError) return alert("Error subiendo portada: " + storageError.message);
+
+  const { data: publicUrlData } = supabaseClient.storage.from("covers").getPublicUrl(filePath);
+  const coverUrl = publicUrlData.publicUrl;
+
+  const { error: insertError } = await supabaseClient.from("albums").insert([{ title, cover_url: coverUrl }]);
+  if (insertError) return alert("Error guardando álbum: " + insertError.message);
+
+  alert("Álbum subido");
+  loadAlbums();
+}
+
+async function uploadSong() {
+  const albumId = document.getElementById("album-select").value;
+  const title = document.getElementById("song-title").value;
+  const file = document.getElementById("song-file").files[0];
+  if (!albumId || !title || !file) return alert("Completa todos los campos");
+
+  const filePath = `${Date.now()}-${file.name}`;
+  const { error: storageError } = await supabaseClient.storage
+    .from("songs")
+    .upload(filePath, file);
+  if (storageError) return alert("Error subiendo canción: " + storageError.message);
+
+  const { data: publicUrlData } = supabaseClient.storage.from("songs").getPublicUrl(filePath);
+  const songUrl = publicUrlData.publicUrl;
+
+  const { error: insertError } = await supabaseClient.from("songs").insert([{ album_id: albumId, title, song_url: songUrl }]);
+  if (insertError) return alert("Error guardando canción: " + insertError.message);
+
+  alert("Canción subida");
+}
 </script>
 </body>
 </html>
