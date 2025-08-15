@@ -41,50 +41,68 @@
 </div>
 
 <script>
-  // Configura tu Supabase
-  const supabaseUrl = 'https://lvrkifepqhxxmdcasncf.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
+  // Tus datos fijos de Supabase
+  const SUPABASE_URL = 'https://lvrkifepqhxxmdcasncf.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
   const ADMIN_USER_ID = 'df543cda-21d7-42a5-ae86-3b895482a171'; // tu user_id fijo
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // Login
   async function login() {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPass').value;
+    if(!email || !password){ alert('Completa email y contraseña'); return; }
+
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if(error){ alert(error.message); return; }
-    if(data.user.id !== ADMIN_USER_ID){ alert('No eres el administrador'); return; }
+
+    if(data.user.id !== ADMIN_USER_ID){ 
+      alert('No eres el administrador'); 
+      await supabase.auth.signOut(); 
+      return; 
+    }
+
     showDashboard();
   }
 
+  // Registro
   async function register() {
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPass').value;
+    if(!email || !password){ alert('Completa email y contraseña'); return; }
+
     const { data, error } = await supabase.auth.signUp({ email, password });
     if(error){ alert(error.message); return; }
-    alert('Registro exitoso, ahora inicia sesión');
+
+    alert('Registro exitoso. Ahora inicia sesión con este email.');
   }
 
-  function showDashboard(){
+  // Mostrar dashboard
+  function showDashboard() {
     document.getElementById('auth').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     loadAlbums();
   }
 
+  // Crear album
   async function createAlbum() {
     const title = document.getElementById('albumTitle').value;
     const cover = document.getElementById('albumCover').value;
     if(!title){ alert('Escribe un nombre'); return; }
+
     const { error } = await supabase.from('albums').insert([{ title, cover, user_id: ADMIN_USER_ID }]);
     if(error){ alert(error.message); return; }
+
     document.getElementById('albumTitle').value = '';
     document.getElementById('albumCover').value = '';
     loadAlbums();
   }
 
+  // Cargar albums
   async function loadAlbums() {
     const { data, error } = await supabase.from('albums').select('*').eq('user_id', ADMIN_USER_ID);
     if(error){ alert(error.message); return; }
+
     const container = document.getElementById('albums');
     container.innerHTML = '';
     data.forEach(album => {
@@ -95,7 +113,14 @@
         </div>`;
     });
   }
-</script>
 
+  // Mantener sesión activa si ya está logueado
+  supabase.auth.onAuthStateChange((event, session) => {
+    if(session && session.user.id === ADMIN_USER_ID){
+      showDashboard();
+    }
+  });
+
+</script>
 </body>
 </html>
