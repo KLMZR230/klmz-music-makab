@@ -1,429 +1,190 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>KLMZ MUSIC</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body{font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, 'Helvetica Neue', Arial, 'Apple Color Emoji','Segoe UI Emoji'}
-    .shadow-top{box-shadow: 0 -8px 24px rgba(0,0,0,.35)}
-    input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; height:14px; width:14px; border-radius:50%; background:#ec4899; cursor:pointer; margin-top:-6px }
+    body { font-family: Arial, sans-serif; background: #111; color: #fff; }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+    input, button { padding: 10px; margin: 5px 0; width: 100%; }
+    .album { border: 1px solid #444; padding: 10px; margin: 10px 0; display: flex; align-items: center; }
+    .album img { width: 100px; height: 100px; object-fit: cover; margin-right: 10px; }
+    audio { width: 100%; margin-top: 5px; }
   </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen">
-  <!-- Header -->
-  <header class="sticky top-0 z-30 bg-white/5 backdrop-blur border-b border-white/10">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <svg class="w-7 h-7 text-pink-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm0 18a8 8 0 110-16 8 8 0 010 16Zm-3.5-7.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0Zm5 0a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0Zm-1.5 5.5a4.5 4.5 0 004.5-4.5h-2a2.5 2.5 0 01-2.5 2.5V18Z"/></svg>
-        <h1 class="text-xl font-bold tracking-tight">KLMZ MUSIC</h1>
-      </div>
-      <div class="flex items-center gap-3">
-        <span id="userEmail" class="hidden md:block text-sm text-gray-300"></span>
-        <button id="logoutBtn" class="hidden bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-sm">Salir</button>
-      </div>
-    </div>
-  </header>
+<body>
+  <div class="container">
+    <h1>KLMZ MUSIC</h1>
 
-  <!-- Auth Section -->
-  <section id="authSection" class="min-h-[70vh] grid place-items-center px-4">
-    <div class="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 shadow-xl">
-      <h2 class="text-2xl font-bold mb-1">Admin Login</h2>
-      <p class="text-sm text-gray-400 mb-4">Inicia sesión o crea una cuenta.</p>
-      <form id="authForm" class="space-y-3">
-        <input type="email" id="email" placeholder="Correo" required class="w-full p-2.5 rounded-lg bg-white/10 border border-white/10 placeholder-gray-400" />
-        <input type="password" id="password" placeholder="Contraseña" required class="w-full p-2.5 rounded-lg bg-white/10 border border-white/10 placeholder-gray-400" />
-        <div class="grid grid-cols-2 gap-3 pt-2">
-          <button id="loginBtn" type="button" class="bg-pink-500 hover:bg-pink-600 rounded-lg py-2.5 font-semibold">Iniciar sesión</button>
-          <button id="signupBtn" type="button" class="bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-lg py-2.5">Registrarse</button>
-        </div>
-      </form>
-      <p id="authError" class="h-5 mt-3 text-sm text-rose-400"></p>
-    </div>
-  </section>
-
-  <!-- App Section -->
-  <main id="appSection" class="hidden max-w-6xl mx-auto px-4 pb-40">
-    <!-- Toolbar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 py-5">
-      <h2 class="text-2xl font-bold">Álbumes</h2>
-      <div class="flex gap-2">
-        <button id="openNewAlbum" class="bg-pink-500 hover:bg-pink-600 rounded-lg px-3 py-2">+ Nuevo Álbum</button>
-        <button id="openNewSong" class="bg-violet-500 hover:bg-violet-600 rounded-lg px-3 py-2">+ Nueva Canción</button>
-      </div>
+    <div id="auth">
+      <h2>Iniciar sesión / Registro</h2>
+      <input type="email" id="email" placeholder="Correo electrónico">
+      <input type="password" id="password" placeholder="Contraseña">
+      <button onclick="login()">Iniciar sesión</button>
+      <button onclick="signup()">Registrarse</button>
     </div>
 
-    <!-- Albums Grid -->
-    <div id="albumsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
-    <p id="noAlbumsMsg" class="hidden text-gray-400 py-6">No hay álbumes aún. ¡Crea el primero!</p>
+    <div id="app" style="display:none;">
+      <h2>Bienvenido <span id="user-email"></span></h2>
+      <button onclick="logout()">Cerrar sesión</button>
 
-    <!-- Album Detail -->
-    <section id="albumDetail" class="hidden mt-8">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-4">
-          <img id="detailCover" class="w-24 h-24 object-cover rounded-xl" src="" alt="cover" />
-          <div>
-            <h3 id="detailTitle" class="text-xl font-bold"></h3>
-            <p id="detailCount" class="text-gray-400 text-sm"></p>
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <button id="addSongsFromDetail" class="bg-violet-500 hover:bg-violet-600 rounded-lg px-3 py-1.5">Añadir canciones</button>
-          <button id="deleteAlbumBtn" class="bg-rose-600 hover:bg-rose-700 rounded-lg px-3 py-1.5">Eliminar álbum</button>
-          <button id="backToGrid" class="bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5">Volver</button>
-        </div>
-      </div>
-      <ul id="songList" class="divide-y divide-white/10 rounded-xl overflow-hidden border border-white/10"></ul>
-    </section>
-  </main>
+      <h3>Subir álbum</h3>
+      <input type="text" id="album-name" placeholder="Nombre del álbum">
+      <input type="file" id="cover-file" accept="image/*">
+      <input type="file" id="song-file" accept="audio/*" multiple>
+      <button onclick="uploadAlbum()">Subir álbum</button>
 
-  <!-- New Album Modal -->
-  <div id="albumModal" class="hidden fixed inset-0 z-40 bg-black/70 grid place-items-center p-4">
-    <div class="w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-xl font-bold">Nuevo Álbum</h3>
-        <button data-close-album class="p-1 rounded hover:bg-white/10">✕</button>
-      </div>
-      <form id="albumForm" class="space-y-3">
-        <input id="albumTitle" type="text" placeholder="Título" required class="w-full p-2.5 rounded-lg bg-white/10 border border-white/10 placeholder-gray-400" />
-        <input id="albumCover" type="file" accept="image/*" required class="w-full file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:bg-slate-800 file:border-0 file:text-white" />
-        <p id="albumStatus" class="h-5 text-sm text-gray-300"></p>
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" data-close-album class="bg-slate-800 border border-white/10 hover:bg-slate-700 rounded-lg px-3 py-2">Cancelar</button>
-          <button id="saveAlbum" type="submit" class="bg-pink-500 hover:bg-pink-600 rounded-lg px-3 py-2">Guardar</button>
-        </div>
-      </form>
+      <h3>Álbumes existentes</h3>
+      <div id="albums"></div>
     </div>
   </div>
-
-  <!-- New Song Modal -->
-  <div id="songModal" class="hidden fixed inset-0 z-40 bg-black/70 grid place-items-center p-4">
-    <div class="w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-xl font-bold">Nueva Canción</h3>
-        <button data-close-song class="p-1 rounded hover:bg-white/10">✕</button>
-      </div>
-      <form id="songForm" class="space-y-3">
-        <input id="songTitle" type="text" placeholder="Título" required class="w-full p-2.5 rounded-lg bg-white/10 border border-white/10 placeholder-gray-400" />
-        <input id="songFile" type="file" accept="audio/*" required class="w-full file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:bg-slate-800 file:border-0 file:text-white" />
-        <select id="songAlbum" required class="w-full p-2.5 rounded-lg bg-white/10 border border-white/10"></select>
-        <p id="songStatus" class="h-5 text-sm text-gray-300"></p>
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" data-close-song class="bg-slate-800 border border-white/10 hover:bg-slate-700 rounded-lg px-3 py-2">Cancelar</button>
-          <button id="saveSong" type="submit" class="bg-violet-500 hover:bg-violet-600 rounded-lg px-3 py-2">Subir</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Player -->
-  <footer class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur shadow-top border-t border-white/10">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-      <img id="playerCover" class="w-12 h-12 object-cover rounded-md" src="https://placehold.co/96x96/0f172a/ffffff?text=KLMZ" alt="cover" />
-      <div class="flex-1 min-w-0">
-        <p id="playerTitle" class="text-sm font-semibold truncate">Selecciona una canción</p>
-        <p id="playerSubtitle" class="text-xs text-gray-400 truncate">KLMZ MUSIC</p>
-        <div class="flex items-center gap-2 text-[11px] text-gray-400">
-          <span id="currentTime">0:00</span>
-          <input id="progress" type="range" value="0" min="0" max="100" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer">
-          <span id="duration">0:00</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="prevBtn" class="p-2 rounded hover:bg-white/10" title="Anterior">⏮</button>
-        <button id="playPauseBtn" class="p-2 rounded bg-pink-500 hover:bg-pink-600" title="Reproducir/Pausar">▶</button>
-        <button id="nextBtn" class="p-2 rounded hover:bg-white/10" title="Siguiente">⏭</button>
-        <input id="volume" type="range" min="0" max="1" step="0.01" value="1" class="w-24">
-      </div>
-      <audio id="audio" class="hidden" crossorigin="anonymous"></audio>
-    </div>
-  </footer>
 
   <script>
-    // =============================
-    //  CONFIGURA TUS CREDENCIALES
-    // =============================
-    const SUPABASE_URL = 'https://lvrkifepqhxxmdcasncf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
+    // ----------------------- Configura tu Supabase aquí -----------------------
+    const supabaseUrl = 'https://lvrkifepqhxxmdcasncf.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    const bucketName = 'media'; // Usamos tu único bucket
+    // --------------------------------------------------------------------------
 
-    // Buckets (créalo en Storage)
-    const BUCKET_COVERS = 'covers';
-    const BUCKET_SONGS  = 'songs';
+    // LOGIN
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) alert(error.message);
+      else loadApp();
+    }
 
-    // Tablas (crea estas tablas)
-    // albums: id bigserial PK, title text, cover_url text, created_at timestamptz default now()
-    // songs:  id bigserial PK, album_id bigint, title text, file_url text, created_at timestamptz default now()
+    // SIGNUP
+    async function signup() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) alert(error.message);
+      else alert('Usuario registrado. Revisa tu correo para confirmar.');
+    }
 
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // LOGOUT
+    async function logout() {
+      await supabase.auth.signOut();
+      document.getElementById('auth').style.display = 'block';
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('albums').innerHTML = '';
+    }
 
-    // DOM refs
-    const authSection = document.getElementById('authSection');
-    const appSection  = document.getElementById('appSection');
-    const userEmailEl = document.getElementById('userEmail');
-    const logoutBtn   = document.getElementById('logoutBtn');
+    // CARGAR APP
+    async function loadApp() {
+      const user = supabase.auth.getUser();
+      document.getElementById('auth').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('user-email').innerText = (await user).data.user.email;
+      loadAlbums();
+    }
 
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const loginBtn = document.getElementById('loginBtn');
-    const signupBtn = document.getElementById('signupBtn');
-    const authError = document.getElementById('authError');
+    // CARGAR ÁLBUMES EXISTENTES
+    async function loadAlbums() {
+      const { data: albums, error } = await supabase
+        .from('albums')
+        .select('*')
+        .order('id', { ascending: false });
 
-    const albumsGrid = document.getElementById('albumsGrid');
-    const noAlbumsMsg = document.getElementById('noAlbumsMsg');
+      if (error) { console.error(error); return; }
 
-    const albumDetail = document.getElementById('albumDetail');
-    const detailCover = document.getElementById('detailCover');
-    const detailTitle = document.getElementById('detailTitle');
-    const detailCount = document.getElementById('detailCount');
-    const songList    = document.getElementById('songList');
+      const albumsDiv = document.getElementById('albums');
+      albumsDiv.innerHTML = '';
 
-    const openNewAlbum = document.getElementById('openNewAlbum');
-    const albumModal = document.getElementById('albumModal');
-    const albumForm = document.getElementById('albumForm');
-    const albumTitle = document.getElementById('albumTitle');
-    const albumCover = document.getElementById('albumCover');
-    const albumStatus= document.getElementById('albumStatus');
-
-    const openNewSong = document.getElementById('openNewSong');
-    const songModal = document.getElementById('songModal');
-    const songForm = document.getElementById('songForm');
-    const songTitle = document.getElementById('songTitle');
-    const songFile  = document.getElementById('songFile');
-    const songAlbum = document.getElementById('songAlbum');
-    const songStatus= document.getElementById('songStatus');
-
-    const addSongsFromDetail = document.getElementById('addSongsFromDetail');
-    const deleteAlbumBtn = document.getElementById('deleteAlbumBtn');
-    const backToGrid = document.getElementById('backToGrid');
-
-    // Player
-    const audio = document.getElementById('audio');
-    const playerCover = document.getElementById('playerCover');
-    const playerTitle = document.getElementById('playerTitle');
-    const playerSubtitle = document.getElementById('playerSubtitle');
-    const playPauseBtn = document.getElementById('playPauseBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const volume = document.getElementById('volume');
-    const progress = document.getElementById('progress');
-    const currentTimeEl = document.getElementById('currentTime');
-    const durationEl = document.getElementById('duration');
-
-    let currentAlbum = null;
-    let currentSongs = [];
-    let currentIndex = -1;
-
-    function fmt(t){ const m=Math.floor(t/60)||0, s=Math.floor(t%60)||0; return `${m}:${String(s).padStart(2,'0')}` }
-
-    // =============================
-    //  AUTH
-    // =============================
-    async function refreshSessionUI(){
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        authSection.classList.add('hidden');
-        appSection.classList.remove('hidden');
-        logoutBtn.classList.remove('hidden');
-        userEmailEl.textContent = session.user.email;
-        userEmailEl.classList.remove('hidden');
-        await loadAlbums();
-      } else {
-        authSection.classList.remove('hidden');
-        appSection.classList.add('hidden');
-        logoutBtn.classList.add('hidden');
-        userEmailEl.classList.add('hidden');
+      for (let album of albums) {
+        const div = document.createElement('div');
+        div.className = 'album';
+        div.innerHTML = `
+          <img src="${album.cover_url}" alt="${album.name}">
+          <div>
+            <h4>${album.name}</h4>
+            <div id="songs-${album.id}"></div>
+          </div>
+        `;
+        albumsDiv.appendChild(div);
+        loadSongs(album.id);
       }
     }
 
-    loginBtn.addEventListener('click', async ()=>{
-      authError.textContent = '';
-      const email = emailInput.value.trim();
-      const password = passwordInput.value;
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) authError.textContent = error.message; else refreshSessionUI();
-    });
+    // CARGAR CANCIONES DE UN ÁLBUM
+    async function loadSongs(albumId) {
+      const { data: songs, error } = await supabase
+        .from('songs')
+        .select('*')
+        .eq('album_id', albumId);
 
-    signupBtn.addEventListener('click', async ()=>{
-      authError.textContent = '';
-      const email = emailInput.value.trim();
-      const password = passwordInput.value;
-      const { error } = await sb.auth.signUp({ email, password });
-      if (error) authError.textContent = error.message; else authError.textContent = 'Registro creado. Revisa tu correo.';
-    });
+      if (error) { console.error(error); return; }
 
-    logoutBtn.addEventListener('click', async ()=>{ await sb.auth.signOut(); refreshSessionUI(); });
+      const songsDiv = document.getElementById(`songs-${albumId}`);
+      songsDiv.innerHTML = '';
 
-    sb.auth.onAuthStateChange((_event, _session)=>{ refreshSessionUI(); });
-
-    // =============================
-    //  ALBUMS
-    // =============================
-    async function loadAlbums(){
-      const { data, error } = await sb.from('albums').select('*').order('created_at', { ascending:false });
-      albumsGrid.innerHTML = '';
-      if (error){ console.error(error); noAlbumsMsg.classList.remove('hidden'); return; }
-      noAlbumsMsg.classList.toggle('hidden', (data||[]).length !== 0);
-      (data||[]).forEach(alb=>{
-        const card = document.createElement('button');
-        card.className = 'text-left group rounded-xl overflow-hidden border border-white/10 bg-white/5 hover:bg-white/[.07] transition';
-        card.innerHTML = `
-          <div class="aspect-square overflow-hidden"> 
-            <img src="${alb.cover_url}" alt="${alb.title}" class="w-full h-full object-cover group-hover:scale-[1.03] transition"/>
-          </div>
-          <div class="p-3">
-            <p class="font-semibold truncate">${alb.title}</p>
-            <p class="text-xs text-gray-400">Álbum</p>
-          </div>`;
-        card.addEventListener('click', ()=> showAlbumDetail(alb));
-        albumsGrid.appendChild(card);
-      });
-      // refrescar selector de álbumes en el modal de canciones
-      await fillAlbumSelect();
-    }
-
-    async function fillAlbumSelect(){
-      const { data } = await sb.from('albums').select('id,title').order('created_at', { ascending:false });
-      songAlbum.innerHTML = '';
-      (data||[]).forEach(a=>{
-        const opt = document.createElement('option');
-        opt.value = a.id; opt.textContent = a.title; songAlbum.appendChild(opt);
-      });
-    }
-
-    async function showAlbumDetail(alb){
-      currentAlbum = alb;
-      detailCover.src = alb.cover_url;
-      detailTitle.textContent = alb.title;
-      songList.innerHTML = '';
-      albumDetail.classList.remove('hidden');
-      const { data: songs, error } = await sb.from('songs').select('*').eq('album_id', alb.id).order('created_at');
-      if (error){ console.error(error); return; }
-      currentSongs = songs || [];
-      detailCount.textContent = `${currentSongs.length} canción${currentSongs.length===1?'':'es'}`;
-      currentSongs.forEach((s,idx)=>{
-        const li = document.createElement('li');
-        li.className = 'flex items-center justify-between px-4 py-3 hover:bg-white/5';
-        li.innerHTML = `
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="w-6 text-gray-400">${idx+1}</span>
-            <div class="min-w-0">
-              <p class="font-medium truncate">${s.title}</p>
-              <p class="text-xs text-gray-400 truncate">${new URL(s.file_url).pathname.split('/').pop()}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2 py-1 rounded bg-white/10 hover:bg-white/20" title="Reproducir">▶</button>
-          </div>`;
-        li.querySelector('button').addEventListener('click', ()=> playAt(idx));
-        songList.appendChild(li);
-      });
-    }
-
-    backToGrid.addEventListener('click', ()=>{ albumDetail.classList.add('hidden'); currentAlbum=null; currentSongs=[]; currentIndex=-1; });
-
-    deleteAlbumBtn.addEventListener('click', async ()=>{
-      if (!currentAlbum) return;
-      if (!confirm(`¿Eliminar el álbum "${currentAlbum.title}" y todos sus archivos?`)) return;
-      // Borrar canciones (db y storage)
-      const { data: songs } = await sb.from('songs').select('*').eq('album_id', currentAlbum.id);
-      if (songs && songs.length){
-        const paths = songs.map(s=> decodeURIComponent(new URL(s.file_url).pathname.replace(/^\/storage\/v1\/object\/public\//,'')) );
-        if (paths.length) await sb.storage.from(BUCKET_SONGS).remove(paths.map(p=> p.replace(/^songs\//,'')));
-        await sb.from('songs').delete().eq('album_id', currentAlbum.id);
+      for (let song of songs) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = song.file_url;
+        songsDiv.appendChild(audio);
       }
-      // Borrar portada
-      const coverPath = decodeURIComponent(new URL(currentAlbum.cover_url).pathname.replace(/^\/storage\/v1\/object\/public\//,''));
-      await sb.storage.from(BUCKET_COVERS).remove([coverPath.replace(/^covers\//,'')]);
-      // Borrar álbum
-      await sb.from('albums').delete().eq('id', currentAlbum.id);
-      albumDetail.classList.add('hidden');
-      await loadAlbums();
-      alert('Álbum eliminado');
-    });
-
-    // =============================
-    //  MODALES
-    // =============================
-    function openModal(el){ el.classList.remove('hidden'); }
-    function closeModal(el){ el.classList.add('hidden'); }
-
-    document.querySelectorAll('[data-close-album]').forEach(b=> b.addEventListener('click', ()=> closeModal(albumModal)));
-    document.querySelectorAll('[data-close-song]').forEach(b=> b.addEventListener('click', ()=> closeModal(songModal)));
-
-    openNewAlbum.addEventListener('click', ()=> openModal(albumModal));
-    openNewSong.addEventListener('click', async ()=>{ await fillAlbumSelect(); openModal(songModal); });
-    addSongsFromDetail.addEventListener('click', async ()=>{ await fillAlbumSelect(); if(currentAlbum) songAlbum.value = currentAlbum.id; openModal(songModal); });
-
-    // Crear Álbum
-    albumForm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const title = albumTitle.value.trim();
-      const file = albumCover.files[0];
-      if (!title || !file) return;
-      albumStatus.textContent = 'Subiendo portada...';
-      const path = `${Date.now()}_${file.name}`;
-      const up = await sb.storage.from(BUCKET_COVERS).upload(path, file, { upsert:false });
-      if (up.error){ albumStatus.textContent = up.error.message; return; }
-      const { data: { publicUrl } } = sb.storage.from(BUCKET_COVERS).getPublicUrl(path);
-      albumStatus.textContent = 'Guardando álbum...';
-      const ins = await sb.from('albums').insert({ title, cover_url: publicUrl }).select().single();
-      if (ins.error){ albumStatus.textContent = ins.error.message; return; }
-      albumStatus.textContent = '¡Listo!';
-      albumForm.reset();
-      closeModal(albumModal);
-      await loadAlbums();
-    });
-
-    // Subir Canción
-    songForm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const title = songTitle.value.trim();
-      const file  = songFile.files[0];
-      const albumId = Number(songAlbum.value);
-      if (!title || !file || !albumId){ songStatus.textContent = 'Completa todos los campos.'; return; }
-      songStatus.textContent = 'Subiendo audio...';
-      const path = `${albumId}/${Date.now()}_${file.name}`;
-      const up = await sb.storage.from(BUCKET_SONGS).upload(path, file, { upsert:false });
-      if (up.error){ songStatus.textContent = up.error.message; return; }
-      const { data: { publicUrl } } = sb.storage.from(BUCKET_SONGS).getPublicUrl(path);
-      songStatus.textContent = 'Guardando canción...';
-      const ins = await sb.from('songs').insert({ album_id: albumId, title, file_url: publicUrl });
-      if (ins.error){ songStatus.textContent = ins.error.message; return; }
-      songStatus.textContent = '¡Canción subida!';
-      songForm.reset();
-      closeModal(songModal);
-      if (currentAlbum && currentAlbum.id === albumId) showAlbumDetail(currentAlbum); else loadAlbums();
-    });
-
-    // =============================
-    //  PLAYER
-    // =============================
-    function playAt(idx){
-      if (!currentSongs.length) return;
-      currentIndex = (idx+currentSongs.length)%currentSongs.length;
-      const s = currentSongs[currentIndex];
-      audio.src = s.file_url;
-      playerCover.src = currentAlbum ? currentAlbum.cover_url : playerCover.src;
-      playerTitle.textContent = s.title;
-      playerSubtitle.textContent = currentAlbum ? currentAlbum.title : 'KLMZ MUSIC';
-      audio.play();
-      playPauseBtn.textContent = '⏸';
     }
 
-    playPauseBtn.addEventListener('click', ()=>{ if (!audio.src) return; if (audio.paused) { audio.play(); playPauseBtn.textContent='⏸'; } else { audio.pause(); playPauseBtn.textContent='▶'; } });
-    prevBtn.addEventListener('click', ()=>{ if (!currentSongs.length) return; playAt(currentIndex-1); });
-    nextBtn.addEventListener('click', ()=>{ if (!currentSongs.length) return; playAt(currentIndex+1); });
-    volume.addEventListener('input', (e)=> audio.volume = e.target.value);
+    // SUBIR ÁLBUM
+    async function uploadAlbum() {
+      const albumName = document.getElementById('album-name').value;
+      const coverFile = document.getElementById('cover-file').files[0];
+      const songFiles = document.getElementById('song-file').files;
 
-    audio.addEventListener('timeupdate', ()=>{ if (!audio.duration) return; progress.max = Math.floor(audio.duration); progress.value = Math.floor(audio.currentTime); currentTimeEl.textContent = fmt(audio.currentTime); durationEl.textContent = fmt(audio.duration); });
-    progress.addEventListener('input', (e)=>{ audio.currentTime = Number(e.target.value||0); });
-    audio.addEventListener('ended', ()=>{ if (!currentSongs.length) return; playAt(currentIndex+1); });
+      if (!albumName || !coverFile || songFiles.length === 0) {
+        alert('Completa todos los campos');
+        return;
+      }
 
-    // Inicial
-    refreshSessionUI();
+      // Subir portada
+      const coverPath = `covers/${Date.now()}-${coverFile.name}`;
+      const { data: coverData, error: coverError } = await supabase.storage
+        .from(bucketName)
+        .upload(coverPath, coverFile);
+
+      if (coverError) { alert(coverError.message); return; }
+      const { publicUrl: coverUrl } = supabase.storage.from(bucketName).getPublicUrl(coverPath);
+
+      // Crear registro de álbum
+      const { data: albumData, error: albumError } = await supabase
+        .from('albums')
+        .insert([{ name: albumName, cover_url: coverUrl }])
+        .select()
+        .single();
+
+      if (albumError) { alert(albumError.message); return; }
+
+      const albumId = albumData.id;
+
+      // Subir canciones
+      for (let songFile of songFiles) {
+        const songPath = `songs/${Date.now()}-${songFile.name}`;
+        const { error: songError } = await supabase.storage.from(bucketName).upload(songPath, songFile);
+        if (songError) { console.error(songError.message); continue; }
+
+        const { publicUrl: songUrl } = supabase.storage.from(bucketName).getPublicUrl(songPath);
+        await supabase.from('songs').insert([{ album_id: albumId, file_url: songUrl }]);
+      }
+
+      alert('Álbum subido correctamente');
+      loadAlbums();
+    }
+
+    // Mantener sesión
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session) loadApp();
+      else logout();
+    });
+
+    // Inicializar si ya hay sesión
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) loadApp();
+    });
   </script>
 </body>
 </html>
