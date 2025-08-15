@@ -1,185 +1,183 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KLMZ MUSIC</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#ec4899">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="KLMZ MUSIC">
-    <link rel="apple-touch-icon" href="https://placehold.co/192x192/ec4899/white?text=KLMZ">
-    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIktMTVogTVVTSUMiLAogICJzaG9ydF9uYW1lIjogIktMTVogTVVTSUMiLAogICJkZXNjcmlwdGlvbiI6ICJUdSBwbGF0YWZvcm1hIGRlIG3DunNpY2EgcGVyc29uYWwuIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxMTE4MjciLAogICJ0aGVtZV9jb2xvciI6ICIlZWM0ODk5IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9wbGFjZWhvbGQuY-8vMTkyeDE5Mi9lYzQ4OTkvd2hpdGU/dGV4dD1LTExaIiwKICAgICAgInNpemVzIjogIjE5MngxOTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciCiAgICB9LAogICAgewogICAgICAic3JjIjogImh0dHBzOi8vcGxhY2Vob2xkLmNvLzUxMng1MTIvZWM0ODk5L3doaXRlP3RleHQ9S0xNWiIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogICAgfQogIF0KfQ==">
-
-    <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            /* --- FONDO PERSONALIZADO --- */
-            /* Reemplaza la URL de abajo con el "Direct Link" de tu imagen en Imgur */
-            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://i.imgur.com/your-image-id.jpeg');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-        .hidden { display: none; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
-            background: #ec4899; cursor: pointer; margin-top: -6px;
-        }
-        #fullscreen-player-bg {
-            background-size: cover;
-            background-position: center;
-            filter: blur(20px) brightness(0.5);
-            transform: scale(1.1);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KLMZ MUSIC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="text-white">
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
 
-    <!-- Global Loader -->
-    <div id="global-loader" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[100]">
-        <div class="w-16 h-16 border-4 border-t-pink-500 border-gray-600 rounded-full animate-spin"></div>
+  <!-- Header -->
+  <header class="bg-purple-700 p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">🎵 KLMZ MUSIC</h1>
+    <button id="logout-btn" class="bg-red-500 px-4 py-2 rounded hidden">Cerrar sesión</button>
+  </header>
+
+  <!-- Login / Registro -->
+  <section id="auth-section" class="flex-grow flex flex-col items-center justify-center p-4">
+    <div class="bg-gray-800 p-6 rounded shadow-md w-full max-w-sm">
+      <h2 class="text-lg font-bold mb-4">Iniciar Sesión / Registrarse</h2>
+      <input id="email" type="email" placeholder="Correo" class="w-full mb-3 p-2 rounded bg-gray-700 border border-gray-600" />
+      <input id="password" type="password" placeholder="Contraseña" class="w-full mb-3 p-2 rounded bg-gray-700 border border-gray-600" />
+      <button id="login-btn" class="w-full bg-purple-500 hover:bg-purple-600 p-2 rounded mb-2">Iniciar Sesión</button>
+      <button id="signup-btn" class="w-full bg-green-500 hover:bg-green-600 p-2 rounded">Registrarse</button>
+    </div>
+  </section>
+
+  <!-- App -->
+  <section id="app-section" class="hidden flex-grow p-4">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold mb-2">Álbumes</h2>
+      <div id="albums-container" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
     </div>
 
-    <!-- Header -->
-    <header class="bg-white/10 backdrop-blur-lg sticky top-0 z-40 shadow-md">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <svg class="w-8 h-8 text-pink-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/><path d="M12 18C15.31 18 18 15.31 18 12H16C16 14.21 14.21 16 12 16V18Z" fill="currentColor"/><path d="M10 12.5C10 13.33 9.33 14 8.5 14C7.67 14 7 13.33 7 12.5C7 11.67 7.67 11 8.5 11C9.33 11 10 11.67 10 12.5Z" fill="currentColor"/><path d="M17 12.5C17 13.33 16.33 14 15.5 14C14.67 14 14 13.33 14 12.5C14 11.67 14.67 11 15.5 11C16.33 11 17 11.67 17 12.5Z" fill="currentColor"/></svg>
-                <h1 class="text-2xl font-bold tracking-tight">KLMZ MUSIC</h1>
-            </div>
-            <div class="flex items-center gap-4">
-                 <div id="user-session" class="hidden items-center gap-4">
-                    <span id="user-email" class="text-sm text-gray-300 hidden md:block"></span>
-                    <button id="logout-btn" class="bg-pink-500 text-white font-semibold px-3 py-1.5 rounded-lg text-sm hover:bg-pink-600 transition-colors">Salir</button>
-                </div>
-                <button id="login-btn" class="bg-gray-200/20 text-white font-semibold px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300/30 transition-colors">Admin Login</button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Auth Modal -->
-    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 shadow-2xl rounded-xl p-8 relative w-full max-w-md">
-            <button id="close-auth-modal-btn" class="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-700">&times;</button>
-            <h2 class="text-3xl font-bold text-center mb-6">Admin Login</h2>
-            <form id="auth-form">
-                <div class="space-y-4">
-                    <div><label for="email" class="block text-sm font-medium">Correo</label><input type="email" id="email" required class="mt-1 block w-full bg-gray-700 border-transparent rounded-md focus:ring-pink-500 focus:border-pink-500"></div>
-                    <div><label for="password" class="block text-sm font-medium">Contraseña</label><input type="password" id="password" required class="mt-1 block w-full bg-gray-700 border-transparent rounded-md focus:ring-pink-500 focus:border-pink-500"></div>
-                </div>
-                <p id="auth-error" class="text-red-500 text-sm mt-4 text-center h-4"></p>
-                <div class="mt-6"><button type="submit" id="auth-submit-btn" class="w-full bg-pink-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-pink-600 disabled:opacity-50">Iniciar Sesión</button></div>
-            </form>
-        </div>
+    <!-- Subida de Álbum -->
+    <div id="upload-album-section" class="hidden mb-6">
+      <h3 class="text-xl font-bold mb-2">Subir nuevo álbum</h3>
+      <input id="album-title" type="text" placeholder="Título del álbum" class="w-full mb-2 p-2 rounded bg-gray-700 border border-gray-600" />
+      <input id="album-cover" type="file" class="w-full mb-2" />
+      <button id="upload-album-btn" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded">Subir Álbum</button>
     </div>
 
-    <!-- Main App View -->
-    <main id="app-view" class="container mx-auto p-4 md:p-8">
-        <div id="album-grid-view">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-bold">Álbumes</h2>
-                <button id="add-album-btn" class="bg-pink-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-pink-600 hidden">+ Añadir Álbum</button>
-            </div>
-            <div id="album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6"></div>
-            <div id="grid-loader" class="col-span-full flex flex-col items-center justify-center py-12"><div class="w-12 h-12 border-4 border-t-pink-500 border-gray-600 rounded-full animate-spin"></div><p class="mt-4 text-gray-300">Cargando álbumes...</p></div>
-            <p id="no-albums-msg" class="col-span-full text-center text-gray-400 mt-12 text-lg hidden">No hay álbumes todavía.</p>
-        </div>
-        <div id="album-detail-view" class="hidden">
-            <button id="back-to-grid-btn" class="mb-6 flex items-center gap-2 text-gray-300 hover:text-pink-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>Volver</button>
-            <div class="flex flex-col md:flex-row gap-8">
-                <div class="md:w-1/3 flex-shrink-0">
-                    <img id="detail-album-cover" src="" alt="Album Cover" class="w-full aspect-square rounded-xl shadow-2xl object-cover">
-                    <h2 id="detail-album-title" class="text-3xl font-bold mt-4"></h2>
-                    <p id="detail-song-count" class="text-gray-400 mt-1"></p>
-                    <div class="mt-4 space-y-2">
-                        <button id="add-songs-btn" class="w-full bg-pink-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-pink-600 hidden">+ Añadir Canciones</button>
-                        <button id="delete-album-btn" class="w-full bg-red-600 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-red-700 hidden">Eliminar Álbum</button>
-                    </div>
-                </div>
-                <div class="md:w-2/3">
-                    <h3 class="text-2xl font-semibold mb-4">Canciones</h3>
-                    <ul id="song-list" class="space-y-2"></ul>
-                </div>
-            </div>
-        </div>
-    </main>
-    
-    <!-- Mini Player -->
-    <footer id="mini-player" class="fixed bottom-0 left-0 right-0 bg-gray-900/50 backdrop-blur-lg shadow-t-lg transform translate-y-full transition-transform duration-500 cursor-pointer">
-        <div class="container mx-auto px-4 py-3">
-            <div class="flex items-center gap-3">
-                <img id="mini-player-album-cover" src="https://placehold.co/64x64/1f2937/a7a7a7?text=KLMZ" alt="Album Art" class="w-12 h-12 rounded-md object-cover">
-                <div class="flex-grow overflow-hidden">
-                    <p id="mini-player-song-title" class="font-bold text-sm truncate">Selecciona una canción</p>
-                    <p id="mini-player-album-title" class="text-xs text-gray-400 truncate">KLMZ MUSIC</p>
-                </div>
-                <button id="mini-player-play-pause-btn" class="p-2 rounded-full hover:bg-white/20 disabled:opacity-50"><svg id="mini-play-icon" class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.032v3.936a1 1 0 001.555.832l3.333-1.968a1 1 0 000-1.664L9.555 7.168z" clip-rule="evenodd"></path></svg><svg id="mini-pause-icon" class="w-8 h-8 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h1a1 1 0 001-1V8a1 1 0 00-1-1H8zm5 0a1 1 0 00-1 1v4a1 1 0 001 1h1a1 1 0 001-1V8a1 1 0 00-1-1h-1z" clip-rule="evenodd"></path></svg></button>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Fullscreen Player -->
-    <div id="fullscreen-player" class="fixed inset-0 bg-slate-900 z-50 flex flex-col p-4 md:p-8 transform translate-y-full transition-transform duration-500">
-        <div id="fullscreen-player-bg" class="absolute inset-0"></div>
-        <div class="relative flex-shrink-0 flex justify-between items-center">
-            <button id="close-fullscreen-player-btn" class="p-2 rounded-full hover:bg-white/20"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
-            <h2 class="text-lg font-bold">Reproduciendo</h2>
-            <div></div> <!-- Spacer -->
-        </div>
-        <div class="relative flex-grow flex flex-col items-center justify-center gap-8 pt-4">
-            <img id="fs-player-album-cover" src="" class="w-64 h-64 md:w-80 md:h-80 rounded-2xl shadow-2xl object-cover">
-            <div class="text-center">
-                <p id="fs-player-song-title" class="text-2xl md:text-3xl font-bold"></p>
-                <p id="fs-player-album-title" class="text-md md:text-lg text-gray-400 mt-1"></p>
-            </div>
-            <div class="w-full max-w-md">
-                <div class="flex items-center gap-2 text-xs text-gray-400"><span id="fs-current-time">0:00</span><input type="range" id="fs-progress-bar" value="0" step="1" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"><span id="fs-duration">0:00</span></div>
-                <div class="flex items-center justify-center gap-4 md:gap-8 mt-4">
-                    <button id="fs-prev-btn" class="p-2 rounded-full hover:bg-white/20 disabled:opacity-50"><svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14.032V5.968a1 1 0 00-1.555-.832L4.12 9.168a1 1 0 000 1.664l4.325 4.001zM14.445 14.832A1 1 0 0016 14.032V5.968a1 1 0 00-1.555-.832L10.12 9.168a1 1 0 000 1.664l4.325 4.001z"></path></svg></button>
-                    <button id="fs-play-pause-btn" class="p-4 bg-pink-500 rounded-full shadow-lg hover:bg-pink-600 transform hover:scale-110 disabled:opacity-50"><svg id="fs-play-icon" class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.032v3.936a1 1 0 001.555.832l3.333-1.968a1 1 0 000-1.664L9.555 7.168z" clip-rule="evenodd"></path></svg><svg id="fs-pause-icon" class="w-10 h-10 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h1a1 1 0 001-1V8a1 1 0 00-1-1H8zm5 0a1 1 0 00-1 1v4a1 1 0 001 1h1a1 1 0 001-1V8a1 1 0 00-1-1h-1z" clip-rule="evenodd"></path></svg></button>
-                    <button id="fs-next-btn" class="p-2 rounded-full hover:bg-white/20 disabled:opacity-50"><svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20"><path d="M5.555 5.168A1 1 0 004 5.968v8.064a1 1 0 001.555.832L9.88 10.832a1 1 0 000-1.664L5.555 5.168zM11.555 5.168A1 1 0 0010 5.968v8.064a1 1 0 001.555.832l4.325-4.001a1 1 0 000-1.664l-4.325-4.001z"></path></svg></button>
-                </div>
-            </div>
-        </div>
+    <!-- Subida de Canción -->
+    <div id="upload-song-section" class="hidden mb-6">
+      <h3 class="text-xl font-bold mb-2">Subir nueva canción</h3>
+      <input id="song-title" type="text" placeholder="Título de la canción" class="w-full mb-2 p-2 rounded bg-gray-700 border border-gray-600" />
+      <input id="song-file" type="file" class="w-full mb-2" />
+      <select id="album-select" class="w-full mb-2 p-2 rounded bg-gray-700 border border-gray-600"></select>
+      <button id="upload-song-btn" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded">Subir Canción</button>
     </div>
 
-    <!-- Modals -->
-    <div id="add-album-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden"></div>
-    <div id="add-songs-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden"></div>
+    <!-- Reproductor -->
+    <div>
+      <h3 class="text-xl font-bold mb-2">Reproductor</h3>
+      <audio id="audio-player" controls class="w-full"></audio>
+    </div>
+  </section>
 
-    <audio id="audio-player" class="hidden" crossorigin="anonymous"></audio>
+  <script>
+    // Configuración Supabase
+    const supabaseUrl = "https://lvrkifepqhxxmdcasncf.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk";
+    const supabaseClient = supabase.createClient(df543cda-21d7-42a5-ae86-3b895482a171);
 
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module">
-        // --- CONFIGURACIÓN DE SUPABASE Y ADMIN ---
-        const SUPABASE_URL = 'https://lvrkifepqhxxmdcasncf.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
-        const ADMIN_UID = 'df543cda-21d7-42a5-ae86-3b895482a171';
-        // -----------------------------------------
+    const authSection = document.getElementById("auth-section");
+    const appSection = document.getElementById("app-section");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("login-btn");
+    const signupBtn = document.getElementById("signup-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+    const albumsContainer = document.getElementById("albums-container");
+    const uploadAlbumSection = document.getElementById("upload-album-section");
+    const uploadSongSection = document.getElementById("upload-song-section");
+    const albumTitleInput = document.getElementById("album-title");
+    const albumCoverInput = document.getElementById("album-cover");
+    const uploadAlbumBtn = document.getElementById("upload-album-btn");
+    const songTitleInput = document.getElementById("song-title");
+    const songFileInput = document.getElementById("song-file");
+    const albumSelect = document.getElementById("album-select");
+    const uploadSongBtn = document.getElementById("upload-song-btn");
+    const audioPlayer = document.getElementById("audio-player");
 
-        const { createClient } = supabase;
-        let _supabase;
+    // Sesión
+    async function checkSession() {
+      const { data } = await supabaseClient.auth.getSession();
+      if (data.session) {
+        authSection.classList.add("hidden");
+        appSection.classList.remove("hidden");
+        logoutBtn.classList.remove("hidden");
+        loadAlbums();
+      }
+    }
+    checkSession();
 
-        const dom = {};
-        let state = {
-            albums: [],
-            currentAlbum: null,
-            currentSongIndex: -1,
-            isPlaying: false,
-            currentUser: null,
-        };
-        
-        // ... (el resto del script es el mismo que la versión final anterior)
+    // Login
+    loginBtn.addEventListener("click", async () => {
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email: emailInput.value,
+        password: passwordInput.value
+      });
+      if (error) alert(error.message);
+      else checkSession();
+    });
 
-    </script>
+    // Registro
+    signupBtn.addEventListener("click", async () => {
+      const { error } = await supabaseClient.auth.signUp({
+        email: emailInput.value,
+        password: passwordInput.value
+      });
+      if (error) alert(error.message);
+      else alert("Registrado correctamente, ahora inicia sesión.");
+    });
+
+    // Logout
+    logoutBtn.addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      authSection.classList.remove("hidden");
+      appSection.classList.add("hidden");
+      logoutBtn.classList.add("hidden");
+    });
+
+    // Cargar álbumes
+    async function loadAlbums() {
+      albumsContainer.innerHTML = "";
+      albumSelect.innerHTML = "";
+      const { data, error } = await supabaseClient.from("albums").select("*");
+      if (error) return console.error(error);
+      data.forEach(album => {
+        const div = document.createElement("div");
+        div.className = "bg-gray-800 p-2 rounded shadow cursor-pointer";
+        div.innerHTML = `
+          <img src="${album.cover_url}" alt="${album.title}" class="w-full h-32 object-cover rounded mb-2">
+          <h4 class="text-sm font-bold">${album.title}</h4>
+        `;
+        div.addEventListener("click", () => loadSongs(album.id));
+        albumsContainer.appendChild(div);
+
+        const opt = document.createElement("option");
+        opt.value = album.id;
+        opt.textContent = album.title;
+        albumSelect.appendChild(opt);
+      });
+    }
+
+    // Cargar canciones de álbum
+    async function loadSongs(albumId) {
+      const { data, error } = await supabaseClient.from("songs").select("*").eq("album_id", albumId);
+      if (error) return console.error(error);
+      if (data.length > 0) {
+        audioPlayer.src = data[0].file_url;
+        audioPlayer.play();
+      }
+    }
+
+    // Subir álbum
+    uploadAlbumBtn.addEventListener("click", async () => {
+      const file = albumCoverInput.files[0];
+      if (!file) return alert("Selecciona una portada");
+      const { data: fileData, error: uploadError } = await supabaseClient.storage.from("covers").upload(`${Date.now()}_${file.name}`, file);
+      if (uploadError) return alert(uploadError.message);
+
+      const coverUrl = `${supabaseUrl}/storage/v1/object/public/covers/${fileData.path}`;
+      await supabaseClient.from("albums").insert([{ title: albumTitleInput.value, cover_url: coverUrl }]);
+      loadAlbums();
+    });
+
+    // Subir canción
+    uploadSongBtn.addEventListener("click", async () => {
+      const file = songFileInput.files[0];
+      if (!file) return alert("Selecciona una canción");
+      const { data: fileData, error: uploadError } = await supabaseClient.storage.from("songs").upload(`${Date.now()}_${file.name}`, file);
+      if (uploadError) return alert(uploadError.message);
+
+      const songUrl = `${supabaseUrl}/storage/v1/object/public/songs/${fileData.path}`;
+      await supabaseClient.from("songs").insert([{ title: songTitleInput.value, file_url: songUrl, album_id: albumSelect.value }]);
+      alert("Canción subida correctamente");
+    });
+  </script>
 </body>
 </html>
