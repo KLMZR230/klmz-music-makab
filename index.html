@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KLMZ MUSIC</title>
+
+    <!-- Importamos la librería de Supabase desde su CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0 20px 120px 20px; /* Espacio inferior para el reproductor */
+            background-color: #f4f4f9;
+            color: #333;
+            transition: background-color 0.3s;
+        }
+        header {
+            text-align: center;
+            padding: 25px 0;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 30px;
+            background-color: white;
+        }
+        h1 { color: #2c3e50; }
+        h2 { border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        main {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .column { flex: 1; min-width: 300px; }
+        ul { list-style: none; padding: 0; }
+        li {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #fff;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        li:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+        .selected-album { background-color: #007bff; color: white; border-color: #007bff; }
+        
+        .forms-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        input[type="text"], input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #218838; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #343a40;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        footer.visible { transform: translateY(0); }
+        footer audio { width: 80%; max-width: 700px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>KLMZ MUSIC</h1>
+    </header>
+
+    <main>
+        <!-- Columna de Álbumes -->
+        <section class="column">
+            <h2>Álbumes</h2>
+            <ul id="album-list"></ul>
+            <div class="forms-section">
+                <h3>Añadir Nuevo Álbum</h3>
+                <form id="add-album-form">
+                    <input type="text" id="album-title" placeholder="Título del nuevo álbum" required>
+                    <button type="submit">Crear Álbum</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Columna de Canciones -->
+        <section class="column">
+            <h2 id="songs-header">Selecciona un álbum</h2>
+            <ul id="song-list"></ul>
+            <div id="add-song-section" class="forms-section" style="display: none;">
+                <h3 id="add-song-header">Añadir Canción</h3>
+                <form id="add-song-form">
+                    <input type="text" id="song-title" placeholder="Título de la canción" required>
+                    <input type="file" id="song-file" accept="audio/*" required>
+                    <button type="submit">Subir Canción</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <!-- Reproductor de Música -->
+    <footer id="music-player">
+        <h3 id="playing-song-title"></h3>
+        <audio id="audio-player" controls autoplay></audio>
+    </footer>
+
+    <script>
+        // --- 1. CONFIGURACIÓN DE SUPABASE ---
+        const supabaseUrl = "TU_SUPABASE_URL"; // <-- REEMPLAZA ESTO
+        const supabaseAnonKey = "TU_SUPABASE_ANON_KEY"; // <-- REEMPLAZA ESTO
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        // --- 2. REFERENCIAS A ELEMENTOS DEL DOM ---
+        const albumList = document.getElementById('album-list');
+        const songList = document.getElementById('song-list');
+        const songsHeader = document.getElementById('songs-header');
+        const musicPlayer = document.getElementById('music-player');
+        const audioPlayer = document.getElementById('audio-player');
+        const playingSongTitle = document.getElementById('playing-song-title');
+        
+        const addAlbumForm = document.getElementById('add-album-form');
+        const addSongSection = document.getElementById('add-song-section');
+        const addSongForm = document.getElementById('add-song-form');
+        const addSongHeader = document.getElementById('add-song-header');
+        
+        let selectedAlbum = null;
+
+        // --- 3. FUNCIONES DE LA APLICACIÓN ---
+
+        // Cargar y mostrar todos los álbumes
+        async function fetchAlbums() {
+            const { data, error } = await supabase.from('albums').select('*').order('created_at', { ascending: false });
+            if (error) {
+                console.error('Error cargando álbumes:', error);
+                return;
+            }
+            albumList.innerHTML = '';
+            data.forEach(album => {
+                const li = document.createElement('li');
+                li.textContent = album.title;
+                li.dataset.albumId = album.id;
+                li.onclick = () => handleAlbumSelect(album);
+                albumList.appendChild(li);
+            });
+        }
+        
+        // Manejar la selección de un álbum
+        function handleAlbumSelect(album) {
+            selectedAlbum = album;
+            document.querySelectorAll('#album-list li').forEach(li => {
+                li.classList.toggle('selected-album', li.dataset.albumId == album.id);
+            });
+            songsHeader.textContent = `Canciones de "${album.title}"`;
+            addSongHeader.textContent = `Añadir Canción a "${album.title}"`;
+            addSongSection.style.display = 'block';
+            fetchSongs(album.id);
+        }
+
+        // Cargar las canciones de un álbum
+        async function fetchSongs(albumId) {
+            songList.innerHTML = '<li>Cargando canciones...</li>';
+            const { data, error } = await supabase.from('songs').select('*').eq('album_id', albumId).order('created_at');
+            if (error) {
+                console.error('Error cargando canciones:', error);
+                songList.innerHTML = '<li>Error al cargar canciones.</li>';
+                return;
+            }
+            songList.innerHTML = '';
+            if (data.length === 0) {
+                songList.innerHTML = '<li>Este álbum no tiene canciones todavía.</li>';
+            } else {
+                data.forEach(song => {
+                    const li = document.createElement('li');
+                    li.textContent = song.title;
+                    li.onclick = () => playSong(song);
+                    songList.appendChild(li);
+                });
+            }
+        }
+        
+        // Reproducir una canción seleccionada
+        function playSong(song) {
+            playingSongTitle.textContent = `Reproduciendo: ${song.title}`;
+            audioPlayer.src = song.url;
+            musicPlayer.classList.add('visible');
+            audioPlayer.play();
+        }
+
+        // --- 4. MANEJO DE FORMULARIOS ---
+
+        // Añadir un nuevo álbum
+        addAlbumForm.onsubmit = async (event) => {
+            event.preventDefault();
+            const formButton = addAlbumForm.querySelector('button');
+            formButton.disabled = true;
+            formButton.textContent = 'Creando...';
+            const albumTitle = document.getElementById('album-title').value.trim();
+            if (!albumTitle) return;
+            const { error } = await supabase.from('albums').insert({ title: albumTitle });
+            if (error) {
+                alert('Error al crear el álbum: ' + error.message);
+            } else {
+                addAlbumForm.reset();
+                await fetchAlbums();
+            }
+            formButton.disabled = false;
+            formButton.textContent = 'Crear Álbum';
+        };
+        
+        // Añadir una nueva canción a un álbum
+        addSongForm.onsubmit = async (event) => {
+            event.preventDefault();
+            const formButton = addSongForm.querySelector('button');
+            if (!selectedAlbum) {
+                alert('Por favor, selecciona un álbum primero.');
+                return;
+            }
+            const songTitle = document.getElementById('song-title').value.trim();
+            const songFile = document.getElementById('song-file').files[0];
+            if (!songTitle || !songFile) {
+                alert('Completa el título y selecciona un archivo.');
+                return;
+            }
+
+            formButton.disabled = true;
+            formButton.textContent = 'Subiendo...';
+
+            const filePath = `public/${selectedAlbum.id}-${Date.now()}-${songFile.name}`;
+            const { error: uploadError } = await supabase.storage.from('music-files').upload(filePath, songFile);
+
+            if (uploadError) {
+                alert('Error al subir el archivo: ' + uploadError.message);
+                formButton.disabled = false;
+                formButton.textContent = 'Subir Canción';
+                return;
+            }
+
+            const { data: urlData } = supabase.storage.from('music-files').getPublicUrl(filePath);
+
+            const { error: insertError } = await supabase.from('songs').insert({
+                title: songTitle,
+                album_id: selectedAlbum.id,
+                url: urlData.publicUrl
+            });
+
+            if (insertError) {
+                alert('Error al guardar la canción: ' + insertError.message);
+            } else {
+                addSongForm.reset();
+                await fetchSongs(selectedAlbum.id);
+            }
+            formButton.disabled = false;
+            formButton.textContent = 'Subir Canción';
+        };
+
+        // --- 5. INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', fetchAlbums);
+    </script>
+</body>
+</html>
