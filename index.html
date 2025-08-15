@@ -1,145 +1,506 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>KLMZ MUSIC</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <style>
-body { font-family: Arial, sans-serif; background: #111; color: #fff; margin: 0; padding: 0; }
-header { background: #222; padding: 10px; text-align: center; font-size: 1.5em; }
-main { padding: 10px; }
-.album { background: #222; padding: 10px; margin: 10px 0; border-radius: 5px; }
-button { padding: 5px 10px; margin-top: 5px; cursor: pointer; }
-input, select { margin: 5px 0; padding: 5px; }
-audio { width: 100%; margin-top: 10px; }
-.hidden { display: none; }
+  :root{
+    --bg:#121212;
+    --bg-elev:#181818;
+    --text:#eaeaea;
+    --muted:#b3b3b3;
+    --accent:#1DB954;
+    --accent-2:#1ed760;
+    --card:#1c1c1c;
+    --border:#2a2a2a;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+  }
+  header{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; background:rgba(0,0,0,.6); backdrop-filter: blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.5px}
+  .brand-badge{
+    width:28px; height:28px; border-radius:7px; background:var(--accent);
+    display:grid; place-items:center; color:#000; font-weight:900;
+    box-shadow:0 0 0 6px #1db95422;
+  }
+  .wrap{max-width:1200px; margin:0 auto; padding:16px; padding-bottom:110px}
+  .layout{display:grid; grid-template-columns: 1fr; gap:20px}
+  @media(min-width:980px){ .layout{grid-template-columns: 320px 1fr} }
+
+  /* Sidebar */
+  .panel{
+    background:var(--bg-elev); border:1px solid var(--border);
+    border-radius:16px; padding:14px;
+  }
+  .panel h3{margin:6px 0 10px; font-size:15px; color:var(--muted)}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:8px; align-items:center}
+  .input, select{
+    width:100%; background:#0f0f0f; border:1px solid var(--border);
+    color:var(--text); border-radius:10px; padding:10px 12px; outline:none;
+  }
+  .input:focus, select:focus{border-color:#2f2f2f; box-shadow:0 0 0 2px #ffffff10}
+  .btn{
+    appearance:none; border:0; border-radius:999px; padding:10px 16px; font-weight:700;
+    cursor:pointer; transition:.15s transform ease, .15s background ease;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:var(--accent); color:#000}
+  .btn-primary:hover{background:var(--accent-2)}
+  .btn-ghost{background:#222; color:var(--text)}
+  .btn-ghost:hover{background:#2a2a2a}
+
+  /* Albums grid */
+  .albums-grid{
+    display:grid; gap:16px;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  @media(min-width:700px){ .albums-grid{ grid-template-columns: repeat(3,1fr)} }
+  @media(min-width:1100px){ .albums-grid{ grid-template-columns: repeat(5,1fr)} }
+  .card{
+    background:var(--card); border:1px solid var(--border);
+    border-radius:16px; padding:12px; transition:.2s transform, .2s box-shadow, .2s background;
+    cursor:pointer; height:100%;
+  }
+  .card:hover{ transform:translateY(-2px); box-shadow:0 10px 30px #0006; background:#202020 }
+  .cover{ width:100%; aspect-ratio:1; object-fit:cover; border-radius:12px; background:#111 }
+  .title{ margin:10px 0 2px; font-weight:700 }
+  .subtitle{ color:var(--muted); font-size:12px }
+
+  /* Songs list */
+  .album-head{ display:flex; align-items:center; gap:16px; }
+  .album-head .cover{ width:96px; height:96px; aspect-ratio:auto }
+  .songs{ margin-top:12px; border-top:1px solid var(--border) }
+  .song{
+    display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
+    padding:10px 6px; border-bottom:1px solid #222;
+  }
+  .song .meta{ display:flex; align-items:center; gap:10px }
+  .song .play{ padding:6px 10px }
+
+  /* Player sticky bottom */
+  .player{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    background:linear-gradient(180deg, #0f0f0fcc, #0a0a0a); backdrop-filter: blur(8px);
+    border-top:1px solid var(--border);
+  }
+  .player-inner{
+    max-width:1200px; margin:0 auto; padding:10px 16px;
+    display:grid; grid-template-columns: auto 1fr auto; gap:14px; align-items:center;
+  }
+  .player .art{ width:48px; height:48px; border-radius:6px; object-fit:cover; background:#222 }
+  .player .track-title{ font-weight:700; }
+  .player .track-sub{ color:var(--muted); font-size:12px }
+  .controls{ display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+  .progress{ display:flex; align-items:center; gap:8px }
+  .range{ width:220px }
+  .range input[type="range"]{ width:100% }
+  .vol{ width:120px; display:flex; align-items:center; gap:8px }
+  .fs-btn{ border:1px solid var(--border); }
+
+  /* Auth bar */
+  .authbar{ display:flex; gap:8px; align-items:center }
+  .email-badge{
+    padding:6px 10px; border-radius:999px; background:#1b1b1b; border:1px solid var(--border); color:var(--muted);
+    font-size:12px;
+  }
+  .notice{ font-size:12px; color:var(--muted); margin-top:6px }
 </style>
 </head>
 <body>
-<header>KLMZ MUSIC</header>
+  <header>
+    <div class="brand">
+      <div class="brand-badge">♫</div>
+      <div>KLMZ MUSIC</div>
+    </div>
+    <div class="authbar">
+      <div id="userEmail" class="email-badge" style="display:none"></div>
+      <button id="btnShowLogin" class="btn btn-ghost">Iniciar sesión</button>
+      <button id="btnLogout" class="btn btn-ghost" style="display:none">Salir</button>
+    </div>
+  </header>
 
-<main>
-<section id="login-section">
-    <h2>Iniciar sesión</h2>
-    <input type="email" id="email" placeholder="Email"><br>
-    <input type="password" id="password" placeholder="Contraseña"><br>
-    <button onclick="login()">Entrar</button>
-</section>
+  <div class="wrap">
+    <div class="layout">
+      <!-- Admin / Uploads -->
+      <aside class="panel" id="adminPanel" style="display:none">
+        <h3>Panel de administración</h3>
+        <div class="notice">Solo visible si tu email coincide con <code>ADMIN_EMAIL</code>.</div>
 
-<section id="admin-section" class="hidden">
-    <h2>Subir Álbum</h2>
-    <input type="text" id="album-name" placeholder="Nombre del álbum"><br>
-    <input type="file" id="album-cover"><br>
-    <button onclick="uploadAlbum()">Subir Álbum</button>
+        <div style="height:10px"></div>
+        <h3>Subir álbum</h3>
+        <label class="muted">Nombre del álbum</label>
+        <input id="albumName" class="input" placeholder="Ej: Mi Álbum" />
+        <label class="muted">Portada (imagen)</label>
+        <input id="albumCover" class="input" type="file" accept="image/*" />
+        <button id="btnUploadAlbum" class="btn btn-primary" style="width:100%">Subir álbum</button>
 
-    <h2>Subir Canción</h2>
-    <select id="album-select"></select><br>
-    <input type="text" id="song-name" placeholder="Nombre de la canción"><br>
-    <input type="file" id="song-file"><br>
-    <button onclick="uploadSong()">Subir Canción</button>
-</section>
+        <div style="height:14px"></div>
+        <h3>Subir canción</h3>
+        <label class="muted">Álbum</label>
+        <select id="albumSelect"></select>
+        <label class="muted">Título de la canción</label>
+        <input id="songName" class="input" placeholder="Ej: Mi Canción" />
+        <label class="muted">Archivo de audio</label>
+        <input id="songFile" class="input" type="file" accept="audio/*" />
+        <button id="btnUploadSong" class="btn btn-primary" style="width:100%">Subir canción</button>
 
-<h2>Álbumes</h2>
-<div id="albums-list"></div>
-</main>
+        <div class="notice">Formatos comunes: MP3, M4A, WAV, OGG. El archivo se guarda en el bucket <b>songs</b>.</div>
+      </aside>
 
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL = "https://nqbldvpnqhngdtalvzov.supabase.co"; // Cambia
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0"; // Cambia
-const ADMIN_EMAIL = "klmzr230@gmail.com"; // Cambia
-const ADMIN_PASSWORD = "freddyg23."; // Cambia
+      <!-- Content -->
+      <main>
+        <div class="panel">
+          <h3>Álbumes</h3>
+          <div id="albumsGrid" class="albums-grid"></div>
+        </div>
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        <div id="albumView" class="panel" style="display:none">
+          <div class="album-head">
+            <img id="albumViewCover" class="cover" alt="cover" />
+            <div>
+              <div id="albumViewTitle" class="title" style="font-size:20px"></div>
+              <div id="albumViewMeta" class="subtitle">Canciones</div>
+              <div style="height:8px"></div>
+              <div class="row">
+                <button id="btnBack" class="btn btn-ghost">← Volver</button>
+              </div>
+            </div>
+          </div>
+          <div id="songsList" class="songs"></div>
+        </div>
+      </main>
+    </div>
+  </div>
 
-async function login() {
-    const email = document.getElementById("email").value;
-    const pass = document.getElementById("password").value;
+  <!-- Sticky Player -->
+  <div id="player" class="player">
+    <div id="playerContainer" class="player-inner">
+      <div class="row">
+        <img id="playerArt" class="art" alt="art" />
+        <div>
+          <div id="playerTitle" class="track-title">Nada reproduciéndose</div>
+          <div id="playerAlbum" class="track-sub"></div>
+        </div>
+      </div>
 
-    if (email === ADMIN_EMAIL && pass === ADMIN_PASSWORD) {
-        document.getElementById("login-section").classList.add("hidden");
-        document.getElementById("admin-section").classList.remove("hidden");
-        loadAlbums();
+      <div class="controls">
+        <button id="btnPlayPause" class="btn btn-primary">Reproducir</button>
+        <div class="progress">
+          <span id="curTime" class="muted" style="min-width:36px;text-align:right">0:00</span>
+          <div class="range"><input id="seek" type="range" min="0" max="100" value="0"></div>
+          <span id="durTime" class="muted" style="min-width:36px">0:00</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="vol">
+          <span class="muted">Vol</span>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1">
+        </div>
+        <button id="btnFullscreen" class="btn btn-ghost fs-btn">Pantalla completa</button>
+      </div>
+    </div>
+    <audio id="audio" preload="metadata"></audio>
+  </div>
+
+  <!-- Simple login modal -->
+  <dialog id="loginModal">
+    <form method="dialog" style="background:#161616; color:var(--text); border:1px solid var(--border); border-radius:16px; padding:16px; min-width:320px">
+      <h3 style="margin:0 0 12px">Iniciar sesión</h3>
+      <label class="muted">Email</label>
+      <input id="loginEmail" class="input" type="email" required />
+      <label class="muted">Contraseña</label>
+      <input id="loginPassword" class="input" type="password" required />
+      <div class="row" style="justify-content:flex-end; margin-top:10px">
+        <button class="btn btn-ghost">Cancelar</button>
+        <button id="doLogin" class="btn btn-primary" value="close">Entrar</button>
+      </div>
+      <div class="notice">Usa la cuenta que creaste en Supabase Auth.</div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  /************ CONFIGURA ESTO ************/
+  const SUPABASE_URL  = 'https://nqbldvpnqhngdtalvzov.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
+  const ADMIN_EMAIL   = 'klmzr230@gmail.com'; // Solo este email verá el panel de admin
+  /****************************************/
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: true } });
+
+  // UI refs
+  const albumsGrid = document.getElementById('albumsGrid');
+  const albumView  = document.getElementById('albumView');
+  const albumViewCover = document.getElementById('albumViewCover');
+  const albumViewTitle = document.getElementById('albumViewTitle');
+  const albumViewMeta  = document.getElementById('albumViewMeta');
+  const songsList  = document.getElementById('songsList');
+  const btnBack    = document.getElementById('btnBack');
+
+  const adminPanel = document.getElementById('adminPanel');
+  const albumName  = document.getElementById('albumName');
+  const albumCover = document.getElementById('albumCover');
+  const btnUploadAlbum = document.getElementById('btnUploadAlbum');
+  const albumSelect = document.getElementById('albumSelect');
+  const songName   = document.getElementById('songName');
+  const songFile   = document.getElementById('songFile');
+  const btnUploadSong = document.getElementById('btnUploadSong');
+
+  const loginModal = document.getElementById('loginModal');
+  const btnShowLogin = document.getElementById('btnShowLogin');
+  const doLoginBtn = document.getElementById('doLogin');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const btnLogout = document.getElementById('btnLogout');
+  const userEmailBadge = document.getElementById('userEmail');
+
+  const audio = document.getElementById('audio');
+  const btnPlayPause = document.getElementById('btnPlayPause');
+  const seek = document.getElementById('seek');
+  const curTime = document.getElementById('curTime');
+  const durTime = document.getElementById('durTime');
+  const volume = document.getElementById('volume');
+  const playerTitle = document.getElementById('playerTitle');
+  const playerAlbum = document.getElementById('playerAlbum');
+  const playerArt   = document.getElementById('playerArt');
+  const btnFullscreen = document.getElementById('btnFullscreen');
+  const playerContainer = document.getElementById('playerContainer');
+
+  let currentAlbum = null;
+  let currentTrack = null;
+  let albumsCache = [];
+
+  // Helpers
+  const fmtTime = s => {
+    if (isNaN(s) || s < 0) s = 0;
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2,'0')}`;
+  };
+
+  function sanitizeName(name){
+    return (name||'').toLowerCase().trim().replace(/[^a-z0-9-_]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+  }
+
+  // Auth handling
+  async function refreshSessionUI(){
+    const { data } = await sb.auth.getUser();
+    const email = data?.user?.email;
+    if (email){
+      userEmailBadge.textContent = email;
+      userEmailBadge.style.display = 'block';
+      btnLogout.style.display = 'inline-block';
+      btnShowLogin.style.display = 'none';
+      // admin?
+      adminPanel.style.display = (email === ADMIN_EMAIL) ? 'block' : 'none';
+      if (email === ADMIN_EMAIL) { populateAlbumSelect(); }
     } else {
-        alert("Credenciales incorrectas");
+      userEmailBadge.style.display = 'none';
+      btnLogout.style.display = 'none';
+      btnShowLogin.style.display = 'inline-block';
+      adminPanel.style.display = 'none';
     }
-}
+  }
 
-async function uploadAlbum() {
-    const name = document.getElementById("album-name").value;
-    const file = document.getElementById("album-cover").files[0];
-    if (!name || !file) return alert("Completa todos los campos");
+  sb.auth.onAuthStateChange((_evt, _sess) => refreshSessionUI());
 
-    const { data: storageData, error: storageError } = await supabase.storage
-        .from("covers")
-        .upload(`covers/${Date.now()}_${file.name}`, file);
+  btnShowLogin.addEventListener('click', () => loginModal.showModal());
+  doLoginBtn.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    const email = loginEmail.value.trim();
+    const password = loginPassword.value;
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error){ alert(error.message); return; }
+    loginModal.close();
+  });
 
-    if (storageError) return alert("Error subiendo portada");
+  btnLogout.addEventListener('click', async () => {
+    await sb.auth.signOut();
+    refreshSessionUI();
+  });
 
-    const { data, error } = await supabase.from("albums").insert([{ name, cover: storageData.path }]);
-    if (error) return alert("Error insertando álbum");
-    alert("Álbum subido");
-    loadAlbums();
-}
+  // Data
+  async function loadAlbums(){
+    const { data, error } = await sb.from('albums').select('*').order('id', { ascending:false });
+    if (error){ console.error(error); return; }
+    albumsCache = data || [];
+    renderAlbumsGrid(data || []);
+  }
 
-async function uploadSong() {
-    const albumId = document.getElementById("album-select").value;
-    const name = document.getElementById("song-name").value;
-    const file = document.getElementById("song-file").files[0];
-    if (!albumId || !name || !file) return alert("Completa todos los campos");
+  function renderAlbumsGrid(albums){
+    albumsGrid.innerHTML = '';
+    if (!albums.length){
+      albumsGrid.innerHTML = '<div class="muted">No hay álbumes todavía.</div>';
+      return;
+    }
+    for (const a of albums){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <img class="cover" src="${a.cover}" alt="${a.name}">
+        <div class="title">${a.name}</div>
+        <div class="subtitle">Álbum</div>
+      `;
+      card.addEventListener('click', () => openAlbum(a));
+      albumsGrid.appendChild(card);
+    }
+  }
 
-    const { data: storageData, error: storageError } = await supabase.storage
-        .from("songs")
-        .upload(`songs/${Date.now()}_${file.name}`, file);
+  async function openAlbum(album){
+    currentAlbum = album;
+    albumViewCover.src = album.cover;
+    albumViewTitle.textContent = album.name;
+    albumView.style.display = 'block';
+    // Load songs
+    const { data, error } = await sb.from('songs').select('*').eq('album_id', album.id).order('id');
+    songsList.innerHTML = '';
+    if (error){ console.error(error); songsList.innerHTML = '<div class="muted" style="padding:10px">Error cargando canciones.</div>'; return; }
+    albumViewMeta.textContent = `${data?.length||0} canciones`;
+    if (!data || !data.length){
+      songsList.innerHTML = '<div class="muted" style="padding:10px">Aún no hay canciones en este álbum.</div>';
+      return;
+    }
+    for (const s of data){
+      const row = document.createElement('div');
+      row.className = 'song';
+      row.innerHTML = `
+        <div class="meta">
+          <button class="btn btn-primary play">▶</button>
+          <div>
+            <div class="title">${s.name}</div>
+            <div class="subtitle">${album.name}</div>
+          </div>
+        </div>
+        <div class="subtitle">${/* could add duration after metadata load */''}</div>
+      `;
+      row.querySelector('.play').addEventListener('click', () => playTrack(s, album));
+      songsList.appendChild(row);
+    }
+    // Scroll into view
+    albumView.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
 
-    if (storageError) return alert("Error subiendo canción");
+  btnBack.addEventListener('click', () => {
+    albumView.style.display = 'none';
+    currentAlbum = null;
+  });
 
-    const { data, error } = await supabase.from("songs").insert([{ album_id: albumId, name, file: storageData.path }]);
-    if (error) return alert("Error insertando canción");
-    alert("Canción subida");
-    loadAlbums();
-}
-
-async function loadAlbums() {
-    const { data: albums } = await supabase.from("albums").select("*");
-    const { data: songs } = await supabase.from("songs").select("*");
-
-    const list = document.getElementById("albums-list");
-    const select = document.getElementById("album-select");
-    list.innerHTML = "";
-    select.innerHTML = "";
-
-    albums.forEach(album => {
-        const albumDiv = document.createElement("div");
-        albumDiv.className = "album";
-        albumDiv.innerHTML = `<h3>${album.name}</h3><img src="${supabase.storage.from("covers").getPublicUrl(album.cover).data.publicUrl}" width="150">`;
-
-        songs.filter(s => s.album_id === album.id).forEach(song => {
-            const songUrl = supabase.storage.from("songs").getPublicUrl(song.file).data.publicUrl;
-            const audio = document.createElement("audio");
-            audio.controls = true;
-            audio.src = songUrl;
-
-            const fsBtn = document.createElement("button");
-            fsBtn.textContent = "Pantalla completa";
-            fsBtn.onclick = () => audio.requestFullscreen?.() || alert("Tu navegador no soporta fullscreen de audio");
-
-            albumDiv.appendChild(document.createElement("br"));
-            albumDiv.appendChild(document.createTextNode(song.name));
-            albumDiv.appendChild(audio);
-            albumDiv.appendChild(fsBtn);
-        });
-
-        list.appendChild(albumDiv);
-
-        const option = document.createElement("option");
-        option.value = album.id;
-        option.textContent = album.name;
-        select.appendChild(option);
+  async function populateAlbumSelect(){
+    const { data } = await sb.from('albums').select('id,name').order('id',{ascending:false});
+    albumSelect.innerHTML = '';
+    (data||[]).forEach(a=>{
+      const opt = document.createElement('option');
+      opt.value = a.id; opt.textContent = a.name;
+      albumSelect.appendChild(opt);
     });
-}
+  }
 
-loadAlbums();
-</script>
+  // Uploads
+  async function uploadAlbum(){
+    const name = albumName.value.trim();
+    const file = albumCover.files?.[0];
+    if (!name || !file){ alert('Completa nombre y portada.'); return; }
+    // upload cover -> bucket "covers"
+    const ext = file.name.split('.').pop();
+    const safe = sanitizeName(name)||'album';
+    const path = `covers/${Date.now()}-${safe}.${ext}`;
+    const { data:up, error:upErr } = await sb.storage.from('covers').upload(path, file, { cacheControl:'3600', upsert:false });
+    if (upErr){ alert('Error subiendo portada: ' + upErr.message); return; }
+    const { data:pub } = sb.storage.from('covers').getPublicUrl(up.path);
+    // insert row
+    const { error:insErr } = await sb.from('albums').insert({ name, cover: pub.publicUrl });
+    if (insErr){ alert('Error creando álbum: ' + insErr.message); return; }
+    albumName.value = ''; albumCover.value = '';
+    await loadAlbums(); await populateAlbumSelect();
+    alert('Álbum creado ✅');
+  }
+
+  async function uploadSong(){
+    const albumId = albumSelect.value;
+    const name = songName.value.trim();
+    const file = songFile.files?.[0];
+    if (!albumId || !name || !file){ alert('Completa álbum, título y archivo.'); return; }
+    const ext = file.name.split('.').pop();
+    const safe = sanitizeName(name)||'track';
+    const path = `songs/${albumId}/${Date.now()}-${safe}.${ext}`;
+    const { data:up, error:upErr } = await sb.storage.from('songs').upload(path, file, { cacheControl:'3600', upsert:false });
+    if (upErr){ alert('Error subiendo canción: ' + upErr.message); return; }
+    const { data:pub } = sb.storage.from('songs').getPublicUrl(up.path);
+    const { error:insErr } = await sb.from('songs').insert({ album_id: albumId, name, file: pub.publicUrl });
+    if (insErr){ alert('Error guardando canción: ' + insErr.message); return; }
+    songName.value=''; songFile.value='';
+    if (currentAlbum && currentAlbum.id == albumId){ openAlbum(currentAlbum); } // refresh
+    alert('Canción subida ✅');
+  }
+
+  btnUploadAlbum.addEventListener('click', uploadAlbum);
+  btnUploadSong.addEventListener('click', uploadSong);
+
+  // Player
+  function playTrack(track, album){
+    currentTrack = track;
+    audio.src = track.file;
+    audio.play().catch(()=>{}); // browsers may block autoplay; user can press Play
+    playerTitle.textContent = track.name;
+    playerAlbum.textContent = album.name;
+    playerArt.src = album.cover;
+    btnPlayPause.textContent = 'Pausar';
+  }
+
+  btnPlayPause.addEventListener('click', () => {
+    if (!audio.src){ return; }
+    if (audio.paused){ audio.play(); btnPlayPause.textContent='Pausar'; }
+    else { audio.pause(); btnPlayPause.textContent='Reproducir'; }
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (audio.duration){
+      seek.value = (audio.currentTime / audio.duration) * 100;
+      curTime.textContent = fmtTime(audio.currentTime);
+      durTime.textContent = fmtTime(audio.duration);
+    }
+  });
+
+  audio.addEventListener('loadedmetadata', () => {
+    durTime.textContent = fmtTime(audio.duration);
+  });
+
+  seek.addEventListener('input', () => {
+    if (!audio.duration) return;
+    audio.currentTime = (seek.value/100) * audio.duration;
+  });
+
+  volume.addEventListener('input', () => {
+    audio.volume = Number(volume.value);
+  });
+
+  btnFullscreen.addEventListener('click', async () => {
+    const el = playerContainer;
+    if (!document.fullscreenElement){
+      if (el.requestFullscreen) await el.requestFullscreen();
+    } else {
+      if (document.exitFullscreen) await document.exitFullscreen();
+    }
+  });
+
+  // Boot
+  (async function init(){
+    await refreshSessionUI();
+    await loadAlbums();
+  })();
+  </script>
 </body>
 </html>
