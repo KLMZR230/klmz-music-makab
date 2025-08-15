@@ -74,12 +74,19 @@
         </form>
     </div>
 
+    <!-- AQUÍ está la librería Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
     <script>
+        // Configuración de Supabase
+        const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0'
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+        
         const audioPlayer = document.getElementById('audio-player');
         const fileInput = document.getElementById('file-input');
         const uploadForm = document.getElementById('upload-form');
 
-        // Manejo local temporal de audio para vista previa directa sin subir
         uploadForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const files = fileInput.files;
@@ -88,14 +95,25 @@
                 return;
             }
 
-            // Aquí se integraría con Supabase para subir el archivo
-            // Por ahora solo reproducimos localmente
             const file = files[0];
+            
+            // Subir archivo a Supabase
+            const { data, error } = await supabase.storage
+                .from('music')
+                .upload(`audio/${file.name}`, file)
+            
+            if (error) {
+                console.error('Error subiendo archivo:', error)
+                alert('Error al subir el archivo')
+                return
+            }
+            
+            // Reproducir el archivo subido
             const url = URL.createObjectURL(file);
             audioPlayer.src = url;
             audioPlayer.play();
-
-            alert('Aquí implementa la subida a Supabase con su API.');
+            
+            alert('¡Archivo subido exitosamente!');
         });
     </script>
 </body>
