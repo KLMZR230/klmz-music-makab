@@ -4,272 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KLMZ MUSIC</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: system-ui, sans-serif; margin: 0; padding-bottom: 120px; background-color: #f4f4f9; color: #333; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background-color: white; border-bottom: 2px solid #ddd; }
-        h1 { color: #2c3e50; margin: 0; }
-        main { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
-        button, #logout-button { padding: 10px 15px; border: none; background-color: #007bff; color: white; border-radius: 5px; cursor: pointer; }
-        #logout-button { background-color: #dc3545; }
-        .hidden { display: none !important; }
-        
-        /* Vistas de Contenido */
-        .content-view { display: flex; flex-wrap: wrap; gap: 40px; }
-        .column { flex: 1; min-width: 300px; }
-        ul { list-style: none; padding: 0; }
-        li { padding: 12px 15px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; background-color: #fff; transition: all 0.2s; }
-        li:hover { background-color: #e9ecef; transform: translateY(-2px); }
-        .selected-album { background-color: #007bff; color: white; }
-
-        /* Formularios y Vistas Específicas */
-        .form-section, #login-view { background-color: #fff; padding: 25px; border-radius: 8px; border: 1px solid #ddd; }
-        #login-view { max-width: 400px; margin: 50px auto; }
-        form { display: flex; flex-direction: column; gap: 15px; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        
-        /* Admin View */
-        #admin-view { border: 2px dashed #28a745; padding: 20px; background-color: #f0fff4; border-radius: 8px; margin-bottom: 30px; }
-        
-        /* Reproductor */
-        footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #343a40; color: white; padding: 15px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); transform: translateY(100%); transition: transform 0.3s ease; }
-        footer.visible { transform: translateY(0); }
-        footer audio { width: 80%; max-width: 700px; margin-top: 10px; }
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #player-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+            background: #1db954;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        audio {
+            width: 90%;
+            outline: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        #upload-form {
+            margin-top: 20px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        button {
+            background: #121212;
+            color: #1db954;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #0a7a31;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 3em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
-
-    <header>
+    <div id="player-container">
         <h1>KLMZ MUSIC</h1>
-        <button id="logout-button" class="hidden">Cerrar Sesión</button>
-    </header>
-
-    <main>
-        <!-- VISTA DE LOGIN -->
-        <div id="login-view">
-            <h2>Acceso de Administrador</h2>
-            <form id="login-form">
-                <input type="email" id="login-email" placeholder="Email" required>
-                <input type="password" id="login-password" placeholder="Contraseña" required>
-                <button type="submit">Iniciar Sesión</button>
-                <p id="login-error" style="color: red;"></p>
-            </form>
-        </div>
-
-        <!-- VISTA DE ADMINISTRADOR (oculta por defecto) -->
-        <div id="admin-view" class="hidden">
-            <h2>Panel de Administración</h2>
-            <div class="content-view">
-                <div class="column form-section">
-                    <h3>Añadir Nuevo Álbum</h3>
-                    <form id="add-album-form">
-                        <input type="text" id="album-title" placeholder="Título del nuevo álbum" required>
-                        <button type="submit">Crear Álbum</button>
-                    </form>
-                </div>
-                <div class="column form-section">
-                    <h3 id="add-song-header">Añadir Canciones</h3>
-                    <form id="add-song-form">
-                        <input type="text" id="song-title-prefix" placeholder="Prefijo para títulos (opcional)">
-                        <label for="song-files">Selecciona una o varias canciones:</label>
-                        <input type="file" id="song-files" accept="audio/*" required multiple>
-                        <button type="submit">Subir Canciones</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- VISTA PÚBLICA -->
-        <div id="public-view" class="hidden">
-            <div class="content-view">
-                <section class="column">
-                    <h2>Álbumes</h2>
-                    <ul id="album-list"></ul>
-                </section>
-                <section class="column">
-                    <h2 id="songs-header">Selecciona un álbum</h2>
-                    <ul id="song-list"></ul>
-                </section>
-            </div>
-        </div>
-    </main>
-
-    <footer id="music-player">
-        <h3 id="playing-song-title"></h3>
         <audio id="audio-player" controls autoplay></audio>
-    </footer>
+
+        <form id="upload-form">
+            <input type="file" id="file-input" accept="audio/*" />
+            <button type="submit">Subir música</button>
+        </form>
+    </div>
 
     <script>
-        // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
-        const supabaseUrl = "https://nqbldvpnqhngdtalvzov.supabase.co"; // <-- REEMPLAZA
-        const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0"; // <-- REEMPLAZA
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-
-        // Referencias a elementos del DOM
-        const loginView = document.getElementById('login-view');
-        const adminView = document.getElementById('admin-view');
-        const publicView = document.getElementById('public-view');
-        const logoutButton = document.getElementById('logout-button');
-        const loginForm = document.getElementById('login-form');
-        const addAlbumForm = document.getElementById('add-album-form');
-        const addSongForm = document.getElementById('add-song-form');
-        
-        const albumList = document.getElementById('album-list');
-        const songList = document.getElementById('song-list');
-        const songsHeader = document.getElementById('songs-header');
-        const addSongHeader = document.getElementById('add-song-header');
-        
-        const musicPlayer = document.getElementById('music-player');
         const audioPlayer = document.getElementById('audio-player');
-        const playingSongTitle = document.getElementById('playing-song-title');
+        const fileInput = document.getElementById('file-input');
+        const uploadForm = document.getElementById('upload-form');
 
-        let selectedAlbum = null;
-
-        // --- 2. LÓGICA DE AUTENTICACIÓN Y VISTAS ---
-        supabase.auth.onAuthStateChange((event, session) => {
-            if (session && session.user.user_metadata.role === 'admin') {
-                // Usuario es admin
-                loginView.classList.add('hidden');
-                adminView.classList.remove('hidden');
-                publicView.classList.remove('hidden');
-                logoutButton.classList.remove('hidden');
-            } else {
-                // Usuario no es admin o no está logueado
-                loginView.classList.remove('hidden');
-                adminView.classList.add('hidden');
-                publicView.classList.remove('hidden'); // La vista pública siempre se muestra (si no hay login)
-                logoutButton.classList.add('hidden');
+        // Manejo local temporal de audio para vista previa directa sin subir
+        uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const files = fileInput.files;
+            if(files.length === 0) {
+                alert('Por favor selecciona un archivo de audio');
+                return;
             }
-        });
 
-        loginForm.onsubmit = async (event) => {
-            event.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                document.getElementById('login-error').textContent = "Error: " + error.message;
-            } else {
-                document.getElementById('login-error').textContent = "";
-                loginForm.reset();
-            }
-        };
-
-        logoutButton.onclick = () => {
-            supabase.auth.signOut();
-        };
-
-        // --- 3. FUNCIONALIDAD PÚBLICA ---
-        async function fetchAlbums() {
-            const { data, error } = await supabase.from('albums').select('*').order('created_at', { ascending: false });
-            if (error) { console.error('Error cargando álbumes:', error); return; }
-            albumList.innerHTML = '';
-            data.forEach(album => {
-                const li = document.createElement('li');
-                li.textContent = album.title;
-                li.dataset.albumId = album.id;
-                li.onclick = () => handleAlbumSelect(album);
-                albumList.appendChild(li);
-            });
-        }
-        
-        function handleAlbumSelect(album) {
-            selectedAlbum = album;
-            document.querySelectorAll('#album-list li').forEach(li => {
-                li.classList.toggle('selected-album', li.dataset.albumId == album.id);
-            });
-            songsHeader.textContent = `Canciones de "${album.title}"`;
-            addSongHeader.textContent = `Añadir Canciones a "${album.title}"`;
-            fetchSongs(album.id);
-        }
-
-        async function fetchSongs(albumId) {
-            songList.innerHTML = '<li>Cargando...</li>';
-            const { data, error } = await supabase.from('songs').select('*').eq('album_id', albumId).order('created_at');
-            if (error) { console.error('Error cargando canciones:', error); return; }
-            songList.innerHTML = '';
-            data.length === 0
-                ? songList.innerHTML = '<li>No hay canciones en este álbum.</li>'
-                : data.forEach(song => {
-                    const li = document.createElement('li');
-                    li.textContent = song.title;
-                    li.onclick = () => playSong(song);
-                    songList.appendChild(li);
-                });
-        }
-        
-        function playSong(song) {
-            playingSongTitle.textContent = `Reproduciendo: ${song.title}`;
-            audioPlayer.src = song.url;
-            musicPlayer.classList.add('visible');
+            // Aquí se integraría con Supabase para subir el archivo
+            // Por ahora solo reproducimos localmente
+            const file = files[0];
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
             audioPlayer.play();
-        }
 
-        // --- 4. FUNCIONALIDAD DE ADMINISTRADOR ---
-        addAlbumForm.onsubmit = async (event) => {
-            event.preventDefault();
-            const formButton = addAlbumForm.querySelector('button');
-            formButton.disabled = true;
-            const title = document.getElementById('album-title').value.trim();
-            if (!title) return;
-            const { error } = await supabase.from('albums').insert({ title });
-            if (error) alert('Error al crear el álbum: ' + error.message);
-            else { addAlbumForm.reset(); await fetchAlbums(); }
-            formButton.disabled = false;
-        };
-        
-        addSongForm.onsubmit = async (event) => {
-            event.preventDefault();
-            if (!selectedAlbum) { alert('Selecciona un álbum primero.'); return; }
-            
-            const formButton = addSongForm.querySelector('button');
-            const songFiles = document.getElementById('song-files').files;
-            const titlePrefix = document.getElementById('song-title-prefix').value.trim();
-
-            if (songFiles.length === 0) { alert('Selecciona al menos un archivo.'); return; }
-
-            formButton.disabled = true;
-            formButton.textContent = `Subiendo ${songFiles.length} cancion(es)...`;
-
-            const uploadPromises = Array.from(songFiles).map(file => {
-                const filePath = `public/${selectedAlbum.id}-${Date.now()}-${file.name}`;
-                return supabase.storage.from('music-files').upload(filePath, file);
-            });
-
-            try {
-                const uploadResults = await Promise.all(uploadPromises);
-                
-                const songsToInsert = [];
-                for (let i = 0; i < uploadResults.length; i++) {
-                    const result = uploadResults[i];
-                    if (result.error) throw result.error;
-                    
-                    const { data: urlData } = supabase.storage.from('music-files').getPublicUrl(result.data.path);
-                    
-                    songsToInsert.push({
-                        title: `${titlePrefix} ${songFiles[i].name.replace(/\.[^/.]+$/, "")}`.trim(),
-                        album_id: selectedAlbum.id,
-                        url: urlData.publicUrl
-                    });
-                }
-
-                const { error: insertError } = await supabase.from('songs').insert(songsToInsert);
-                if (insertError) throw insertError;
-                
-                alert(`${songsToInsert.length} cancion(es) subidas con éxito!`);
-                addSongForm.reset();
-                await fetchSongs(selectedAlbum.id);
-
-            } catch (error) {
-                alert('Ocurrió un error: ' + error.message);
-            } finally {
-                formButton.disabled = false;
-                formButton.textContent = 'Subir Canciones';
-            }
-        };
-
-        // --- 5. CARGA INICIAL ---
-        document.addEventListener('DOMContentLoaded', fetchAlbums);
+            alert('Aquí implementa la subida a Supabase con su API.');
+        });
     </script>
 </body>
 </html>
