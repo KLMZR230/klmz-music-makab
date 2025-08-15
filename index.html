@@ -18,9 +18,7 @@
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            /* --- FONDO PERSONALIZADO --- */
-            /* Reemplaza la URL de abajo con el "Direct Link" de tu imagen en Imgur */
-            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://i.imgur.com/your-image-id.jpeg');
+            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('http://googleusercontent.com/file_content/3');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -153,9 +151,342 @@
             currentUser: null,
         };
         
-        // ... (El script completo y funcional va aquí)
-        // This is the full script without any cuts
+        const updateUserStatus = (user) => {
+            state.currentUser = user;
+            const isAdmin = user && user.id === ADMIN_UID;
+            dom.addAlbumBtn.classList.toggle('hidden', !isAdmin);
+            const isDetailViewVisible = !dom.albumDetailView.classList.contains('hidden');
+            if(dom.deleteAlbumBtn) dom.deleteAlbumBtn.classList.toggle('hidden', !isAdmin || !isDetailViewVisible);
+            if(dom.addSongsBtn) dom.addSongsBtn.classList.toggle('hidden', !isAdmin || !isDetailViewVisible);
+            dom.userSession.classList.toggle('hidden', !isAdmin);
+            dom.loginBtn.classList.toggle('hidden', isAdmin);
+            if (isAdmin) {
+                dom.userEmail.textContent = user.email;
+                dom.authModal.classList.add('hidden');
+            }
+        };
+
+        const fetchAlbums = async () => {
+            dom.gridLoader.classList.remove('hidden');
+            dom.albumGrid.innerHTML = ''; 
+            dom.noAlbumsMsg.classList.add('hidden');
+            try {
+                const { data, error } = await _supabase.from('albums').select('*, songs(count)').order('created_at', { ascending: false });
+                if (error) throw error;
+                state.albums = data;
+                renderAlbumGrid();
+            } catch (error) {
+                console.error("Error fetching albums:", error);
+                dom.albumGrid.innerHTML = `<p class="col-span-full text-center text-red-500">No se pudieron cargar los álbumes.</p>`;
+            } finally {
+                dom.gridLoader.classList.add('hidden');
+            }
+        };
         
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            dom.authError.textContent = '';
+            dom.authSubmitBtn.disabled = true;
+            try {
+                const { error } = await _supabase.auth.signInWithPassword({
+                    email: dom.authForm.email.value,
+                    password: dom.authForm.password.value,
+                });
+                if (error) throw error;
+            } catch (error) {
+                dom.authError.textContent = "Error: " + error.message;
+            } finally {
+                dom.authSubmitBtn.disabled = false;
+            }
+        };
+
+        const handleFormSubmit = async (e) => {
+            e.preventDefault();
+            const user = state.currentUser;
+            if (!user || user.id !== ADMIN_UID) return;
+            const title = dom.addAlbumForm['album-title'].value;
+            const coverFile = dom.addAlbumForm['album-cover'].files[0];
+            const songFiles = Array.from(dom.addAlbumForm['album-songs'].files);
+            if (!title || !coverFile || songFiles.length === 0) return alert("Por favor, completa todos los campos.");
+            
+            dom.saveAlbumBtn.disabled = true;
+            dom.uploadProgress.classList.remove('hidden');
+            
+            try {
+                dom.uploadStatus.textContent = 'Subiendo portada...';
+                const coverPath = `${user.id}/${Date.now()}_${coverFile.name}`;
+                await _supabase.storage.from('media').upload(coverPath, coverFile);
+                const { data: { publicUrl: coverUrl } } = _supabase.storage.from('media').getPublicUrl(coverPath);
+
+                dom.uploadStatus.textContent = 'Creando álbum en la base de datos...';
+                const { data: albumData, error: albumError } = await _supabase.from('albums').insert({ user_id: user.id, title, cover_url: coverUrl, cover_path: coverPath }).select().single();
+                if (albumError) throw albumError;
+
+                for (let i = 0; i < songFiles.length; i++) {
+                    const songFile = songFiles[i];
+                    dom.uploadStatus.textContent = `Subiendo canción ${i + 1}/${songFiles.length}...`;
+                    const songPath = `${user.id}/${albumData.id}/${Date.now()}_${songFile.name}`;
+                    await _supabase.storage.from('media').upload(songPath, songFile);
+                    const { data: { publicUrl: songUrl } } = _supabase.storage.from('media').getPublicUrl(songPath);
+                    await _supabase.from('songs').insert({ user_id: user.id, album_id: albumData.id, title: songFile.name.replace(/\.[^/.]+$/, ""), url: songUrl, path: songPath });
+                }
+                
+                closeModal('addAlbum');
+                await fetchAlbums();
+            } catch (error) {
+                console.error("Error creating album:", error);
+                alert("Ocurrió un error al crear el álbum.");
+            } finally {
+                dom.saveAlbumBtn.disabled = false;
+            }
+        };
+
+        const handleAddSongsSubmit = async (e) => {
+            e.preventDefault();
+            const user = state.currentUser;
+            const album = state.currentAlbum;
+            if (!user || !album || user.id !== ADMIN_UID) return;
+            const songFiles = Array.from(dom.addSongsForm['new-songs'].files);
+            if (songFiles.length === 0) return alert("Por favor, selecciona canciones.");
+            dom.saveNewSongsBtn.disabled = true;
+            dom.addSongsProgress.classList.remove('hidden');
+            try {
+                for (let i = 0; i < songFiles.length; i++) {
+                    const songFile = songFiles[i];
+                    dom.addSongsStatus.textContent = `Subiendo canción ${i + 1}/${songFiles.length}...`;
+                    const songPath = `${user.id}/${album.id}/${Date.now()}_${songFile.name}`;
+                    await _supabase.storage.from('media').upload(songPath, songFile);
+                    const { data: { publicUrl: songUrl } } = _supabase.storage.from('media').getPublicUrl(songPath);
+                    await _supabase.from('songs').insert({ user_id: user.id, album_id: album.id, title: songFile.name.replace(/\.[^/.]+$/, ""), url: songUrl, path: songPath });
+                }
+                closeModal('addSongs');
+                await fetchAlbums();
+                showAlbumDetail(album.id);
+            } catch (error) {
+                console.error("Error adding songs:", error);
+                alert("Ocurrió un error al añadir las canciones.");
+            } finally {
+                dom.saveNewSongsBtn.disabled = false;
+            }
+        };
+
+        const deleteAlbum = async (albumId) => {
+            const album = state.albums.find(a => a.id === albumId);
+            if (!album || !confirm(`¿Estás seguro de que quieres eliminar "${album.title}"?`)) return;
+            dom.loader.classList.remove('hidden');
+            try {
+                const { data: songs, error } = await _supabase.from('songs').select('path').eq('album_id', albumId);
+                if (error) throw error;
+                const filesToDelete = [album.cover_path, ...songs.map(s => s.path)];
+                if (filesToDelete.length > 0) {
+                    await _supabase.storage.from('media').remove(filesToDelete);
+                }
+                await _supabase.from('albums').delete().match({ id: albumId });
+                showGridView();
+                await fetchAlbums();
+            } catch (error) {
+                console.error("Error deleting album:", error);
+                alert("No se pudo eliminar el álbum.");
+            } finally {
+                dom.loader.classList.add('hidden');
+            }
+        };
+
+        const renderAlbumGrid = () => {
+            dom.albumGrid.innerHTML = '';
+            dom.noAlbumsMsg.classList.toggle('hidden', state.albums.length === 0);
+            state.albums.forEach(album => {
+                const songCount = album.songs[0]?.count || 0;
+                const el = document.createElement('div');
+                el.className = 'group cursor-pointer';
+                el.innerHTML = `<div class="aspect-square rounded-lg overflow-hidden shadow-lg transform group-hover:scale-105 transition-transform duration-300"><img src="${album.cover_url}" alt="${album.title}" class="w-full h-full object-cover" loading="lazy"></div><p class="mt-2 font-semibold truncate text-white">${album.title}</p><p class="text-sm text-gray-400">${songCount} canci${songCount === 1 ? 'ón' : 'ones'}</p>`;
+                el.addEventListener('click', () => showAlbumDetail(album.id));
+                dom.albumGrid.appendChild(el);
+            });
+        };
+
+        const showAlbumDetail = async (albumId) => {
+            dom.loader.classList.remove('hidden');
+            try {
+                const { data: album, error: albumError } = await _supabase.from('albums').select('*').eq('id', albumId).single();
+                if (albumError) throw albumError;
+                const { data: songs, error: songsError } = await _supabase.from('songs').select('*').eq('album_id', albumId).order('created_at');
+                if (songsError) throw songsError;
+                
+                state.currentAlbum = { ...album, songs };
+                
+                document.getElementById('detail-album-cover').src = state.currentAlbum.cover_url;
+                document.getElementById('detail-album-title').textContent = state.currentAlbum.title;
+                document.getElementById('detail-song-count').textContent = `${state.currentAlbum.songs.length} canci${state.currentAlbum.songs.length === 1 ? 'ón' : 'ones'}`;
+                dom.deleteAlbumBtn.onclick = () => deleteAlbum(albumId);
+                dom.addSongsBtn.onclick = () => openModal('addSongs');
+                const songList = document.getElementById('song-list');
+                songList.innerHTML = '';
+                state.currentAlbum.songs.forEach((song, index) => {
+                    const el = document.createElement('li');
+                    el.className = 'flex items-center justify-between p-3 rounded-lg hover:bg-white/10 cursor-pointer transition-colors';
+                    el.innerHTML = `<div class="flex items-center gap-4"><div class="w-8 text-center text-gray-400"><span class="song-index">${index + 1}</span><svg class="w-6 h-6 text-pink-500 hidden animate-spin-slow song-playing-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><span class="font-medium text-white">${song.title}</span></div>`;
+                    el.addEventListener('click', () => playSong(index));
+                    songList.appendChild(el);
+                });
+                dom.albumGridView.classList.add('hidden');
+                dom.albumDetailView.classList.remove('hidden');
+                updateUserStatus(state.currentUser);
+                updatePlayingUI();
+            } catch(error) {
+                console.error("Error showing album detail:", error);
+                alert("No se pudo cargar el detalle del álbum.");
+            } finally {
+                dom.loader.classList.add('hidden');
+            }
+        };
+
+        const showGridView = () => { dom.albumGridView.classList.remove('hidden'); dom.albumDetailView.classList.add('hidden'); state.currentAlbum = null; };
+        const openModal = (type) => {
+            if (type === 'addAlbum') {
+                dom.addAlbumForm.reset();
+                dom.coverPreview.classList.add('hidden');
+                dom.uploadProgress.classList.add('hidden');
+                dom.addAlbumModal.classList.remove('hidden');
+            } else if (type === 'addSongs') {
+                dom.addSongsForm.reset();
+                dom.addSongsAlbumTitle.textContent = state.currentAlbum.title;
+                dom.addSongsProgress.classList.add('hidden');
+                dom.addSongsModal.classList.remove('hidden');
+            }
+        };
+        const closeModal = (type) => {
+            if (type === 'addAlbum') dom.addAlbumModal.classList.add('hidden');
+            if (type === 'addSongs') dom.addSongsModal.classList.add('hidden');
+        };
+
+        const playSong = (songIndex) => { state.currentSongIndex = songIndex; const song = state.currentAlbum.songs[songIndex]; dom.audioPlayer.src = song.url; dom.audioPlayer.play(); };
+        const togglePlayPause = () => { if (!dom.audioPlayer.src) return; state.isPlaying ? dom.audioPlayer.pause() : dom.audioPlayer.play(); };
+        const playNext = () => { if (!state.currentAlbum) return; state.currentSongIndex = (state.currentSongIndex + 1) % state.currentAlbum.songs.length; playSong(state.currentSongIndex); };
+        const playPrev = () => { if (!state.currentAlbum) return; state.currentSongIndex = (state.currentSongIndex - 1 + state.currentAlbum.songs.length) % state.currentAlbum.songs.length; playSong(state.currentSongIndex); };
+        const updatePlayerUI = (song) => {
+            document.getElementById('player-album-cover').src = state.currentAlbum.cover_url;
+            document.getElementById('player-song-title').textContent = song.title;
+            document.getElementById('player-album-title').textContent = state.currentAlbum.title;
+            dom.player.classList.remove('translate-y-full');
+        };
+        const updatePlayPauseIcon = () => { dom.playIcon.classList.toggle('hidden', state.isPlaying); dom.pauseIcon.classList.toggle('hidden', !state.isPlaying); };
+        const updatePlayingUI = () => {
+            if (!dom.albumDetailView.classList.contains('hidden')) {
+                document.querySelectorAll('#song-list li').forEach((item, index) => {
+                    const isCurrent = state.currentAlbum && state.currentAlbum.songs[index] && dom.audioPlayer.src === state.currentAlbum.songs[index].url;
+                    item.classList.toggle('bg-white/10', isCurrent);
+                    item.querySelector('.song-index').classList.toggle('hidden', isCurrent);
+                    item.querySelector('.song-playing-icon').classList.toggle('hidden', !isCurrent);
+                });
+            }
+        };
+        const formatTime = (seconds) => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            Object.assign(dom, {
+                loader: document.getElementById('global-loader'),
+                gridLoader: document.getElementById('grid-loader'),
+                authModal: document.getElementById('auth-modal'),
+                closeAuthModalBtn: document.getElementById('close-auth-modal-btn'),
+                loginBtn: document.getElementById('login-btn'),
+                authForm: document.getElementById('auth-form'),
+                authSubmitBtn: document.getElementById('auth-submit-btn'),
+                authError: document.getElementById('auth-error'),
+                userSession: document.getElementById('user-session'),
+                userEmail: document.getElementById('user-email'),
+                logoutBtn: document.getElementById('logout-btn'),
+                albumGridView: document.getElementById('album-grid-view'),
+                albumDetailView: document.getElementById('album-detail-view'),
+                albumGrid: document.getElementById('album-grid'),
+                noAlbumsMsg: document.getElementById('no-albums-msg'),
+                addAlbumBtn: document.getElementById('add-album-btn'),
+                deleteAlbumBtn: document.getElementById('delete-album-btn'),
+                addSongsBtn: document.getElementById('add-songs-btn'),
+                addAlbumModal: document.getElementById('add-album-modal'),
+                closeModalBtn: document.getElementById('close-modal-btn'),
+                cancelModalBtn: document.getElementById('cancel-modal-btn'),
+                addAlbumForm: document.getElementById('add-album-form'),
+                saveAlbumBtn: document.getElementById('save-album-btn'),
+                backToGridBtn: document.getElementById('back-to-grid-btn'),
+                coverPreview: document.getElementById('cover-preview'),
+                albumCoverInput: document.getElementById('album-cover'),
+                uploadProgress: document.getElementById('upload-progress-container'),
+                uploadStatus: document.getElementById('upload-status'),
+                addSongsModal: document.getElementById('add-songs-modal'),
+                closeAddSongsModalBtn: document.getElementById('close-add-songs-modal-btn'),
+                cancelAddSongsBtn: document.getElementById('cancel-add-songs-btn'),
+                addSongsForm: document.getElementById('add-songs-form'),
+                saveNewSongsBtn: document.getElementById('save-new-songs-btn'),
+                addSongsAlbumTitle: document.getElementById('add-songs-album-title'),
+                addSongsProgress: document.getElementById('add-songs-progress-container'),
+                addSongsStatus: document.getElementById('add-songs-status'),
+                player: document.getElementById('player'),
+                audioPlayer: document.getElementById('audio-player'),
+                playPauseBtn: document.getElementById('play-pause-btn'),
+                playIcon: document.getElementById('play-icon'),
+                pauseIcon: document.getElementById('pause-icon'),
+                nextBtn: document.getElementById('next-btn'),
+                prevBtn: document.getElementById('prev-btn'),
+                progressBar: document.getElementById('progress-bar'),
+                currentTime: document.getElementById('current-time'),
+                duration: document.getElementById('duration'),
+                volumeControl: document.getElementById('volume-control'),
+                themeToggle: document.getElementById('theme-toggle'),
+            });
+
+            if (SUPABASE_URL.includes('TU_PROJECT_URL') || SUPABASE_ANON_KEY.includes('TU_PROJECT_API_KEY') || ADMIN_UID.includes('TU_USER_ID_AQUÍ')) {
+                alert('ERROR: Debes pegar tus claves de Supabase y tu Admin UID en el archivo HTML.');
+                dom.loader.classList.add('hidden');
+                return;
+            }
+
+            try {
+                _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                dom.authForm.addEventListener('submit', handleLogin);
+                dom.loginBtn.addEventListener('click', () => dom.authModal.classList.remove('hidden'));
+                dom.closeAuthModalBtn.addEventListener('click', () => dom.authModal.classList.add('hidden'));
+                dom.logoutBtn.addEventListener('click', () => _supabase.auth.signOut());
+                dom.addAlbumBtn.addEventListener('click', () => openModal('addAlbum'));
+                dom.closeModalBtn.addEventListener('click', () => closeModal('addAlbum'));
+                dom.cancelModalBtn.addEventListener('click', () => closeModal('addAlbum'));
+                dom.addAlbumForm.addEventListener('submit', handleFormSubmit);
+                dom.closeAddSongsModalBtn.addEventListener('click', () => closeModal('addSongs'));
+                dom.cancelAddSongsBtn.addEventListener('click', () => closeModal('addSongs'));
+                dom.addSongsForm.addEventListener('submit', handleAddSongsSubmit);
+                dom.backToGridBtn.addEventListener('click', showGridView);
+                dom.albumCoverInput.addEventListener('change', (e) => { if (e.target.files[0]) { dom.coverPreview.src = URL.createObjectURL(e.target.files[0]); dom.coverPreview.classList.remove('hidden'); } });
+                dom.playPauseBtn.addEventListener('click', togglePlayPause);
+                dom.nextBtn.addEventListener('click', playNext);
+                dom.prevBtn.addEventListener('click', playPrev);
+                dom.audioPlayer.addEventListener('play', () => { state.isPlaying = true; updatePlayPauseIcon(); updatePlayerUI(state.currentAlbum.songs[state.currentSongIndex]); });
+                dom.audioPlayer.addEventListener('pause', () => { state.isPlaying = false; updatePlayPauseIcon(); });
+                dom.audioPlayer.addEventListener('ended', playNext);
+                dom.audioPlayer.addEventListener('timeupdate', () => { const { currentTime, duration } = dom.audioPlayer; if (duration) { dom.progressBar.value = currentTime; dom.progressBar.style.backgroundSize = `${(currentTime / duration) * 100}% 100%`; dom.currentTime.textContent = formatTime(currentTime); } });
+                dom.audioPlayer.addEventListener('loadedmetadata', () => { dom.progressBar.max = dom.audioPlayer.duration; dom.duration.textContent = formatTime(dom.audioPlayer.duration); });
+                dom.progressBar.addEventListener('input', (e) => dom.audioPlayer.currentTime = e.target.value);
+                dom.volumeControl.addEventListener('input', (e) => dom.audioPlayer.volume = e.target.value);
+                const applyTheme = (theme) => { document.documentElement.classList.toggle('dark', theme === 'dark'); dom.themeToggle.querySelector('#theme-icon-light').classList.toggle('hidden', theme === 'dark'); dom.themeToggle.querySelector('#theme-icon-dark').classList.toggle('hidden', theme !== 'dark'); };
+                dom.themeToggle.addEventListener('click', () => { const newTheme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
+                applyTheme(localStorage.getItem('theme') || 'dark');
+
+                _supabase.auth.onAuthStateChange(async (event, session) => {
+                    updateUserStatus(session?.user);
+                    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') await fetchAlbums();
+                });
+
+                const { data: { session } } = await _supabase.auth.getSession();
+                updateUserStatus(session?.user);
+                await fetchAlbums();
+
+            } catch (error) {
+                console.error("Error inicializando la aplicación:", error);
+                alert("Error en la configuración de Supabase. Revisa las claves en el HTML.");
+            } finally {
+                dom.loader.classList.add('hidden');
+            }
+        });
     </script>
 </body>
 </html>
