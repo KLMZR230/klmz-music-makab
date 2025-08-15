@@ -4,135 +4,134 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KLMZ MUSIC</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  body { font-family: Arial, sans-serif; background: #111; color: #fff; margin: 0; padding: 0; }
-  .container { max-width: 600px; margin: 50px auto; padding: 20px; }
-  input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
-  button { padding: 10px 20px; margin: 10px 0; border: none; border-radius: 5px; cursor: pointer; background: #1DB954; color: #fff; }
-  .album { display: inline-block; margin: 10px; text-align: center; }
-  .album img { width: 150px; height: 150px; object-fit: cover; border-radius: 10px; }
-  #logout { background: red; }
+body { font-family: Arial; background: #111; color: #fff; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; }
+.container { max-width:500px; width:100%; margin-top:50px; }
+input, button { width:100%; padding:10px; margin:5px 0; border-radius:5px; border:none; }
+button { background:#1db954; color:#fff; cursor:pointer; }
+.album { border:1px solid #444; padding:10px; margin:5px 0; border-radius:5px; }
 </style>
 </head>
 <body>
-
-<div class="container" id="auth-container">
+<div class="container" id="auth">
   <h1>KLMZ MUSIC</h1>
-  <input type="email" id="email" placeholder="Correo">
+  <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Contraseña">
   <button onclick="login()">Iniciar sesión</button>
-  <button onclick="signup()">Registrarse</button>
+  <button onclick="register()">Registrarse</button>
 </div>
 
-<div class="container" id="app-container" style="display:none;">
-  <h1>Bienvenido a KLMZ MUSIC</h1>
-  <button id="logout" onclick="logout()">Cerrar sesión</button>
-  <h2>Subir Álbum</h2>
-  <input type="text" id="album-name" placeholder="Nombre del álbum">
-  <input type="file" id="album-cover">
-  <button onclick="uploadAlbum()">Subir Álbum</button>
-  <h2>Mis Álbumes</h2>
+<div class="container" id="app" style="display:none;">
+  <h2>Bienvenido a KLMZ MUSIC</h2>
+  <button onclick="logout()">Cerrar sesión</button>
+  <h3>Subir Álbum</h3>
+  <input type="text" id="album_name" placeholder="Nombre del álbum">
+  <input type="file" id="cover">
+  <button onclick="uploadAlbum()">Subir álbum</button>
+  <h3>Mis Álbumes</h3>
   <div id="albums"></div>
 </div>
 
 <script>
-  const supabaseUrl = 'https://lvrkifepqhxxmdcasncf.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+// --- CONFIGURA TUS DATOS DE SUPABASE ---
+const supabaseUrl = 'https://lvrkifepqhxxmdcasncf.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session) loadApp();
-    else showAuth();
+// --- AUTH ---
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  if (!email || !password) return alert('Ingresa email y contraseña');
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  console.log('Login data:', data, 'Error:', error);
+  if (error) return alert(error.message);
+  loadApp();
+}
+
+async function register() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  if (!email || !password) return alert('Ingresa email y contraseña');
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  console.log('Register data:', data, 'Error:', error);
+  if (error) return alert(error.message);
+  alert('Usuario registrado, revisa tu correo para confirmar');
+}
+
+// --- SESSION ---
+async function loadApp() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return showAuth();
+
+  document.getElementById('auth').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAlbums();
+}
+
+function showAuth() {
+  document.getElementById('auth').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  showAuth();
+}
+
+// --- ALBUMS ---
+async function loadAlbums() {
+  const { data: albums, error } = await supabase
+    .from('albums')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  const container = document.getElementById('albums');
+  container.innerHTML = '';
+  if (error) return console.log(error);
+
+  albums.forEach(a => {
+    const div = document.createElement('div');
+    div.className = 'album';
+    div.innerHTML = `<strong>${a.name}</strong><br>
+                     <img src="${supabase.storage.from('media').getPublicUrl(a.cover).data.publicUrl}" width="100">`;
+    container.appendChild(div);
   });
+}
 
-  async function login() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { alert(error.message); return; }
-    loadApp();
-  }
+// --- SUBIR ALBUM ---
+async function uploadAlbum() {
+  const name = document.getElementById('album_name').value;
+  const coverFile = document.getElementById('cover').files[0];
+  if (!name || !coverFile) return alert('Nombre y portada son obligatorios');
 
-  async function signup() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) { alert(error.message); return; }
-    alert('Usuario registrado. Confirma tu correo.');
-  }
+  // subir portada al bucket "media"
+  const { data: fileData, error: fileError } = await supabase
+    .storage
+    .from('media')
+    .upload(`covers/${Date.now()}_${coverFile.name}`, coverFile, { upsert: true });
 
-  async function logout() {
-    await supabase.auth.signOut();
-    showAuth();
-  }
+  if (fileError) return alert(fileError.message);
 
-  function showAuth() {
-    document.getElementById('auth-container').style.display = 'block';
-    document.getElementById('app-container').style.display = 'none';
-  }
+  const coverPath = fileData.path;
 
-  async function loadApp() {
-    document.getElementById('auth-container').style.display = 'none';
-    document.getElementById('app-container').style.display = 'block';
-    fetchAlbums();
-  }
+  const { error: dbError } = await supabase.from('albums').insert([{ name, cover: coverPath }]);
+  if (dbError) return alert(dbError.message);
 
-  async function uploadAlbum() {
-    const albumName = document.getElementById('album-name').value;
-    const file = document.getElementById('album-cover').files[0];
-    if (!albumName || !file) { alert('Nombre y portada son obligatorios'); return; }
+  alert('Álbum subido!');
+  loadAlbums();
+}
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(fileName, file);
+// --- AUTO LOGIN ---
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session) loadApp();
+  else showAuth();
+});
 
-    if (uploadError) { alert(uploadError.message); return; }
-
-    const url = supabase.storage.from('media').getPublicUrl(fileName).data.publicUrl;
-    await supabase.from('albums').insert([{ name: albumName, cover_url: url }]);
-    fetchAlbums();
-  }
-
-  async function fetchAlbums() {
-    const albumsContainer = document.getElementById('albums');
-    albumsContainer.innerHTML = '';
-
-    // 1️⃣ Obtener álbumes de la tabla 'albums'
-    const { data: tableAlbums, error: tableError } = await supabase.from('albums').select('*');
-    if (tableError) console.log(tableError);
-
-    // 2️⃣ Obtener archivos del bucket 'media' (álbumes antiguos)
-    const { data: bucketFiles, error: bucketError } = await supabase.storage.from('media').list();
-    if (bucketError) console.log(bucketError);
-
-    // Combinar ambos
-    const combined = [];
-
-    if (bucketFiles) {
-      bucketFiles.forEach(file => {
-        const url = supabase.storage.from('media').getPublicUrl(file.name).data.publicUrl;
-        combined.push({ name: file.name, cover_url: url });
-      });
-    }
-
-    if (tableAlbums) combined.push(...tableAlbums);
-
-    // Mostrar
-    combined.forEach(album => {
-      albumsContainer.innerHTML += `<div class="album">
-        <img src="${album.cover_url}" alt="${album.name}"><br>${album.name}
-      </div>`;
-    });
-  }
-
-  supabase.auth.getSession().then(({ data }) => {
-    if (data.session) loadApp();
-    else showAuth();
-  });
-
+loadApp();
 </script>
 </body>
 </html>
