@@ -2,220 +2,41 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>KLMZ MUSIC</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Login Supabase</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: white;
-      margin: 0;
-    }
-    header {
-      background: #1DB954;
-      padding: 10px 20px;
-      font-size: 1.5em;
-      font-weight: bold;
-    }
-    .container {
-      padding: 20px;
-    }
-    .album {
-      background: #181818;
-      border-radius: 10px;
-      padding: 10px;
-      margin-bottom: 20px;
-    }
-    .album img {
-      width: 100%;
-      border-radius: 10px;
-    }
-    .songs {
-      margin-top: 10px;
-    }
-    button {
-      background: #1DB954;
-      border: none;
-      color: white;
-      padding: 10px 15px;
-      margin: 5px 0;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #17a84b;
-    }
-    audio {
-      width: 100%;
-      margin-top: 10px;
-    }
-    .admin-section {
-      background: #282828;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-    }
-    input, select {
-      padding: 8px;
-      margin: 5px 0;
-      width: 100%;
-      border-radius: 5px;
-      border: none;
-    }
-  </style>
 </head>
-<body>
-  <header>♫ KLMZ MUSIC</header>
-  <div class="container" id="app">
-    <div id="auth-section">
-      <h2>Iniciar sesión</h2>
-      <input type="email" id="email" placeholder="Email">
-      <input type="password" id="password" placeholder="Contraseña">
-      <button onclick="login()">Entrar</button>
-    </div>
+<body style="font-family:sans-serif;">
+  <h1>Test Login</h1>
+  <input type="email" id="email" placeholder="Email"><br>
+  <input type="password" id="password" placeholder="Contraseña"><br>
+  <button onclick="login()">Entrar</button>
+  <p id="result"></p>
 
-    <div id="admin-section" class="admin-section" style="display:none;">
-      <h2>Subir Álbum</h2>
-      <input type="text" id="album-title" placeholder="Título del álbum">
-      <input type="file" id="album-cover">
-      <button onclick="uploadAlbum()">Subir Álbum</button>
+<script>
+  // ⚠️ Cambia estos valores por los tuyos
+  const SUPABASE_URL = "https://nqbldvpnqhngdtalvzov.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
+  const ADMIN_EMAIL = "klmzr@gmail.com";
 
-      <h2>Subir Canción</h2>
-      <input type="text" id="song-title" placeholder="Título de la canción">
-      <select id="album-select"></select>
-      <input type="file" id="song-file">
-      <button onclick="uploadSong()">Subir Canción</button>
-      <button onclick="logout()">Salir</button>
-    </div>
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    <h2>Álbumes</h2>
-    <div id="albums"></div>
+  async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-    <h2>Reproductor</h2>
-    <div id="player">
-      <p id="now-playing">Nada reproduciéndose</p>
-      <audio id="audio" controls></audio>
-      <button onclick="toggleFullscreen()">Pantalla completa</button>
-    </div>
-  </div>
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-  <script>
-    const SUPABASE_URL = "https://nqbldvpnqhngdtalvzov.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
-    const ADMIN_EMAIL = "klmzr@gmail.com";
-
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    async function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return alert(error.message);
-      if (email === ADMIN_EMAIL) {
-        document.getElementById("admin-section").style.display = "block";
-        loadAlbums(true);
-      }
-      document.getElementById("auth-section").style.display = "none";
+    if (error) {
+      document.getElementById("result").innerText = "❌ Error: " + error.message;
+      return;
     }
 
-    async function logout() {
-      await supabase.auth.signOut();
-      location.reload();
+    if (email === ADMIN_EMAIL) {
+      document.getElementById("result").innerText = "✅ Hola Admin";
+    } else {
+      document.getElementById("result").innerText = "✅ Login correcto, pero no eres admin";
     }
-
-    async function uploadAlbum() {
-      const title = document.getElementById("album-title").value;
-      const file = document.getElementById("album-cover").files[0];
-      if (!title || !file) return alert("Faltan datos");
-
-      const filePath = `${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("covers").upload(filePath, file);
-      if (uploadError) return alert(uploadError.message);
-
-      const { data: publicUrlData } = supabase.storage.from("covers").getPublicUrl(filePath);
-
-      const { error: insertError } = await supabase.from("albums").insert([{ title, cover_url: publicUrlData.publicUrl }]);
-      if (insertError) return alert(insertError.message);
-
-      alert("Álbum subido");
-      loadAlbums(true);
-    }
-
-    async function uploadSong() {
-      const title = document.getElementById("song-title").value;
-      const albumId = document.getElementById("album-select").value;
-      const file = document.getElementById("song-file").files[0];
-      if (!title || !albumId || !file) return alert("Faltan datos");
-
-      const filePath = `${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("songs").upload(filePath, file);
-      if (uploadError) return alert(uploadError.message);
-
-      const { data: publicUrlData } = supabase.storage.from("songs").getPublicUrl(filePath);
-
-      const { error: insertError } = await supabase.from("songs").insert([{ album_id: albumId, title, song_url: publicUrlData.publicUrl }]);
-      if (insertError) return alert(insertError.message);
-
-      alert("Canción subida");
-      loadAlbums(true);
-    }
-
-    async function loadAlbums(forAdmin = false) {
-      const { data: albums, error } = await supabase.from("albums").select("*").order("created_at", { ascending: false });
-      if (error) return console.error(error);
-
-      const albumsDiv = document.getElementById("albums");
-      albumsDiv.innerHTML = "";
-
-      const albumSelect = document.getElementById("album-select");
-      if (forAdmin) albumSelect.innerHTML = "";
-
-      for (const album of albums) {
-        const albumDiv = document.createElement("div");
-        albumDiv.classList.add("album");
-        albumDiv.innerHTML = `<img src="${album.cover_url}"><h3>${album.title}</h3>`;
-
-        const { data: songs } = await supabase.from("songs").select("*").eq("album_id", album.id).order("created_at", { ascending: true });
-
-        const songsDiv = document.createElement("div");
-        songsDiv.classList.add("songs");
-        for (const song of songs) {
-          const songBtn = document.createElement("button");
-          songBtn.textContent = song.title;
-          songBtn.onclick = () => playSong(song);
-          songsDiv.appendChild(songBtn);
-        }
-
-        albumDiv.appendChild(songsDiv);
-        albumsDiv.appendChild(albumDiv);
-
-        if (forAdmin) {
-          const opt = document.createElement("option");
-          opt.value = album.id;
-          opt.textContent = album.title;
-          albumSelect.appendChild(opt);
-        }
-      }
-    }
-
-    function playSong(song) {
-      const audio = document.getElementById("audio");
-      audio.src = song.song_url;
-      audio.play();
-      document.getElementById("now-playing").textContent = "Reproduciendo: " + song.title;
-    }
-
-    function toggleFullscreen() {
-      const player = document.getElementById("player");
-      if (!document.fullscreenElement) {
-        player.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    }
-
-    loadAlbums();
-  </script>
+  }
+</script>
 </body>
 </html>
