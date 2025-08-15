@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KLMZ MUSIC</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  body { font-family: Arial, sans-serif; background: #111; color: #fff; text-align: center; }
-  input, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
-  input { width: 250px; }
-  button { background: #1db954; color: #fff; cursor: pointer; }
-  #albums { margin-top: 20px; }
-  .album { background: #222; padding: 15px; margin: 10px; border-radius: 10px; display: inline-block; width: 200px; }
-  img { width: 100%; border-radius: 10px; }
-</style>
+  <meta charset="UTF-8">
+  <title>KLMZ MUSIC</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.36.0/dist/supabase.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    input, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
+    button { background: #ff0044; color: #fff; cursor: pointer; }
+    #dashboard { display: none; flex-direction: column; width: 400px; }
+    .album { border: 1px solid #fff; padding: 10px; margin: 5px 0; display: flex; align-items: center; }
+    .album img { width: 50px; height: 50px; margin-right: 10px; }
+  </style>
 </head>
 <body>
 
@@ -21,33 +19,39 @@
 
 <div id="auth">
   <h2>Login</h2>
-  <input type="email" id="loginEmail" placeholder="Email"><br>
-  <input type="password" id="loginPass" placeholder="Contraseña"><br>
+  <input type="email" id="loginEmail" placeholder="Email">
+  <input type="password" id="loginPass" placeholder="Contraseña">
   <button onclick="login()">Iniciar sesión</button>
+
   <h2>Registro</h2>
-  <input type="email" id="regEmail" placeholder="Email"><br>
-  <input type="password" id="regPass" placeholder="Contraseña"><br>
+  <input type="email" id="regEmail" placeholder="Email">
+  <input type="password" id="regPass" placeholder="Contraseña">
   <button onclick="register()">Registrarse</button>
 </div>
 
-<div id="dashboard" style="display:none;">
+<div id="dashboard">
   <h2>Crear Álbum</h2>
-  <input type="text" id="albumTitle" placeholder="Nombre del album"><br>
-  <input type="text" id="albumCover" placeholder="URL de portada"><br>
+  <input type="text" id="albumName" placeholder="Nombre del album">
+  <input type="text" id="albumCover" placeholder="URL de portada">
   <button onclick="createAlbum()">Crear Album</button>
 
   <h2>Albums</h2>
-  <div id="albums"></div>
+  <div id="albumsList"></div>
 </div>
 
 <script>
-  // Tus datos fijos de Supabase
-  const SUPABASE_URL = 'https://lvrkifepqhxxmdcasncf.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk';
-  const ADMIN_USER_ID = 'df543cda-21d7-42a5-ae86-3b895482a171'; // tu user_id fijo
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // =======================
+  // Configuración Supabase
+  // =======================
+  const SUPABASE_URL = "https://lvrkifepqhxxmdcasncf.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2cmtpZmVwcWh4eG1kY2FzbmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMjU3NTMsImV4cCI6MjA3MDcwMTc1M30.I-jHvTMEHHrUMM1-2YQrb-58YU4KmTrJuc95GJcjzhk";
+  const ADMIN_USER_ID = "df543cda-21d7-42a5-ae86-3b895482a171";
 
-  // Login
+  const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // =======================
+  // Funciones de autenticación
+  // =======================
   async function login() {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPass').value;
@@ -65,7 +69,6 @@
     showDashboard();
   }
 
-  // Registro
   async function register() {
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPass').value;
@@ -74,53 +77,65 @@
     const { data, error } = await supabase.auth.signUp({ email, password });
     if(error){ alert(error.message); return; }
 
-    alert('Registro exitoso. Ahora inicia sesión con este email.');
+    // Login automático después del registro
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    if(loginError){ alert('Usuario registrado, inicia sesión manualmente'); return; }
+
+    if(loginData.user.id !== ADMIN_USER_ID){ 
+      alert('No eres el administrador'); 
+      await supabase.auth.signOut(); 
+      return; 
+    }
+
+    showDashboard();
   }
 
-  // Mostrar dashboard
-  function showDashboard() {
+  // =======================
+  // Dashboard y Albums
+  // =======================
+  async function showDashboard() {
     document.getElementById('auth').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('dashboard').style.display = 'flex';
     loadAlbums();
   }
 
-  // Crear album
   async function createAlbum() {
-    const title = document.getElementById('albumTitle').value;
+    const name = document.getElementById('albumName').value;
     const cover = document.getElementById('albumCover').value;
-    if(!title){ alert('Escribe un nombre'); return; }
+    if(!name || !cover){ alert('Completa los campos'); return; }
 
-    const { error } = await supabase.from('albums').insert([{ title, cover, user_id: ADMIN_USER_ID }]);
+    const { data, error } = await supabase.from('albums').insert([
+      { user_id: ADMIN_USER_ID, name, cover, created_at: new Date() }
+    ]);
+
     if(error){ alert(error.message); return; }
 
-    document.getElementById('albumTitle').value = '';
+    document.getElementById('albumName').value = '';
     document.getElementById('albumCover').value = '';
     loadAlbums();
   }
 
-  // Cargar albums
   async function loadAlbums() {
-    const { data, error } = await supabase.from('albums').select('*').eq('user_id', ADMIN_USER_ID);
+    const { data, error } = await supabase.from('albums').select('*').eq('user_id', ADMIN_USER_ID).order('created_at', { ascending: false });
     if(error){ alert(error.message); return; }
 
-    const container = document.getElementById('albums');
-    container.innerHTML = '';
+    const list = document.getElementById('albumsList');
+    list.innerHTML = '';
     data.forEach(album => {
-      container.innerHTML += `
-        <div class="album">
-          <img src="${album.cover}" alt="${album.title}">
-          <h3>${album.title}</h3>
-        </div>`;
+      const div = document.createElement('div');
+      div.className = 'album';
+      div.innerHTML = `<img src="${album.cover}" alt="cover"><strong>${album.name}</strong>`;
+      list.appendChild(div);
     });
   }
 
-  // Mantener sesión activa si ya está logueado
+  // =======================
+  // Mantener sesión si ya está
+  // =======================
   supabase.auth.onAuthStateChange((event, session) => {
-    if(session && session.user.id === ADMIN_USER_ID){
-      showDashboard();
-    }
+    if(session && session.user.id === ADMIN_USER_ID) showDashboard();
   });
-
 </script>
+
 </body>
 </html>
