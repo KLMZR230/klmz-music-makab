@@ -5,94 +5,20 @@
 <title>KLMZ MUSIC</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #121212;
-        color: white;
-        margin: 0;
-        padding-bottom: 100px; /* espacio para el reproductor */
-    }
-    header {
-        background: #1db954;
-        padding: 15px;
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
-    }
-    .albums {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 20px;
-        padding: 20px;
-    }
-    .album {
-        background: #181818;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        transition: transform 0.2s;
-        cursor: pointer;
-    }
-    .album:hover {
-        transform: scale(1.05);
-        background: #282828;
-    }
-    .album img {
-        width: 100%;
-        border-radius: 8px;
-        margin-bottom: 10px;
-    }
-    .songs {
-        padding: 20px;
-    }
-    #admin-panel, #login-panel {
-        background: #181818;
-        padding: 20px;
-        margin: 20px;
-        border-radius: 10px;
-    }
-    input, select {
-        padding: 8px;
-        margin: 5px 0;
-        width: 100%;
-        border: none;
-        border-radius: 5px;
-    }
-    button {
-        background: #1db954;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        cursor: pointer;
-        border-radius: 5px;
-        margin-top: 5px;
-    }
-    button:hover {
-        background: #17a74a;
-    }
-    /* Reproductor */
-    #player-bar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: #181818;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 20px;
-        border-top: 1px solid #333;
-    }
-    #player-info {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    #player-controls {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+    body { font-family: Arial, sans-serif; background: #121212; color: white; margin: 0; padding-bottom: 100px; }
+    header { background: #1db954; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; }
+    .albums { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; padding: 20px; }
+    .album { background: #181818; padding: 15px; border-radius: 10px; text-align: center; transition: transform 0.2s; cursor: pointer; }
+    .album:hover { transform: scale(1.05); background: #282828; }
+    .album img { width: 100%; border-radius: 8px; margin-bottom: 10px; }
+    .songs { padding: 20px; }
+    #admin-panel, #login-panel { background: #181818; padding: 20px; margin: 20px; border-radius: 10px; }
+    input, select { padding: 8px; margin: 5px 0; width: 100%; border: none; border-radius: 5px; }
+    button { background: #1db954; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; margin-top: 5px; }
+    button:hover { background: #17a74a; }
+    #player-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #181818; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-top: 1px solid #333; }
+    #player-info { display: flex; align-items: center; gap: 10px; }
+    #player-controls { display: flex; align-items: center; gap: 10px; }
 </style>
 </head>
 <body>
@@ -124,7 +50,6 @@
 
 <div class="songs" id="songs"></div>
 
-<!-- Reproductor fijo -->
 <div id="player-bar">
     <div id="player-info">
         <span id="current-song">Nada reproduciéndose</span>
@@ -142,23 +67,17 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const ADMIN_EMAIL = "klmzr@gmail.com";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let session = null;
 
 async function login() {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-    });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if (error) {
         alert("Error al iniciar sesión: " + error.message);
     } else {
-        session = data.session;
-        const userEmail = data.user.email;
-        if (userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        if (data.user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             document.getElementById("admin-panel").style.display = "block";
             loadAlbumsSelect();
         }
@@ -227,8 +146,12 @@ async function uploadAlbum() {
 
     const { data: fileData, error: fileError } = await supabaseClient.storage
         .from("covers")
-        .upload(`covers/${Date.now()}_${file.name}`, file);
-    if (fileError) return alert("Error subiendo portada");
+        .upload(`${Date.now()}_${file.name}`, file);
+
+    if (fileError) {
+        console.error(fileError);
+        return alert("Error subiendo portada: " + fileError.message);
+    }
 
     const { data: publicUrl } = supabaseClient.storage
         .from("covers")
@@ -248,8 +171,12 @@ async function uploadSong() {
 
     const { data: fileData, error: fileError } = await supabaseClient.storage
         .from("songs")
-        .upload(`songs/${Date.now()}_${file.name}`, file);
-    if (fileError) return alert("Error subiendo canción");
+        .upload(`${Date.now()}_${file.name}`, file);
+
+    if (fileError) {
+        console.error(fileError);
+        return alert("Error subiendo canción: " + fileError.message);
+    }
 
     const { data: publicUrl } = supabaseClient.storage
         .from("songs")
@@ -257,6 +184,7 @@ async function uploadSong() {
 
     await supabaseClient.from("songs").insert({ album_id: albumId, name, file: publicUrl.publicUrl });
     alert("Canción subida");
+    loadSongs(albumId);
 }
 loadAlbums();
 </script>
