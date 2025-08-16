@@ -2,223 +2,234 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎵 Mis Álbumes</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* Ondas estilo Spotify */
-    .equalizer {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      margin-left: 10px;
-    }
-    .bar {
-      width: 3px;
-      height: 100%;
-      background: limegreen;
-      margin: 0 1px;
-      animation: bounce 1s infinite;
-    }
-    .bar:nth-child(1) { animation-delay: 0s; }
-    .bar:nth-child(2) { animation-delay: 0.2s; }
-    .bar:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes bounce {
-      0%, 100% { height: 20%; }
-      50% { height: 100%; }
-    }
-    .paused .bar {
-      animation-play-state: paused;
-    }
-  </style>
+  <title>KLMZ MUSIC</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-900 text-white p-4">
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  <!-- Header con llavesita -->
-  <header class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold">🎵 Mis Álbumes</h1>
-    <button onclick="toggleAdminLogin()" class="text-2xl">🔑</button>
+  <!-- HEADER -->
+  <header class="bg-black p-4 flex justify-between items-center shadow-md">
+    <h1 class="text-2xl font-bold text-green-500">♫ KLMZ MUSIC</h1>
+    <div id="auth-section" class="space-x-4 flex items-center">
+      <!-- Icono de admin -->
+      <button id="admin-key" onclick="toggleLogin()" class="text-xl">🔑</button>
+    </div>
   </header>
 
-  <!-- Login admin oculto -->
-  <div id="admin-login" class="hidden bg-gray-800 p-4 rounded-lg mb-4">
-    <input id="admin-user" type="text" placeholder="Usuario" class="p-2 rounded text-black w-full mb-2">
-    <input id="admin-pass" type="password" placeholder="Contraseña" class="p-2 rounded text-black w-full mb-2">
-    <button onclick="loginAdmin()" class="bg-green-600 px-4 py-2 rounded w-full">Ingresar</button>
-  </div>
-
-  <!-- Panel admin -->
-  <div id="admin-panel" class="hidden mb-6">
-    <h2 class="text-xl font-bold mb-2">📀 Subir Nuevo Álbum</h2>
-    <input id="album-title" type="text" placeholder="Título del álbum" class="p-2 rounded text-black w-full mb-2">
-    <input id="album-cover" type="file" class="mb-2">
-    <button onclick="uploadAlbum()" class="bg-blue-600 px-4 py-2 rounded">Subir Álbum</button>
-
-    <h2 class="text-xl font-bold mt-4 mb-2">🎶 Subir Canción</h2>
-    <input id="song-title" type="text" placeholder="Título de la canción" class="p-2 rounded text-black w-full mb-2">
-    <input id="song-file" type="file" class="mb-2">
-    <select id="song-album" class="p-2 rounded text-black w-full mb-2"></select>
-    <button onclick="uploadSong()" class="bg-green-600 px-4 py-2 rounded">Subir Canción</button>
-  </div>
-
-  <!-- Lista de álbumes -->
-  <div id="albums" class="grid grid-cols-3 gap-4"></div>
-
-  <!-- Botón atrás -->
-  <button onclick="showAlbums()" class="hidden fixed top-2 left-2 bg-gray-700 px-3 py-1 rounded text-sm" id="back-btn">⬅ Atrás</button>
-
-  <!-- PLAYER MÁS GRANDE Y LEVANTADO -->
-  <footer id="player" class="bg-gray-800 p-6 fixed bottom-16 left-0 w-full hidden flex flex-col items-center">
-    <div class="flex items-center space-x-4 mb-4">
-      <img id="player-cover" src="" class="w-20 h-20 rounded-lg shadow-lg">
-      <div>
-        <div id="player-title" class="font-bold text-lg">Nada reproduciéndose</div>
-        <input id="progress" type="range" value="0" min="0" max="100" class="w-48 mt-2">
-      </div>
-      <div id="equalizer" class="equalizer paused">
-        <div class="bar"></div>
-        <div class="bar"></div>
-        <div class="bar"></div>
-      </div>
+  <!-- MAIN -->
+  <main class="flex-1 p-6">
+    <!-- Login -->
+    <div id="login-section" class="max-w-sm mx-auto bg-gray-800 p-6 rounded-xl shadow-lg hidden">
+      <h2 class="text-xl font-bold mb-4">Iniciar sesión</h2>
+      <input id="email" type="email" placeholder="Correo" class="w-full mb-2 p-2 rounded text-black">
+      <input id="password" type="password" placeholder="Contraseña" class="w-full mb-2 p-2 rounded text-black">
+      <button onclick="login()" class="w-full bg-green-500 p-2 rounded hover:bg-green-600">Entrar</button>
     </div>
-    <div class="flex items-center space-x-6">
-      <button onclick="prevSong()" class="text-3xl">⏮</button>
-      <button id="play-btn" onclick="togglePlay()" class="text-5xl bg-green-500 px-4 py-2 rounded-full">▶️</button>
-      <button onclick="nextSong()" class="text-3xl">⏭</button>
+
+    <!-- Panel Admin -->
+    <div id="admin-panel" class="hidden">
+      <h2 class="text-lg font-bold mb-2">Subir Álbum</h2>
+      <input id="album-title" type="text" placeholder="Nombre del álbum" class="w-full mb-2 p-2 rounded text-black">
+      <input id="album-cover" type="file" accept="image/*" class="mb-2">
+      <button onclick="uploadAlbum()" class="bg-blue-500 px-3 py-1 rounded">Subir Álbum</button>
+
+      <h2 class="text-lg font-bold mt-6 mb-2">Subir Canciones</h2>
+      <select id="album-select" class="w-full mb-2 p-2 rounded text-black"></select>
+      <input id="song-files" type="file" accept="audio/*" multiple class="mb-2">
+      <button onclick="uploadSongs()" class="bg-blue-500 px-3 py-1 rounded">Subir Canciones</button>
     </div>
-    <div class="mt-4">
-      <input id="volume" type="range" min="0" max="1" step="0.01" value="1" class="w-32">
+
+    <!-- Listado de Álbumes -->
+    <h2 class="text-xl font-bold mt-6">🎶 KLMZ Music</h2>
+    <div id="albums" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4"></div>
+  </main>
+
+  <!-- PLAYER -->
+  <footer id="player" class="bg-gray-800 p-6 fixed bottom-0 left-0 w-full hidden shadow-2xl">
+    <div class="flex flex-col items-center space-y-4">
+      <div class="flex items-center space-x-4 w-full">
+        <img id="player-cover" src="" class="w-16 h-16 rounded-full shadow">
+        <div class="flex-1">
+          <div id="player-title" class="font-bold">Nada reproduciéndose</div>
+          <input id="progress" type="range" value="0" min="0" max="100" class="w-full">
+        </div>
+      </div>
+      <div class="flex items-center justify-center space-x-6">
+        <button onclick="prevSong()" class="text-2xl">⏮</button>
+        <button id="play-btn" onclick="togglePlay()" class="text-4xl px-6 py-2 bg-green-500 rounded-full shadow-lg">▶️</button>
+        <button onclick="nextSong()" class="text-2xl">⏭</button>
+      </div>
+      <div class="flex justify-between items-center w-full">
+        <span class="text-sm text-gray-400">♫ KLMZ Music</span>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="1" class="w-24">
+      </div>
     </div>
     <audio id="audio"></audio>
   </footer>
 
   <script>
-    const supabaseUrl = "https://TU_PROYECTO.supabase.co";
-    const supabaseKey = "TU_KEY";
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    const supabaseUrl = "https://nqbldvpnqhngdtalvzov.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-    let currentSongIndex = 0;
-    let playlist = [];
+    let isAdmin = false;
+    let currentAlbum = null;
+    let currentSongs = [];
+    let currentIndex = 0;
 
-    function toggleAdminLogin() {
-      document.getElementById("admin-login").classList.toggle("hidden");
+    const loginSection = document.getElementById("login-section");
+    const adminPanel = document.getElementById("admin-panel");
+    const albumsDiv = document.getElementById("albums");
+    const player = document.getElementById("player");
+    const audio = document.getElementById("audio");
+    const playBtn = document.getElementById("play-btn");
+    const progress = document.getElementById("progress");
+    const volume = document.getElementById("volume");
+
+    function init() {
+      loadAlbums();
     }
 
-    function loginAdmin() {
-      const user = document.getElementById("admin-user").value;
-      const pass = document.getElementById("admin-pass").value;
-      if (user === "admin" && pass === "1234") {
-        document.getElementById("admin-panel").classList.remove("hidden");
-        alert("Bienvenido administrador");
+    function toggleLogin() {
+      loginSection.classList.toggle("hidden");
+    }
+
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      if (email === "klmzr@gmail.com" && password === "1234") {
+        isAdmin = true;
+        adminPanel.classList.remove("hidden");
+        loginSection.classList.add("hidden");
+        loadAlbums();
       } else {
-        alert("Credenciales incorrectas");
+        alert("Bienvenido como público 🎶");
+        loginSection.classList.add("hidden");
+        loadAlbums();
       }
     }
 
     async function loadAlbums() {
-      const { data: albums, error } = await supabase.from("albums").select("*");
-      if (error) {
-        console.error("Error cargando álbumes:", error);
+      albumsDiv.innerHTML = "";
+      const { data: albums } = await supabaseClient.from("albums").select("*").order("created_at", { ascending: false });
+      if (!albums || albums.length === 0) {
+        albumsDiv.innerHTML = "<p>No hay álbumes todavía.</p>";
         return;
       }
-      const albumsDiv = document.getElementById("albums");
-      albumsDiv.innerHTML = "";
       albums.forEach(album => {
         const div = document.createElement("div");
-        div.className = "flex flex-col items-center";
+        div.className = "bg-gray-800 rounded-full p-2 shadow hover:bg-gray-700 cursor-pointer flex flex-col items-center";
         div.innerHTML = `
-          <img src="${album.cover_url}" class="w-24 h-24 rounded-full shadow-lg mb-2 cursor-pointer" onclick="loadSongs(${album.id})">
-          <span>${album.title}</span>
+          <img src="${album.cover_url}" class="w-24 h-24 object-cover rounded-full">
+          <p class="mt-2 font-bold text-center text-sm">${album.title}</p>
         `;
+        div.onclick = () => openAlbum(album);
         albumsDiv.appendChild(div);
       });
 
-      // Llenar select de subir canciones
-      const select = document.getElementById("song-album");
-      select.innerHTML = "";
-      albums.forEach(album => {
-        const option = document.createElement("option");
-        option.value = album.id;
-        option.textContent = album.title;
-        select.appendChild(option);
-      });
-    }
-
-    async function loadSongs(albumId) {
-      const { data: songs, error } = await supabase.from("songs").select("*").eq("album_id", albumId);
-      if (error) {
-        console.error("Error cargando canciones:", error);
-        return;
+      if (isAdmin) {
+        const albumSelect = document.getElementById("album-select");
+        albumSelect.innerHTML = "";
+        albums.forEach(a => {
+          const opt = document.createElement("option");
+          opt.value = a.id;
+          opt.textContent = a.title;
+          albumSelect.appendChild(opt);
+        });
       }
-      document.getElementById("albums").classList.add("hidden");
-      document.getElementById("back-btn").classList.remove("hidden");
-
-      const albumsDiv = document.getElementById("albums");
-      albumsDiv.innerHTML = "";
-      playlist = songs.map(song => ({
-        title: song.title,
-        file_url: song.file_url,
-        cover_url: song.cover_url
-      }));
-
-      songs.forEach((song, index) => {
-        const div = document.createElement("div");
-        div.className = "p-2 bg-gray-700 rounded mb-2 cursor-pointer";
-        div.textContent = song.title;
-        div.onclick = () => {
-          currentSongIndex = index;
-          playSong(playlist[index]);
-        };
-        albumsDiv.appendChild(div);
-      });
     }
 
-    // Reproductor
-    const audio = document.getElementById("audio");
-    const playBtn = document.getElementById("play-btn");
-    const equalizer = document.getElementById("equalizer");
+    async function openAlbum(album) {
+      currentAlbum = album;
+      const { data: songs } = await supabaseClient.from("songs").select("*").eq("album_id", album.id);
+      currentSongs = songs || [];
+      albumsDiv.innerHTML = `
+        <button onclick="loadAlbums()" class="mb-4 bg-gray-700 px-3 py-1 rounded text-sm">⬅ Volver</button>
+        <h2 class="text-2xl font-bold mb-4">${album.title}</h2>
+        <div class="space-y-2">
+          ${currentSongs.map((s, i) => `
+            <div class="p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer" onclick="playSong(${i})">
+              🎵 ${s.title}
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    async function uploadAlbum() {
+      const title = document.getElementById("album-title").value.trim();
+      const file = document.getElementById("album-cover").files[0];
+      if (!title || !file) return alert("Falta título o portada");
+
+      const safeName = Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+      const { data: storageData, error: storageError } = await supabaseClient.storage.from("covers").upload(safeName, file, { upsert: true });
+      if (storageError) return alert("Error subiendo portada: " + storageError.message);
+
+      const coverUrl = `${supabaseUrl}/storage/v1/object/public/covers/${safeName}`;
+      await supabaseClient.from("albums").insert([{ title, cover_url: coverUrl }]);
+      loadAlbums();
+    }
+
+    async function uploadSongs() {
+      const albumId = document.getElementById("album-select").value;
+      const files = document.getElementById("song-files").files;
+      if (!albumId || files.length === 0) return alert("Selecciona álbum y canciones");
+
+      for (let file of files) {
+        const safeName = Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+        const { error: uploadError } = await supabaseClient.storage.from("songs").upload(safeName, file, { upsert: true });
+        if (uploadError) {
+          alert("Error subiendo canción: " + uploadError.message);
+          continue;
+        }
+        const songUrl = `${supabaseUrl}/storage/v1/object/public/songs/${safeName}`;
+        await supabaseClient.from("songs").insert([{ album_id: albumId, title: file.name, song_url: songUrl }]);
+      }
+      alert("Canciones subidas!");
+      loadAlbums();
+    }
+
+    function playSong(index) {
+      currentIndex = index;
+      const song = currentSongs[index];
+      document.getElementById("player-title").textContent = song.title;
+      document.getElementById("player-cover").src = currentAlbum.cover_url;
+      audio.src = song.song_url;
+      audio.play();
+      player.classList.remove("hidden");
+      playBtn.textContent = "⏸";
+    }
 
     function togglePlay() {
       if (audio.paused) {
         audio.play();
         playBtn.textContent = "⏸";
-        equalizer.classList.remove("paused");
       } else {
         audio.pause();
         playBtn.textContent = "▶️";
-        equalizer.classList.add("paused");
       }
     }
 
     function prevSong() {
-      if (currentSongIndex > 0) {
-        currentSongIndex--;
-        playSong(playlist[currentSongIndex]);
-      }
+      if (currentIndex > 0) playSong(currentIndex - 1);
     }
 
     function nextSong() {
-      if (currentSongIndex < playlist.length - 1) {
-        currentSongIndex++;
-        playSong(playlist[currentSongIndex]);
-      }
+      if (currentIndex < currentSongs.length - 1) playSong(currentIndex + 1);
     }
 
-    function playSong(song) {
-      document.getElementById("player").classList.remove("hidden");
-      document.getElementById("player-title").textContent = song.title;
-      document.getElementById("player-cover").src = song.cover_url;
-      audio.src = song.file_url;
-      audio.play();
-      playBtn.textContent = "⏸";
-      equalizer.classList.remove("paused");
-    }
+    audio.ontimeupdate = () => {
+      progress.value = (audio.currentTime / audio.duration) * 100 || 0;
+    };
+    progress.oninput = () => {
+      audio.currentTime = (progress.value / 100) * audio.duration;
+    };
+    volume.oninput = () => {
+      audio.volume = volume.value;
+    };
 
-    // Cargar al iniciar
-    loadAlbums();
+    init();
   </script>
 </body>
 </html>
