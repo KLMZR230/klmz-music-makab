@@ -11,8 +11,8 @@
   <!-- Header -->
   <header class="bg-black p-4 flex justify-between items-center shadow-md">
     <h1 class="text-2xl font-bold text-green-500">♫ KLMZ MUSIC</h1>
-    <!-- Icono Admin pequeño -->
-    <button id="admin-icon" onclick="showLogin()" class="hidden text-gray-400 hover:text-green-500 text-sm">🔑</button>
+    <!-- Icono Admin -->
+    <button id="admin-icon" onclick="showLogin()" class="hidden text-gray-400 hover:text-green-500 text-xl">🔑</button>
   </header>
 
   <!-- Contenido -->
@@ -79,9 +79,12 @@
       }
     }
 
-    // Revisar si el admin puede ver icono
+    // Revisar si el admin está logeado
     async function checkAdmin() {
-      document.getElementById("admin-icon").classList.remove("hidden");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.email === "klmzr@gmail.com") {
+        document.getElementById("admin-icon").classList.remove("hidden");
+      }
     }
 
     // Cargar álbumes
@@ -104,65 +107,57 @@
       }
     }
 
-    // Cargar canciones de un álbum (lista estilo Spotify)
+    // Cargar canciones de un álbum
     async function loadSongs(albumId, albumTitle) {
       const { data, error } = await supabase.from("songs").select("*").eq("album_id", albumId);
       if (error) {
         console.error("Error cargando canciones:", error.message);
         return;
       }
-      albumsContainer.innerHTML = `
-        <h2 class="text-2xl font-bold mb-6 text-green-500">${albumTitle}</h2>
-        <div id="songs-list" class="divide-y divide-gray-800 rounded-lg overflow-hidden"></div>
-      `;
-
-      const songsList = document.getElementById("songs-list");
-
-      data.forEach((song, index) => {
+      albumsContainer.innerHTML = `<h2 class="text-xl font-bold mb-4">${albumTitle}</h2>`;
+      data.forEach(song => {
         const songDiv = document.createElement("div");
-        songDiv.className = "flex items-center p-3 hover:bg-gray-800 cursor-pointer transition";
-        songDiv.innerHTML = `
-          <span class="w-6 text-gray-400">${index + 1}</span>
-          <span class="ml-4 flex-1">${song.title}</span>
-        `;
+        songDiv.className = "p-2 border-b border-gray-700 cursor-pointer hover:bg-gray-800";
+        songDiv.textContent = song.title;
         songDiv.onclick = () => playSong(song, songDiv);
-        songsList.appendChild(songDiv);
+        albumsContainer.appendChild(songDiv);
       });
-
       // Botón volver
       const backBtn = document.createElement("button");
-      backBtn.className = "mt-6 px-4 py-2 bg-green-600 rounded hover:bg-green-500";
+      backBtn.className = "mt-4 px-3 py-2 bg-green-600 rounded hover:bg-green-500";
       backBtn.textContent = "⬅ Volver a álbumes";
       backBtn.onclick = loadAlbums;
       albumsContainer.appendChild(backBtn);
     }
 
-    // Reproducir canción y resaltar la que está sonando
+    // Reproducir canción (fix + resaltado)
     async function playSong(song, element) {
+      let filePath = song.song_url;
+      if (filePath.startsWith("songs/")) {
+        filePath = filePath.replace("songs/", "");
+      }
+
       const { data, error } = await supabase.storage
         .from("songs")
-        .createSignedUrl(song.song_url, 3600);
+        .createSignedUrl(filePath, 3600);
 
       if (error) {
         console.error("Error obteniendo URL:", error.message);
         return;
       }
 
-      // Quitar highlight previo
-      if (currentSongElement) {
-        currentSongElement.classList.remove("bg-green-800");
-        currentSongElement.querySelector("span:nth-child(2)").classList.remove("text-green-500");
-      }
-
-      // Resaltar canción actual
-      currentSongElement = element;
-      currentSongElement.classList.add("bg-green-800");
-      currentSongElement.querySelector("span:nth-child(2)").classList.add("text-green-500");
-
+      // Reproducir
       audioPlayer.src = data.signedUrl;
       audioPlayer.play();
       playerTitle.textContent = song.title;
       playerContainer.classList.remove("hidden");
+
+      // Resaltar canción actual
+      if (currentSongElement) {
+        currentSongElement.classList.remove("bg-green-600", "text-white", "font-bold");
+      }
+      element.classList.add("bg-green-600", "text-white", "font-bold");
+      currentSongElement = element;
     }
 
     // Inicializar
