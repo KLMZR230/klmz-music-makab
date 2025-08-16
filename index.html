@@ -11,7 +11,7 @@
   <!-- Header -->
   <header class="bg-black p-4 flex justify-between items-center shadow-md">
     <h1 class="text-2xl font-bold text-green-500">♫ KLMZ MUSIC</h1>
-    <!-- Icono Admin -->
+    <!-- Icono Admin (oculto por defecto) -->
     <button id="admin-icon" onclick="showLogin()" class="hidden text-gray-400 hover:text-green-500 text-xl">🔑</button>
   </header>
 
@@ -56,6 +56,7 @@
     const audioPlayer = document.getElementById("audio-player");
     const playerTitle = document.getElementById("player-title");
     const playerContainer = document.getElementById("player-container");
+
     let currentSongElement = null;
 
     // Mostrar login modal
@@ -129,17 +130,26 @@
       albumsContainer.appendChild(backBtn);
     }
 
-    // Reproducir canción
+    // Reproducir canción (match por título dentro del nombre del archivo en bucket)
     async function playSong(song, element) {
-      // Obtenemos la URL pública desde Supabase (bucket "songs")
-      const { data } = supabase
-        .storage
-        .from("songs")
-        .getPublicUrl(song.song_url);
+      const { data: files, error } = await supabase.storage.from("songs").list();
+      if (error) {
+        console.error("Error listando archivos:", error);
+        return;
+      }
 
-      const publicUrl = data.publicUrl;
+      // Buscar archivo cuyo nombre contenga el título
+      const match = files.find(f => f.name.toLowerCase().includes(song.title.toLowerCase()));
+      if (!match) {
+        console.error("No se encontró archivo para:", song.title);
+        return;
+      }
 
-      audioPlayer.src = publicUrl;
+      // Obtener URL pública
+      const { data } = supabase.storage.from("songs").getPublicUrl(match.name);
+
+      // Asignar al reproductor
+      audioPlayer.src = data.publicUrl;
       await audioPlayer.play().catch(err => console.error("Error al reproducir:", err));
 
       playerTitle.textContent = song.title;
