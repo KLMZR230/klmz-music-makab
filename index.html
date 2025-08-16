@@ -2,80 +2,73 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>KLMZ MUSIC</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>KLMZ Music</title>
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white font-sans flex flex-col min-h-screen">
-  <header class="flex justify-between items-center p-4 bg-black">
-    <h1 class="text-2xl font-bold">♫ KLMZ MUSIC</h1>
-    <button id="adminBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">Acceso Admin</button>
+<body class="bg-black text-white min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="p-4 bg-gray-900 flex justify-between items-center">
+    <h1 class="text-xl font-bold">♫ KLMZ MUSIC</h1>
+    <button id="logoutBtn" class="hidden bg-red-600 px-3 py-1 rounded">Salir</button>
   </header>
 
-  <!-- Login admin -->
-  <section id="loginSection" class="hidden p-4">
-    <h2 class="text-xl mb-2">Iniciar sesión Admin</h2>
-    <input id="email" type="email" value="klmzr@gmail.com" class="p-2 text-black w-full mb-2 rounded" placeholder="Correo">
-    <input id="password" type="password" class="p-2 text-black w-full mb-2 rounded" placeholder="Contraseña">
-    <button id="loginBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">Entrar</button>
-  </section>
+  <!-- Login -->
+  <div id="loginSection" class="flex flex-col items-center justify-center flex-1">
+    <h2 class="text-2xl mb-4">Iniciar sesión</h2>
+    <input id="email" type="email" placeholder="Correo" class="mb-2 px-3 py-2 rounded text-black">
+    <input id="password" type="password" placeholder="Contraseña" class="mb-2 px-3 py-2 rounded text-black">
+    <button onclick="login()" class="bg-green-600 px-4 py-2 rounded">Entrar</button>
+  </div>
 
-  <!-- Panel admin -->
-  <section id="adminPanel" class="hidden p-4 bg-gray-800">
-    <h2 class="text-lg font-semibold mb-2">Panel Admin</h2>
-    <div class="mb-4">
-      <input id="albumTitle" type="text" class="p-2 text-black w-full mb-2 rounded" placeholder="Nombre del álbum">
-      <input id="albumCover" type="file" accept="image/*" class="mb-2">
-      <button id="uploadAlbumBtn" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Subir Álbum</button>
-    </div>
-    <div class="mb-4">
-      <select id="albumSelect" class="p-2 text-black rounded mb-2 w-full"></select>
-      <input id="songFiles" type="file" multiple accept="audio/*" class="mb-2">
-      <button id="uploadSongsBtn" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Subir Canciones</button>
-    </div>
-  </section>
+  <!-- Admin -->
+  <div id="adminSection" class="hidden p-6">
+    <h2 class="text-2xl font-bold mb-4">Subir Álbum</h2>
+    <input id="albumTitle" type="text" placeholder="Nombre del álbum" class="mb-2 px-3 py-2 rounded text-black w-full">
+    <input id="albumCover" type="file" accept="image/*" class="mb-2">
+    <button onclick="uploadAlbum()" class="bg-blue-600 px-4 py-2 rounded">Subir Álbum</button>
 
-  <!-- Listado de álbumes -->
-  <main id="albums" class="grid grid-cols-2 md:grid-cols-5 gap-6 p-6 flex-grow"></main>
+    <h2 class="text-2xl font-bold mt-6 mb-4">Subir Canciones</h2>
+    <select id="albumSelect" class="mb-2 px-3 py-2 rounded text-black w-full"></select>
+    <input id="songsInput" type="file" accept="audio/*" multiple class="mb-2">
+    <button onclick="uploadSongs()" class="bg-green-600 px-4 py-2 rounded">Subir Canciones</button>
+  </div>
 
-  <!-- Reproductor estilo Spotify -->
-  <footer id="player" class="hidden fixed bottom-0 left-0 right-0 bg-black p-4 flex items-center justify-between">
-    <!-- Info canción -->
-    <div class="flex items-center space-x-4 w-1/4">
-      <img id="playerCover" src="" class="w-14 h-14 rounded shadow hidden">
+  <!-- Álbumes -->
+  <main id="albumsSection" class="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></main>
+
+  <!-- Reproductor -->
+  <div id="player" class="hidden fixed bottom-0 left-0 right-0 bg-gray-900 p-4 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <img id="playerCover" src="" class="w-12 h-12 object-cover rounded hidden">
       <div>
         <p id="currentSong" class="font-semibold">Nada reproduciéndose</p>
         <p id="currentAlbum" class="text-sm text-gray-400"></p>
       </div>
     </div>
-
-    <!-- Controles -->
-    <div class="flex flex-col items-center space-y-2 w-2/4">
-      <div class="flex items-center space-x-6">
-        <button id="prevBtn" class="text-xl">⏮</button>
-        <button id="playPauseBtn" class="text-2xl">▶️</button>
-        <button id="nextBtn" class="text-xl">⏭</button>
-      </div>
-      <div class="flex items-center space-x-2 w-full">
-        <span id="currentTime">0:00</span>
-        <input type="range" id="progressBar" class="w-full" value="0" min="0" max="100">
-        <span id="duration">0:00</span>
-      </div>
+    <div class="flex items-center space-x-3">
+      <button onclick="prevSong()">⏮</button>
+      <button id="playPauseBtn" onclick="togglePlay()">▶️</button>
+      <button onclick="nextSong()">⏭</button>
     </div>
-
-    <!-- Volumen -->
-    <div class="flex items-center space-x-2 w-1/4 justify-end">
-      <span>🔊</span>
-      <input type="range" id="volume" class="w-24" min="0" max="1" step="0.01" value="1">
+    <div class="flex items-center space-x-2 w-1/3">
+      <span id="currentTime">0:00</span>
+      <input id="seekBar" type="range" min="0" value="0" class="w-full" onchange="seekSong()">
+      <span id="duration">0:00</span>
     </div>
-  </footer>
-
-  <audio id="audio"></audio>
+    <div>
+      <input id="volumeBar" type="range" min="0" max="1" step="0.01" value="1" onchange="setVolume()">
+    </div>
+    <audio id="audio" ontimeupdate="updateProgress()" onended="nextSong()"></audio>
+  </div>
 
 <script>
 const supabaseUrl = "https://nqbldvpnqhngdtalvzov.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+const { createClient } = supabase;
+const client = createClient(supabaseUrl, supabaseKey);
 
 let isAdmin = false;
 let albumsData = [];
@@ -83,57 +76,50 @@ let currentAlbumSongs = [];
 let currentSongIndex = 0;
 let currentAlbumData = null;
 
-// elementos UI
-const adminBtn = document.getElementById("adminBtn");
-const loginSection = document.getElementById("loginSection");
-const loginBtn = document.getElementById("loginBtn");
-const adminPanel = document.getElementById("adminPanel");
-const albumsDiv = document.getElementById("albums");
-
-const audio = document.getElementById("audio");
-const player = document.getElementById("player");
-const playPauseBtn = document.getElementById("playPauseBtn");
-const prevBtn = document.getElementById("prevBtn");
-const nextBtn = document.getElementById("nextBtn");
-const currentSongEl = document.getElementById("currentSong");
-const currentAlbumEl = document.getElementById("currentAlbum");
-const playerCover = document.getElementById("playerCover");
-const currentTimeEl = document.getElementById("currentTime");
-const durationEl = document.getElementById("duration");
-const progressBar = document.getElementById("progressBar");
-const volumeSlider = document.getElementById("volume");
-
-adminBtn.onclick = () => {
-  loginSection.classList.toggle("hidden");
-};
-
-loginBtn.onclick = () => {
+// -------------------- LOGIN --------------------
+async function login() {
   const email = document.getElementById("email").value;
-  const pass = document.getElementById("password").value;
-  if (email === "klmzr@gmail.com" && pass === "1234") {
-    isAdmin = true;
-    adminPanel.classList.remove("hidden");
-    loginSection.classList.add("hidden");
-    alert("✅ Hola Admin");
-  } else {
-    alert("Acceso denegado");
-  }
-};
+  const password = document.getElementById("password").value;
 
+  if (email === "klmzr@gmail.com" && password === "1234") {
+    isAdmin = true;
+    document.getElementById("loginSection").classList.add("hidden");
+    document.getElementById("adminSection").classList.remove("hidden");
+    document.getElementById("logoutBtn").classList.remove("hidden");
+    loadAlbums();
+    return;
+  }
+
+  // Público
+  isAdmin = false;
+  document.getElementById("loginSection").classList.add("hidden");
+  document.getElementById("albumsSection").classList.remove("hidden");
+  document.getElementById("logoutBtn").classList.remove("hidden");
+  loadAlbums();
+}
+
+function logout() {
+  location.reload();
+}
+document.getElementById("logoutBtn").onclick = logout;
+
+// -------------------- CARGAR ÁLBUMES --------------------
 async function loadAlbums() {
-  const { data, error } = await supabase.from("albums").select("*").order("created_at", { ascending: false });
+  const { data, error } = await client.from("albums").select("*").order("created_at", { ascending: false });
   if (error) { console.error(error); return; }
   albumsData = data;
   renderAlbums();
+  if (isAdmin) populateAlbumSelect();
 }
 
 function renderAlbums() {
+  const albumsDiv = document.getElementById("albumsSection");
   albumsDiv.innerHTML = "";
   albumsData.forEach(album => {
     const div = document.createElement("div");
     div.className = "bg-gray-800 p-3 rounded-lg shadow hover:bg-gray-700 cursor-pointer transition transform hover:scale-105";
     div.innerHTML = `
-      <img src="${album.cover_url}" alt="${album.title}" class="rounded-lg mb-3 w-full aspect-square object-cover">
+      <img src="${album.cover_url}" class="rounded-lg mb-3 w-full aspect-square object-cover">
       <h3 class="font-semibold truncate">${album.title}</h3>
     `;
     div.onclick = () => openAlbum(album);
@@ -141,13 +127,15 @@ function renderAlbums() {
   });
 }
 
+// -------------------- ABRIR ÁLBUM --------------------
 async function openAlbum(album) {
-  const { data: songs, error } = await supabase.from("songs").select("*").eq("album_id", album.id);
+  const { data: songs, error } = await client.from("songs").select("*").eq("album_id", album.id);
   if (error) { console.error(error); return; }
   currentAlbumSongs = songs;
-  currentSongIndex = 0;
   currentAlbumData = album;
+  currentSongIndex = 0;
 
+  const albumsDiv = document.getElementById("albumsSection");
   albumsDiv.innerHTML = `
     <button onclick="loadAlbums()" class="mb-4 text-green-400">⬅ Volver</button>
     <div class="flex items-center space-x-6 mb-6">
@@ -158,51 +146,108 @@ async function openAlbum(album) {
       </div>
     </div>
     <ul class="space-y-2">
-      ${songs.map((s, i) => `<li class="p-3 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer flex items-center justify-between" onclick="playSong(${i})">
-        <span>${i+1}. ${s.title}</span>
-        <span>▶️</span>
-      </li>`).join("")}
+      ${songs.map((s, i) => `
+        <li class="p-3 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer flex justify-between" onclick="playSong(${i})">
+          <span>${i+1}. ${s.title}</span>
+          <span>▶️</span>
+        </li>`).join("")}
     </ul>
   `;
 }
 
+// -------------------- SUBIR ÁLBUM --------------------
+async function uploadAlbum() {
+  const title = document.getElementById("albumTitle").value;
+  const file = document.getElementById("albumCover").files[0];
+  if (!title || !file) return alert("Falta título o portada");
+
+  const filePath = `covers/${Date.now()}_${file.name}`;
+  let { error: uploadError } = await client.storage.from("covers").upload(filePath, file);
+  if (uploadError) return alert("Error subiendo portada");
+
+  const { data } = client.storage.from("covers").getPublicUrl(filePath);
+  const coverUrl = data.publicUrl;
+
+  await client.from("albums").insert([{ title, cover_url: coverUrl }]);
+  loadAlbums();
+  alert("Álbum subido");
+}
+
+// -------------------- SUBIR CANCIONES --------------------
+async function uploadSongs() {
+  const albumId = document.getElementById("albumSelect").value;
+  const files = document.getElementById("songsInput").files;
+  if (!albumId || !files.length) return alert("Faltan datos");
+
+  for (let file of files) {
+    const filePath = `songs/${crypto.randomUUID()}_${file.name.replace(/[^\w.]+/g, "_")}`;
+    let { error } = await client.storage.from("songs").upload(filePath, file);
+    if (error) { console.error(error); continue; }
+    const { data } = client.storage.from("songs").getPublicUrl(filePath);
+    await client.from("songs").insert([{ album_id: albumId, title: file.name.replace(".mp3", ""), song_url: filePath }]);
+  }
+  alert("Canciones subidas");
+}
+
+// -------------------- REPRODUCCIÓN --------------------
 async function playSong(index) {
   currentSongIndex = index;
   const song = currentAlbumSongs[index];
-  const { data } = supabase.storage.from("songs").getPublicUrl(song.song_url);
+  const { data } = client.storage.from("songs").getPublicUrl(song.song_url);
+
+  const audio = document.getElementById("audio");
   audio.src = data.publicUrl;
-  audio.play();
-  player.classList.remove("hidden");
-  playPauseBtn.textContent = "⏸";
-  currentSongEl.textContent = song.title;
-  currentAlbumEl.textContent = currentAlbumData ? currentAlbumData.title : "";
-  playerCover.src = currentAlbumData ? currentAlbumData.cover_url : "";
-  playerCover.classList.remove("hidden");
+  await audio.play();
+
+  document.getElementById("player").classList.remove("hidden");
+  document.getElementById("playPauseBtn").textContent = "⏸";
+  document.getElementById("currentSong").textContent = song.title;
+  document.getElementById("currentAlbum").textContent = currentAlbumData.title;
+  document.getElementById("playerCover").src = currentAlbumData.cover_url;
+  document.getElementById("playerCover").classList.remove("hidden");
 }
 
-playPauseBtn.onclick = () => {
-  if (audio.paused) { audio.play(); playPauseBtn.textContent = "⏸"; }
-  else { audio.pause(); playPauseBtn.textContent = "▶️"; }
-};
-prevBtn.onclick = () => { if (currentSongIndex > 0) playSong(currentSongIndex - 1); };
-nextBtn.onclick = () => { if (currentSongIndex < currentAlbumSongs.length - 1) playSong(currentSongIndex + 1); };
+function togglePlay() {
+  const audio = document.getElementById("audio");
+  const btn = document.getElementById("playPauseBtn");
+  if (audio.paused) { audio.play(); btn.textContent = "⏸"; }
+  else { audio.pause(); btn.textContent = "▶️"; }
+}
+function prevSong() { if (currentSongIndex>0) playSong(currentSongIndex-1); }
+function nextSong() { if (currentSongIndex<currentAlbumSongs.length-1) playSong(currentSongIndex+1); }
 
-audio.ontimeupdate = () => {
-  progressBar.value = (audio.currentTime / audio.duration) * 100 || 0;
-  currentTimeEl.textContent = formatTime(audio.currentTime);
-  durationEl.textContent = formatTime(audio.duration);
-};
-progressBar.oninput = () => { audio.currentTime = (progressBar.value / 100) * audio.duration; };
-volumeSlider.oninput = () => { audio.volume = volumeSlider.value; };
-
+function updateProgress() {
+  const audio = document.getElementById("audio");
+  const seekBar = document.getElementById("seekBar");
+  const currentTime = document.getElementById("currentTime");
+  const duration = document.getElementById("duration");
+  seekBar.max = audio.duration;
+  seekBar.value = audio.currentTime;
+  currentTime.textContent = formatTime(audio.currentTime);
+  duration.textContent = formatTime(audio.duration);
+}
+function seekSong() {
+  const audio = document.getElementById("audio");
+  const seekBar = document.getElementById("seekBar");
+  audio.currentTime = seekBar.value;
+}
+function setVolume() {
+  const audio = document.getElementById("audio");
+  const volumeBar = document.getElementById("volumeBar");
+  audio.volume = volumeBar.value;
+}
 function formatTime(sec) {
   if (isNaN(sec)) return "0:00";
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  const m = Math.floor(sec/60);
+  const s = Math.floor(sec%60).toString().padStart(2,"0");
   return `${m}:${s}`;
 }
 
-loadAlbums();
+// -------------------- POPULAR SELECT ADMIN --------------------
+function populateAlbumSelect() {
+  const select = document.getElementById("albumSelect");
+  select.innerHTML = albumsData.map(a => `<option value="${a.id}">${a.title}</option>`).join("");
+}
 </script>
 </body>
 </html>
