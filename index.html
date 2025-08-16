@@ -39,7 +39,7 @@
 
     <!-- Listado de Álbumes -->
     <h2 class="text-xl font-bold mt-6">Álbumes</h2>
-    <div id="albums" class="grid grid-cols-3 md:grid-cols-6 gap-6 mt-4 text-center"></div>
+    <div id="albums" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4"></div>
   </main>
 
   <!-- PLAYER -->
@@ -60,7 +60,7 @@
 
   <script>
     const supabaseUrl = "https://nqbldvpnqhngdtalvzov.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
+    const supabaseKey = "TU_KEY_AQUI"; // ⚠️ pon tu anon/public key aquí
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
     let isAdmin = false;
@@ -106,14 +106,14 @@
       }
       albums.forEach(album => {
         const div = document.createElement("div");
-        div.className = "cursor-pointer relative";
+        div.className = "bg-gray-800 rounded-lg p-2 shadow hover:bg-gray-700 cursor-pointer text-center";
         div.innerHTML = `
-          <img src="${album.cover_url}" class="w-24 h-24 mx-auto object-cover rounded-full shadow-lg border-2 border-gray-700 hover:scale-105 transform transition">
-          <p class="mt-2 font-bold text-sm">${album.title}</p>
-          ${isAdmin ? `<button onclick="deleteAlbum('${album.id}')" class="absolute top-0 right-0 bg-red-600 text-xs px-1 rounded">✖</button>` : ""}
+          <img src="${album.cover_url}" class="w-full h-24 object-cover rounded">
+          <p class="mt-2 font-bold">${album.title}</p>
+          ${isAdmin ? `<button onclick="deleteAlbum('${album.id}')" class="mt-2 bg-red-600 px-2 py-1 rounded text-sm">🗑 Eliminar</button>` : ""}
         `;
         div.onclick = (e) => {
-          if (e.target.tagName !== "BUTTON") openAlbum(album);
+          if (!e.target.closest("button")) openAlbum(album);
         };
         albumsDiv.appendChild(div);
       });
@@ -139,9 +139,9 @@
         <h2 class="text-2xl font-bold mb-4">${album.title}</h2>
         <div class="space-y-2">
           ${currentSongs.map((s, i) => `
-            <div class="p-2 bg-gray-700 rounded hover:bg-gray-600 flex justify-between items-center">
-              <span class="cursor-pointer flex-1" onclick="playSong(${i})">🎵 ${s.title}</span>
-              ${isAdmin ? `<button onclick="deleteSong('${s.id}')" class="ml-2 bg-red-600 px-2 rounded">🗑</button>` : ""}
+            <div class="p-2 bg-gray-700 rounded flex justify-between items-center hover:bg-gray-600">
+              <span onclick="playSong(${i})" class="cursor-pointer">🎵 ${s.title}</span>
+              ${isAdmin ? `<button onclick="deleteSong('${s.id}')" class="bg-red-600 px-2 py-1 rounded text-sm">🗑</button>` : ""}
             </div>
           `).join("")}
         </div>
@@ -182,8 +182,7 @@
     }
 
     async function deleteAlbum(albumId) {
-      if (!confirm("¿Seguro que quieres borrar este álbum y todas sus canciones?")) return;
-      await supabaseClient.from("songs").delete().eq("album_id", albumId);
+      if (!confirm("¿Seguro que quieres borrar este álbum y sus canciones?")) return;
       await supabaseClient.from("albums").delete().eq("id", albumId);
       loadAlbums();
     }
