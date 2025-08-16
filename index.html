@@ -11,7 +11,7 @@
   <!-- Header -->
   <header class="bg-black p-4 flex justify-between items-center shadow-md">
     <h1 class="text-2xl font-bold text-green-500">♫ KLMZ MUSIC</h1>
-    <!-- Icono Admin (oculto por defecto) -->
+    <!-- Icono Admin -->
     <button id="admin-icon" onclick="showLogin()" class="hidden text-gray-400 hover:text-green-500 text-xl">🔑</button>
   </header>
 
@@ -56,7 +56,6 @@
     const audioPlayer = document.getElementById("audio-player");
     const playerTitle = document.getElementById("player-title");
     const playerContainer = document.getElementById("player-container");
-
     let currentSongElement = null;
 
     // Mostrar login modal
@@ -81,7 +80,6 @@
 
     // Revisar si el admin está logeado
     async function checkAdmin() {
-      // solo mostrar icono si es tu correo
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || user.email === "klmzr@gmail.com") {
         document.getElementById("admin-icon").classList.remove("hidden");
@@ -133,9 +131,13 @@
 
     // Reproducir canción
     async function playSong(song, element) {
-      // Si song_url ya tiene "songs/", lo limpiamos
-      let filePath = song.song_url.replace(/^songs\//, "");
-      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/songs/${encodeURIComponent(filePath)}`;
+      // Obtenemos la URL pública desde Supabase (bucket "songs")
+      const { data } = supabase
+        .storage
+        .from("songs")
+        .getPublicUrl(song.song_url);
+
+      const publicUrl = data.publicUrl;
 
       audioPlayer.src = publicUrl;
       await audioPlayer.play().catch(err => console.error("Error al reproducir:", err));
