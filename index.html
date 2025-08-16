@@ -1,112 +1,173 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "./supabaseClient";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KLMZ MUSIC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-black text-white flex flex-col min-h-screen">
+  <!-- Header -->
+  <header class="bg-black p-4 flex justify-between items-center shadow-md">
+    <h1 class="text-2xl font-bold text-green-500">♫ KLMZ MUSIC</h1>
+    <!-- Icono Admin pequeño -->
+    <button id="admin-icon" onclick="showLogin()" class="hidden text-gray-400 hover:text-green-500 text-sm">🔑</button>
+  </header>
 
-function App() {
-  const [albums, setAlbums] = useState([]);
-  const [songs, setSongs] = useState([]);
-  const [selectedAlbum, setSelectedAlbum] = useState(null);
-  const [currentSong, setCurrentSong] = useState(null);
+  <!-- Contenido -->
+  <main class="flex-1 p-6">
+    <h2 class="text-xl font-bold mb-4">Álbumes</h2>
+    <div id="albums" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+  </main>
 
-  useEffect(() => {
-    fetchAlbums();
-  }, []);
-
-  const fetchAlbums = async () => {
-    const { data, error } = await supabase.from("albums").select("*");
-    if (!error) setAlbums(data);
-  };
-
-  const fetchSongs = async (albumId) => {
-    setSelectedAlbum(albums.find((a) => a.id === albumId));
-    const { data, error } = await supabase
-      .from("songs")
-      .select("*")
-      .eq("album_id", albumId);
-    if (!error) setSongs(data);
-  };
-
-  const playSong = (song) => {
-    setCurrentSong(song);
-  };
-
-  return (
-    <div className="bg-black min-h-screen text-white">
-      <header className="p-6 text-3xl font-bold">🎵 Mi Spotify Clone</header>
-
-      {/* Álbumes */}
-      {!selectedAlbum && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6">
-          {albums.map((album) => (
-            <div
-              key={album.id}
-              className="cursor-pointer"
-              onClick={() => fetchSongs(album.id)}
-            >
-              <img
-                src={album.cover_url}
-                alt={album.title}
-                className="w-full h-48 object-cover rounded-lg shadow-lg"
-              />
-              <p className="mt-2 text-center font-semibold">{album.title}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Canciones de un álbum */}
-      {selectedAlbum && (
-        <div className="p-6">
-          <button
-            className="mb-4 text-green-400 hover:underline"
-            onClick={() => {
-              setSelectedAlbum(null);
-              setSongs([]);
-            }}
-          >
-            ← Volver
-          </button>
-          <h2 className="text-2xl font-bold mb-4">{selectedAlbum.title}</h2>
-
-          <ul className="space-y-2">
-            {songs.map((song, index) => (
-              <li
-                key={song.id}
-                onClick={() => playSong(song)}
-                className="flex items-center justify-between p-3 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700 transition"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-400 w-6">{index + 1}</span>
-                  <span className="text-white font-medium truncate max-w-xs">
-                    {song.title.replace(".mp3", "")}
-                  </span>
-                </div>
-                <button className="text-green-500 hover:text-green-400">
-                  ▶
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Reproductor */}
-      {currentSong && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 p-4 flex items-center justify-between">
-          <div>
-            <p className="font-semibold">
-              {currentSong.title.replace(".mp3", "")}
-            </p>
-          </div>
-          <audio
-            controls
-            autoPlay
-            src={currentSong.song_url}
-            className="w-64"
-          />
-        </div>
-      )}
+  <!-- Reproductor -->
+  <div id="player-container" class="hidden bg-gray-900 p-4 fixed bottom-0 w-full border-t border-gray-700">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 id="player-title" class="font-bold text-green-500">Nada reproduciéndose</h3>
+      </div>
+      <audio id="audio-player" controls class="w-2/3"></audio>
     </div>
-  );
-}
+  </div>
 
-export default App;
+  <!-- Modal Login Admin -->
+  <div id="login-modal" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
+    <div class="bg-gray-900 p-6 rounded-2xl shadow-lg w-80">
+      <h2 class="text-xl font-bold text-green-500 mb-4">Acceso Admin</h2>
+      <input id="login-email" type="email" placeholder="Correo"
+        class="w-full mb-2 p-2 rounded bg-gray-800 text-white focus:outline-none">
+      <input id="login-password" type="password" placeholder="Contraseña"
+        class="w-full mb-4 p-2 rounded bg-gray-800 text-white focus:outline-none">
+      <div class="flex justify-end space-x-2">
+        <button onclick="hideLogin()" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">Cancelar</button>
+        <button onclick="loginAdmin()" class="px-3 py-1 bg-green-600 rounded hover:bg-green-500">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuración Supabase
+    const SUPABASE_URL = "https://nqbldvpnqhngdtalvzov.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const albumsContainer = document.getElementById("albums");
+    const audioPlayer = document.getElementById("audio-player");
+    const playerTitle = document.getElementById("player-title");
+    const playerContainer = document.getElementById("player-container");
+
+    let currentSongElement = null; // para resaltar la canción actual
+
+    // Mostrar login modal
+    function showLogin() {
+      document.getElementById("login-modal").classList.remove("hidden");
+    }
+    function hideLogin() {
+      document.getElementById("login-modal").classList.add("hidden");
+    }
+
+    // Login admin
+    async function loginAdmin() {
+      const email = document.getElementById("login-email").value;
+      const password = document.getElementById("login-password").value;
+      if (email === "klmzr@gmail.com" && password === "1234") {
+        alert("Bienvenido Admin 🎶");
+        hideLogin();
+      } else {
+        alert("Acceso denegado");
+      }
+    }
+
+    // Revisar si el admin puede ver icono
+    async function checkAdmin() {
+      document.getElementById("admin-icon").classList.remove("hidden");
+    }
+
+    // Cargar álbumes
+    async function loadAlbums() {
+      const { data, error } = await supabase.from("albums").select("*");
+      if (error) {
+        console.error("Error cargando álbumes:", error.message);
+        return;
+      }
+      albumsContainer.innerHTML = "";
+      for (let album of data) {
+        const albumDiv = document.createElement("div");
+        albumDiv.className = "bg-gray-800 rounded-lg p-2 cursor-pointer hover:bg-gray-700";
+        albumDiv.innerHTML = `
+          <img src="${album.cover_url}" alt="${album.title}" class="rounded-lg mb-2 w-full h-32 object-cover">
+          <h3 class="text-sm font-bold text-center">${album.title}</h3>
+        `;
+        albumDiv.onclick = () => loadSongs(album.id, album.title);
+        albumsContainer.appendChild(albumDiv);
+      }
+    }
+
+    // Cargar canciones de un álbum (lista estilo Spotify)
+    async function loadSongs(albumId, albumTitle) {
+      const { data, error } = await supabase.from("songs").select("*").eq("album_id", albumId);
+      if (error) {
+        console.error("Error cargando canciones:", error.message);
+        return;
+      }
+      albumsContainer.innerHTML = `
+        <h2 class="text-2xl font-bold mb-6 text-green-500">${albumTitle}</h2>
+        <div id="songs-list" class="divide-y divide-gray-800 rounded-lg overflow-hidden"></div>
+      `;
+
+      const songsList = document.getElementById("songs-list");
+
+      data.forEach((song, index) => {
+        const songDiv = document.createElement("div");
+        songDiv.className = "flex items-center p-3 hover:bg-gray-800 cursor-pointer transition";
+        songDiv.innerHTML = `
+          <span class="w-6 text-gray-400">${index + 1}</span>
+          <span class="ml-4 flex-1">${song.title}</span>
+        `;
+        songDiv.onclick = () => playSong(song, songDiv);
+        songsList.appendChild(songDiv);
+      });
+
+      // Botón volver
+      const backBtn = document.createElement("button");
+      backBtn.className = "mt-6 px-4 py-2 bg-green-600 rounded hover:bg-green-500";
+      backBtn.textContent = "⬅ Volver a álbumes";
+      backBtn.onclick = loadAlbums;
+      albumsContainer.appendChild(backBtn);
+    }
+
+    // Reproducir canción y resaltar la que está sonando
+    async function playSong(song, element) {
+      const { data, error } = await supabase.storage
+        .from("songs")
+        .createSignedUrl(song.song_url, 3600);
+
+      if (error) {
+        console.error("Error obteniendo URL:", error.message);
+        return;
+      }
+
+      // Quitar highlight previo
+      if (currentSongElement) {
+        currentSongElement.classList.remove("bg-green-800");
+        currentSongElement.querySelector("span:nth-child(2)").classList.remove("text-green-500");
+      }
+
+      // Resaltar canción actual
+      currentSongElement = element;
+      currentSongElement.classList.add("bg-green-800");
+      currentSongElement.querySelector("span:nth-child(2)").classList.add("text-green-500");
+
+      audioPlayer.src = data.signedUrl;
+      audioPlayer.play();
+      playerTitle.textContent = song.title;
+      playerContainer.classList.remove("hidden");
+    }
+
+    // Inicializar
+    loadAlbums();
+    checkAdmin();
+  </script>
+</body>
+</html>
