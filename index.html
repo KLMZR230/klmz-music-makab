@@ -132,15 +132,17 @@
       const { data: songs } = await supabaseClient.from("songs").select("*").eq("album_id", album.id);
       currentSongs = songs || [];
       albumsDiv.innerHTML = `
-        <button onclick="loadAlbums()" class="mb-4 bg-gray-700 px-2 py-1 rounded">⬅ Volver</button>
-        <h2 class="text-2xl font-bold mb-4">${album.title}</h2>
-        <div class="space-y-2">
-          ${currentSongs.map((s, i) => `
-            <div class="flex items-center space-x-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer" onclick="playSong(${i})">
-              <img src="${currentAlbum.cover_url}" class="w-10 h-10 rounded-full object-cover">
-              <span>🎵 ${s.title}</span>
-            </div>
-          `).join("")}
+        <div class="relative">
+          <button onclick="loadAlbums()" class="absolute top-0 left-0 bg-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-600">⬅</button>
+          <h2 class="text-2xl font-bold mb-4 text-center">${album.title}</h2>
+          <div class="space-y-2 mt-8">
+            ${currentSongs.map((s, i) => `
+              <div class="flex items-center space-x-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer" onclick="playSong(${i})">
+                <img src="${currentAlbum.cover_url}" class="w-10 h-10 rounded-full object-cover">
+                <span>🎵 ${s.title}</span>
+              </div>
+            `).join("")}
+          </div>
         </div>
       `;
     }
@@ -151,7 +153,7 @@
       if (!title || !file) return alert("Falta título o portada");
 
       const safeName = Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9.]/g, "_");
-      const { data: storageData, error: storageError } = await supabaseClient.storage.from("covers").upload(safeName, file);
+      const { error: storageError } = await supabaseClient.storage.from("covers").upload(safeName, file);
       if (storageError) return alert("Error subiendo portada: " + storageError.message);
 
       const coverUrl = `${supabaseUrl}/storage/v1/object/public/covers/${safeName}`;
