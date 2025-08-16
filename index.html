@@ -1,6 +1,78 @@
-  <!-- PLAYER MÁS GRANDE Y BOTONES EN EL CENTRO -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎵 Mis Álbumes</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Ondas estilo Spotify */
+    .equalizer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      margin-left: 10px;
+    }
+    .bar {
+      width: 3px;
+      height: 100%;
+      background: limegreen;
+      margin: 0 1px;
+      animation: bounce 1s infinite;
+    }
+    .bar:nth-child(1) { animation-delay: 0s; }
+    .bar:nth-child(2) { animation-delay: 0.2s; }
+    .bar:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 100% { height: 20%; }
+      50% { height: 100%; }
+    }
+    .paused .bar {
+      animation-play-state: paused;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white p-4">
+
+  <!-- Header con llavesita -->
+  <header class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">🎵 Mis Álbumes</h1>
+    <button onclick="toggleAdminLogin()" class="text-2xl">🔑</button>
+  </header>
+
+  <!-- Login admin oculto -->
+  <div id="admin-login" class="hidden bg-gray-800 p-4 rounded-lg mb-4">
+    <input id="admin-user" type="text" placeholder="Usuario" class="p-2 rounded text-black w-full mb-2">
+    <input id="admin-pass" type="password" placeholder="Contraseña" class="p-2 rounded text-black w-full mb-2">
+    <button onclick="loginAdmin()" class="bg-green-600 px-4 py-2 rounded w-full">Ingresar</button>
+  </div>
+
+  <!-- Subir Álbum -->
+  <div id="admin-panel" class="hidden mb-6">
+    <h2 class="text-xl font-bold mb-2">📀 Subir Nuevo Álbum</h2>
+    <input id="album-title" type="text" placeholder="Título del álbum" class="p-2 rounded text-black w-full mb-2">
+    <input id="album-cover" type="file" class="mb-2">
+    <button onclick="uploadAlbum()" class="bg-blue-600 px-4 py-2 rounded">Subir Álbum</button>
+
+    <h2 class="text-xl font-bold mt-4 mb-2">🎶 Subir Canción</h2>
+    <input id="song-title" type="text" placeholder="Título de la canción" class="p-2 rounded text-black w-full mb-2">
+    <input id="song-file" type="file" class="mb-2">
+    <select id="song-album" class="p-2 rounded text-black w-full mb-2"></select>
+    <button onclick="uploadSong()" class="bg-green-600 px-4 py-2 rounded">Subir Canción</button>
+  </div>
+
+  <!-- Lista de álbumes -->
+  <div id="albums" class="grid grid-cols-3 gap-4"></div>
+
+  <!-- Botón atrás -->
+  <button onclick="showAlbums()" class="hidden fixed top-2 left-2 bg-gray-700 px-3 py-1 rounded text-sm" id="back-btn">⬅ Atrás</button>
+
+  <!-- PLAYER MÁS GRANDE Y LEVANTADO -->
   <footer id="player" class="bg-gray-800 p-6 fixed bottom-16 left-0 w-full hidden flex flex-col items-center">
-    <!-- Portada y Título -->
+    <!-- Portada y título -->
     <div class="flex items-center space-x-4 mb-4">
       <img id="player-cover" src="" class="w-20 h-20 rounded-lg shadow-lg">
       <div>
@@ -18,14 +90,86 @@
     <!-- Controles centrados -->
     <div class="flex items-center space-x-6">
       <button onclick="prevSong()" class="text-3xl">⏮</button>
-      <button id="play-btn" onclick="togglePlay()" class="bg-green-500 text-white">▶️</button>
+      <button id="play-btn" onclick="togglePlay()" class="text-5xl bg-green-500 px-4 py-2 rounded-full">▶️</button>
       <button onclick="nextSong()" class="text-3xl">⏭</button>
     </div>
 
-    <!-- Volumen abajo -->
+    <!-- Volumen -->
     <div class="mt-4">
       <input id="volume" type="range" min="0" max="1" step="0.01" value="1" class="w-32">
     </div>
 
     <audio id="audio"></audio>
   </footer>
+
+  <script>
+    const supabaseUrl = "https://TU_PROYECTO.supabase.co";
+    const supabaseKey = "TU_KEY";
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    let currentSongIndex = 0;
+    let playlist = [];
+
+    function toggleAdminLogin() {
+      document.getElementById("admin-login").classList.toggle("hidden");
+    }
+
+    function loginAdmin() {
+      const user = document.getElementById("admin-user").value;
+      const pass = document.getElementById("admin-pass").value;
+      if (user === "admin" && pass === "1234") {
+        document.getElementById("admin-panel").classList.remove("hidden");
+        alert("Bienvenido administrador");
+      } else {
+        alert("Credenciales incorrectas");
+      }
+    }
+
+    function showAlbums() {
+      document.getElementById("albums").classList.remove("hidden");
+      document.getElementById("back-btn").classList.add("hidden");
+    }
+
+    // Reproductor
+    const audio = document.getElementById("audio");
+    const playBtn = document.getElementById("play-btn");
+    const equalizer = document.getElementById("equalizer");
+
+    function togglePlay() {
+      if (audio.paused) {
+        audio.play();
+        playBtn.textContent = "⏸";
+        equalizer.classList.remove("paused");
+      } else {
+        audio.pause();
+        playBtn.textContent = "▶️";
+        equalizer.classList.add("paused");
+      }
+    }
+
+    function prevSong() {
+      if (currentSongIndex > 0) {
+        currentSongIndex--;
+        playSong(playlist[currentSongIndex]);
+      }
+    }
+
+    function nextSong() {
+      if (currentSongIndex < playlist.length - 1) {
+        currentSongIndex++;
+        playSong(playlist[currentSongIndex]);
+      }
+    }
+
+    function playSong(song) {
+      document.getElementById("player").classList.remove("hidden");
+      document.getElementById("player-title").textContent = song.title;
+      document.getElementById("player-cover").src = song.cover_url;
+      audio.src = song.file_url;
+      audio.play();
+      playBtn.textContent = "⏸";
+      equalizer.classList.remove("paused");
+    }
+  </script>
+</body>
+</html>
