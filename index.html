@@ -5,6 +5,32 @@
   <title>KLMZ MUSIC</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Ondas estilo Spotify */
+    .equalizer {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 20px;
+    }
+    .bar {
+      width: 4px;
+      background: #1DB954;
+      animation: bounce 1s infinite ease-in-out;
+    }
+    .bar:nth-child(1) { animation-delay: 0s; }
+    .bar:nth-child(2) { animation-delay: 0.2s; }
+    .bar:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 100% { height: 4px; }
+      50% { height: 20px; }
+    }
+
+    .paused .bar {
+      animation-play-state: paused;
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
@@ -46,6 +72,14 @@
   <footer id="player" class="bg-gray-800 p-4 fixed bottom-0 left-0 w-full hidden">
     <div class="flex items-center space-x-4">
       <img id="player-cover" src="" class="w-12 h-12 rounded shadow">
+      
+      <!-- Ondas -->
+      <div id="equalizer" class="equalizer paused">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+
       <div class="flex-1">
         <div id="player-title" class="font-bold">Nada reproduciéndose</div>
         <input id="progress" type="range" value="0" min="0" max="100" class="w-full">
@@ -76,6 +110,7 @@
     const playBtn = document.getElementById("play-btn");
     const progress = document.getElementById("progress");
     const volume = document.getElementById("volume");
+    const equalizer = document.getElementById("equalizer");
 
     function init() {
       loginSection.classList.remove("hidden");
@@ -189,15 +224,18 @@
       audio.play();
       player.classList.remove("hidden");
       playBtn.textContent = "⏸";
+      equalizer.classList.remove("paused");
     }
 
     function togglePlay() {
       if (audio.paused) {
         audio.play();
         playBtn.textContent = "⏸";
+        equalizer.classList.remove("paused");
       } else {
         audio.pause();
         playBtn.textContent = "▶️";
+        equalizer.classList.add("paused");
       }
     }
 
