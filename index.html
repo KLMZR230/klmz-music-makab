@@ -11,8 +11,8 @@
   <!-- Header -->
   <header class="bg-black p-4 flex justify-between items-center shadow-md">
     <h1 class="text-2xl font-bold text-green-500">♫ KLMZ MUSIC</h1>
-    <!-- Icono Admin (solo visible para ti) -->
-    <button id="admin-icon" onclick="showLogin()" class="hidden text-gray-400 hover:text-green-500 text-xl">🔑</button>
+    <!-- Icono Admin -->
+    <button id="admin-icon" onclick="showLogin()" class="hidden text-gray-400 hover:text-green-500 text-sm">🔑</button>
   </header>
 
   <!-- Contenido -->
@@ -56,7 +56,6 @@
     const audioPlayer = document.getElementById("audio-player");
     const playerTitle = document.getElementById("player-title");
     const playerContainer = document.getElementById("player-container");
-
     let currentSongElement = null;
 
     // Mostrar login modal
@@ -79,7 +78,7 @@
       }
     }
 
-    // Revisar si el admin está logeado
+    // Mostrar solo tu icono admin
     async function checkAdmin() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || user.email === "klmzr@gmail.com") {
@@ -130,25 +129,10 @@
       albumsContainer.appendChild(backBtn);
     }
 
-    // Reproducir canción (fix)
+    // Reproducir canción (bucket público)
     async function playSong(song, element) {
-      let filePath = song.song_url;
-
-      // 🔥 Quitar prefijo "songs/" si existe
-      if (filePath.startsWith("songs/")) {
-        filePath = filePath.substring(6);
-      }
-
-      const { data, error } = await supabase.storage
-        .from("songs")
-        .createSignedUrl(filePath, 3600);
-
-      if (error) {
-        console.error("Error obteniendo URL:", error.message);
-        return;
-      }
-
-      audioPlayer.src = data.signedUrl;
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/songs/${encodeURIComponent(song.song_url)}`;
+      audioPlayer.src = publicUrl;
       audioPlayer.play();
       playerTitle.textContent = song.title;
       playerContainer.classList.remove("hidden");
