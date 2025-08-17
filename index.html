@@ -623,7 +623,7 @@
   const playlistDropdown = document.getElementById("playlistDropdown");
   const playlistDropdownContent = document.getElementById("playlistDropdownContent");
   
-  // Funciones de navegación
+  // Funciones básicas
   function setActiveNav(activeButton) {
     document.querySelectorAll('#bottomBar button').forEach(btn => {
       btn.classList.remove('active');
@@ -639,6 +639,7 @@
     setTimeout(() => errorEl.remove(), 4000);
   }
   
+  // Navegación
   function focusSearch(){
     document.getElementById('search').focus();
     document.getElementById('search').scrollIntoView({behavior:'smooth', block:'center'});
@@ -673,7 +674,7 @@
     }
   }
 
-  // Mostrar/ocultar reproductor
+  // Reproductor
   function showPlayer(){
     playerElement.classList.add('show');
     document.body.style.paddingBottom = '270px';
@@ -683,7 +684,6 @@
     document.body.style.paddingBottom = '70px';
   }
 
-  // Control onda de sonido
   function toggleSoundwave(show){
     const wave = document.getElementById('soundwave');
     if(show){
@@ -701,17 +701,14 @@
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     
-    // Si no hay contraseña, intentamos signup
-    let result;
     if (!password) {
       showError('Ingresa tu contraseña');
       return;
     }
     
-    result = await sb.auth.signInWithPassword({ email, password });
+    let result = await sb.auth.signInWithPassword({ email, password });
     
     if (result.error) {
-      // Si falla login, intentar signup
       result = await sb.auth.signUp({ email, password });
       if (result.error) {
         showError("Error: " + result.error.message);
@@ -738,7 +735,7 @@
     
     hideLogin();
     await refreshCatalog();
-    await loadPlaylists();
+    if (isLoggedIn) await loadPlaylists();
   }
   
   async function logout(){
@@ -759,11 +756,120 @@
     renderPlaylists();
   }
 
+  // Catálogo - CORREGIDO
+  async function refreshCatalog(){
+    console.log('Cargando álbumes...');
+    const { data: alb, error: e1 } = await sb.from("albums").select("*").order("created_at",{ascending:false});
+    if (e1){ 
+      console.error('Error cargando álbumes:', e1); 
+      showError('Error cargando álbumes'); 
+      return; 
+    }
+    albums = alb || [];
+    console.log('Álbumes cargados:', albums.length);
+    emptyAlbums.style.display = albums.length ? "none" : "block";
+    
+    // Llenar selectores admin
+    const adminSel = document.getElementById("albumSelect");
+    const delSel   = document.getElementById("deleteAlbumSelect");
+    if (adminSel) adminSel.innerHTML = "";
+    if (delSel) delSel.innerHTML = "";
+    albumFilter.innerHTML = '<option value="">Filtrar por álbum</option>';
+    
+    for (const a of albums){
+      if (adminSel){
+        const o = document.createElement("option");
+        o.value = a.id; o.textContent = a.title;
+        adminSel.appendChild(o);
+      }
+      if (delSel){
+        const d = document.createElement("option");
+        d.value = a.id; d.textContent = a.title;
+        delSel.appendChild(d);
+      }
+      const of = document.createElement("option");
+      of.value = a.id; of.textContent = a.title;
+      albumFilter.appendChild(of);
+    }
+    
+    // Cargar canciones de álbumes
+    songsByAlbum = {};
+    flatSongs = [];
+    for (const a of albums){
+      const { data: ss, error: e2 } = await sb.from("songs").select("*").eq("album_id", a.id).order("created_at",{ascending:true});
+      if (e2){ console.error(e2); continue; }
+      songsByAlbum[a.id] = ss || [];
+      for (const s of (ss||[])){
+        flatSongs.push({...s, album_title: a.title, cover_url: a.cover_url});
+      }
+    }
+    
+    // Renderizar álbumes
+    renderAlbums();
+    
+    // Cargar playlists si está logueado
+    if (isLoggedIn) {
+      await loadPlaylists();
+    }
+  }
+  
+  function renderAlbums(list = albums){
+    console.log('Renderizando álbumes:', list.length);
+    albumsGrid.innerHTML = "";
+    list.forEach(a => {
+      const count = (songsByAlbum[a.id]?.length||0);
+      const card = document.createElement("div");
+      card.className = "album-card";
+      card.innerHTML = `
+        <img class="album-cover" src="${a.cover_url}" alt="${a.title}">
+        <div class="album-title">${a.title}</div>
+        <div class="album-meta">${count} ${count===1?'canción':'canciones'}</div>
+      `;
+      card.onclick = () => openAlbum(a);
+      albumsGrid.appendChild(card);
+    });
+  }
+  
+  function openAlbum(album){
+    currentAlbum = album;
+    const songs = songsByAlbum[album.id] || [];
+    avCover.src = album.cover_url || "";
+    avTitle.textContent = album.title;
+    avMeta.textContent = `${songs.length} ${songs.length===1?'canción':'canciones'}`;
+    avSongs.innerHTML = "";
+    if (!songs.length){
+      avSongs.innerHTML = `<div class="muted" style="padding:12px 0">Este álbum no tiene canciones todavía.</div>`;
+    } else {
+      songs.forEach((s,idx) => {
+        const row = document.createElement("div");
+        row.className = "song-plain-item";
+        row.innerHTML = `
+          <div class="idx">${idx+1}</div>
+          <div class="title">${s.title}</div>
+          <div class="more" onclick="event.stopPropagation(); showAddToPlaylistMenu(event, {id: '${s.id}', title: '${s.title.replace(/'/g, "\\'")}', album_title: '${album.title.replace(/'/g, "\\'")}', cover_url: '${album.cover_url}'})">+</div>
+        `;
+        row.onclick = () => {
+          queue = songs.map(t => ({...t, album_title: album.title, cover_url: album.cover_url}));
+          qIndex = -1;
+          startQueueAt(idx);
+        };
+        avSongs.appendChild(row);
+      });
+    }
+    albumView.style.display = "block";
+    albumView.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  
+  function closeAlbumView(){
+    albumView.style.display = "none";
+    currentAlbum = null;
+  }
+  
+  // Resto de funciones de playlist y reproductor... (mantenerlas como estaban)
   // Gestión de Playlists
   async function loadPlaylists(){
     if (!isLoggedIn) return;
     
-    // Cargar playlists del usuario
     const { data: userPl, error: e1 } = await sb
       .from('playlists')
       .select('*')
@@ -773,7 +879,6 @@
     if (e1) { console.error('Error cargando playlists:', e1); return; }
     userPlaylists = userPl || [];
     
-    // Cargar playlists públicas
     const { data: publicPl, error: e2 } = await sb
       .from('playlists')
       .select('*')
@@ -784,7 +889,6 @@
     if (e2) { console.error('Error cargando playlists públicas:', e2); return; }
     publicPlaylists = publicPl || [];
     
-    // Cargar canciones de playlists
     songsByPlaylist = {};
     const allPlaylists = [...userPlaylists, ...publicPlaylists];
     
@@ -815,7 +919,6 @@
   }
   
   function renderPlaylists(){
-    // Renderizar playlists del usuario
     userPlaylistsGrid.innerHTML = "";
     emptyPlaylists.style.display = userPlaylists.length ? "none" : "block";
     
@@ -832,7 +935,6 @@
       userPlaylistsGrid.appendChild(card);
     });
     
-    // Renderizar playlists públicas
     if (publicPlaylists.length > 0) {
       publicPlaylistsSection.style.display = 'block';
       publicPlaylistsGrid.innerHTML = "";
@@ -853,7 +955,6 @@
       publicPlaylistsSection.style.display = 'none';
     }
     
-    // Actualizar dropdown de playlists
     updatePlaylistDropdown();
   }
   
@@ -944,7 +1045,6 @@
     pvMeta.textContent = `${songs.length} ${songs.length===1?'canción':'canciones'}`;
     pvDescription.textContent = playlist.description || '';
     
-    // Mostrar botones de acción solo si es del usuario
     const isOwner = isLoggedIn && playlist.user_id === currentUser.id;
     document.getElementById('playlistActions').style.display = isOwner ? 'flex' : 'none';
     
@@ -991,13 +1091,11 @@
     event.stopPropagation();
     selectedSongForPlaylist = song;
     
-    // Posicionar dropdown
     const rect = event.target.getBoundingClientRect();
     playlistDropdown.style.top = (rect.top - 200) + 'px';
     playlistDropdown.style.left = (rect.left - 150) + 'px';
     playlistDropdown.classList.add('show');
     
-    // Cerrar al hacer click fuera
     setTimeout(() => {
       document.addEventListener('click', hidePlaylistDropdown, { once: true });
     }, 100);
@@ -1012,7 +1110,6 @@
     
     if (!selectedSongForPlaylist) return;
     
-    // Verificar si ya está en la playlist
     const existing = await sb
       .from('playlist_songs')
       .select('id')
@@ -1025,7 +1122,6 @@
       return;
     }
     
-    // Obtener posición
     const { data: maxPos } = await sb
       .from('playlist_songs')
       .select('position')
@@ -1052,13 +1148,11 @@
     showError('Canción agregada a la playlist');
     await loadPlaylists();
     
-    // Si estamos viendo la playlist, refrescarla
     if (currentPlaylist && currentPlaylist.id === playlistId) {
       openPlaylist(currentPlaylist);
     }
   }
   
-  // Eliminar canción de playlist
   async function removeSongFromPlaylist(playlistSongId) {
     if (!confirm('¿Eliminar esta canción de la playlist?')) return;
     
@@ -1080,7 +1174,6 @@
     }
   }
   
-  // Eliminar playlist
   async function deletePlaylistConfirm(){
     if (!currentPlaylist || !confirm('¿Eliminar esta playlist permanentemente?')) return;
     
@@ -1099,107 +1192,6 @@
     await loadPlaylists();
   }
 
-  // Catálogo (manteniendo funciones existentes)
-  async function refreshCatalog(){
-    console.log('Cargando álbumes...');
-    const { data: alb, error: e1 } = await sb.from("albums").select("*").order("created_at",{ascending:false});
-    if (e1){ console.error('Error cargando álbumes:', e1); return; }
-    albums = alb || [];
-    console.log('Álbumes cargados:', albums.length);
-    emptyAlbums.style.display = albums.length ? "none" : "block";
-    
-    const adminSel = document.getElementById("albumSelect");
-    const delSel   = document.getElementById("deleteAlbumSelect");
-    if (adminSel) adminSel.innerHTML = "";
-    if (delSel) delSel.innerHTML = "";
-    albumFilter.innerHTML = '<option value="">Filtrar por álbum</option>';
-    
-    for (const a of albums){
-      if (adminSel){
-        const o = document.createElement("option");
-        o.value = a.id; o.textContent = a.title;
-        adminSel.appendChild(o);
-      }
-      if (delSel){
-        const d = document.createElement("option");
-        d.value = a.id; d.textContent = a.title;
-        delSel.appendChild(d);
-      }
-      const of = document.createElement("option");
-      of.value = a.id; of.textContent = a.title;
-      albumFilter.appendChild(of);
-    }
-    
-    songsByAlbum = {};
-    flatSongs = [];
-    for (const a of albums){
-      const { data: ss, error: e2 } = await sb.from("songs").select("*").eq("album_id", a.id).order("created_at",{ascending:true});
-      if (e2){ console.error(e2); continue; }
-      songsByAlbum[a.id] = ss || [];
-      for (const s of (ss||[])){
-        flatSongs.push({...s, album_title: a.title, cover_url: a.cover_url});
-      }
-    }
-    
-    renderAlbums();
-    
-    if (isLoggedIn) {
-      await loadPlaylists();
-    }
-  }
-  
-  function renderAlbums(list = albums){
-    console.log('Renderizando álbumes:', list.length);
-    albumsGrid.innerHTML = "";
-    list.forEach(a => {
-      const count = (songsByAlbum[a.id]?.length||0);
-      const card = document.createElement("div");
-      card.className = "album-card";
-      card.innerHTML = `
-        <img class="album-cover" src="${a.cover_url}" alt="${a.title}">
-        <div class="album-title">${a.title}</div>
-        <div class="album-meta">${count} ${count===1?'canción':'canciones'}</div>
-      `;
-      card.onclick = () => openAlbum(a);
-      albumsGrid.appendChild(card);
-    });
-  }
-  
-  function openAlbum(album){
-    currentAlbum = album;
-    const songs = songsByAlbum[album.id] || [];
-    avCover.src = album.cover_url || "";
-    avTitle.textContent = album.title;
-    avMeta.textContent = `${songs.length} ${songs.length===1?'canción':'canciones'}`;
-    avSongs.innerHTML = "";
-    if (!songs.length){
-      avSongs.innerHTML = `<div class="muted" style="padding:12px 0">Este álbum no tiene canciones todavía.</div>`;
-    } else {
-      songs.forEach((s,idx) => {
-        const row = document.createElement("div");
-        row.className = "song-plain-item";
-        row.innerHTML = `
-          <div class="idx">${idx+1}</div>
-          <div class="title">${s.title}</div>
-          <div class="more" onclick="event.stopPropagation(); showAddToPlaylistMenu(event, {id: '${s.id}', title: '${s.title}', album_title: '${album.title}', cover_url: '${album.cover_url}'})">+</div>
-        `;
-        row.onclick = () => {
-          queue = songs.map(t => ({...t, album_title: album.title, cover_url: album.cover_url}));
-          qIndex = -1;
-          startQueueAt(idx);
-        };
-        avSongs.appendChild(row);
-      });
-    }
-    albumView.style.display = "block";
-    albumView.scrollIntoView({behavior:"smooth",block:"start"});
-  }
-  
-  function closeAlbumView(){
-    albumView.style.display = "none";
-    currentAlbum = null;
-  }
-  
   // Búsqueda + filtro
   function applyFilters(){
     const term = searchInput.value.trim().toLowerCase();
@@ -1230,7 +1222,7 @@
           <div class="idx">${idx+1}</div>
           <div class="title">${s.title}</div>
           <div class="album">${s.album_title}</div>
-          <div class="more" onclick="event.stopPropagation(); showAddToPlaylistMenu(event, {id: '${s.id}', title: '${s.title}', album_title: '${s.album_title}', cover_url: '${s.cover_url}'})">+</div>
+          <div class="more" onclick="event.stopPropagation(); showAddToPlaylistMenu(event, {id: '${s.id}', title: '${s.title.replace(/'/g, "\\'")}', album_title: '${s.album_title.replace(/'/g, "\\'")}', cover_url: '${s.cover_url}'})">+</div>
         `;
         row.onclick = () => startQueueFromList(songs, idx);
         songsList.appendChild(row);
@@ -1245,7 +1237,7 @@
     }
   }
   
-  // Reproductor (manteniendo funciones existentes)
+  // Reproductor
   function isValidAudioUrl(url) {
     if (!url || typeof url !== 'string') return false;
     try {
@@ -1348,7 +1340,143 @@
   function seekAudio(percent){ if (!audioEl.duration || isNaN(audioEl.duration)) return; audioEl.currentTime = (percent/100) * audioEl.duration; }
   function fmt(t){ if(!isFinite(t)) return "0:00"; const m=Math.floor(t/60), s=Math.floor(t%60); return `${m}:${s.toString().padStart(2,"0")}`; }
   
-  // Event listeners
+  // Event listeners del audio
   audioEl.addEventListener('loadstart', () => {
     console.log('Cargando audio...');
     npTitle.textContent = 'Cargando...';
+  });
+  
+  audioEl.addEventListener('canplaythrough', () => {
+    console.log('Audio listo para reproducir');
+  });
+  
+  audioEl.addEventListener('error', (e) => {
+    console.error('Error de audio:', e);
+    const currentSong = queue[qIndex];
+    if (currentSong) {
+      showError(`Error cargando "${currentSong.title}"`);
+      setTimeout(() => nextTrack(), 2000);
+    }
+  });
+  
+  audioEl.addEventListener("timeupdate",()=>{
+    if (!audioEl.duration) return;
+    const p = (audioEl.currentTime / audioEl.duration) * 100;
+    seekEl.value = p; curTime.textContent = fmt(audioEl.currentTime); durTime.textContent = fmt(audioEl.duration);
+    seekBig.value = p; curTimeBig.textContent = fmt(audioEl.currentTime); durTimeBig.textContent = fmt(audioEl.duration);
+  });
+  
+  audioEl.addEventListener("ended",()=> nextTrack());
+  audioEl.addEventListener("pause",()=> toggleSoundwave(false));
+  audioEl.addEventListener("play",()=> toggleSoundwave(true));
+  
+  function openNowPlaying(){
+    npOverlay.style.display = "flex";
+  }
+  function closeNowPlaying(){ 
+    npOverlay.style.display = "none"; 
+  }
+
+  // Funciones admin (mantenidas como estaban)
+  function safeName(name){ return name.replace(/[^a-zA-Z0-9\_\-.]+/g,"-"); }
+  
+  async function uploadAlbum(){
+    if (!isAdmin) return alert("No autorizado");
+    const title = document.getElementById("albumTitle").value.trim();
+    const file  = document.getElementById("albumCover").files[0];
+    if (!title || !file) return alert("Completa título y portada");
+    const path = `${Date.now()}-${safeName(file.name)}`;
+    const { error: upErr } = await sb.storage.from("covers").upload(path, file);
+    if (upErr) return alert("Error subiendo portada: " + upErr.message);
+    const { data: pub } = sb.storage.from("covers").getPublicUrl(path);
+    const cover_url = pub.publicUrl;
+    const { error: insErr } = await sb.from("albums").insert([{ title, cover_url }]);
+    if (insErr) return alert("Error guardando álbum: " + insErr.message);
+    document.getElementById("albumTitle").value = "";
+    document.getElementById("albumCover").value = "";
+    alert("Álbum creado");
+    await refreshCatalog();
+  }
+  
+  async function uploadSong(){
+    if (!isAdmin) return alert("No autorizado");
+    const albumId = document.getElementById("albumSelect").value;
+    const titleInput = document.getElementById("songTitle").value.trim();
+    const files = document.getElementById("songFiles").files;
+    if (!albumId || files.length === 0) return alert("Selecciona un álbum y al menos un archivo de audio");
+    
+    let ok = 0, fail = 0;
+    for (const file of files) {
+      console.log('Subiendo archivo:', file.name, 'Tipo:', file.type, 'Tamaño:', file.size);
+      
+      if (!file.type.startsWith('audio/')) {
+        console.error('Archivo no es audio:', file.name);
+        fail++;
+        continue;
+      }
+      
+      const path = `${Date.now()}-${safeName(file.name)}`;
+      const { error: upErr } = await sb.storage.from("songs").upload(path, file);
+      if (upErr) { 
+        console.error('Error subida:', upErr); 
+        fail++; 
+        continue; 
+      }
+      const { data: pub } = sb.storage.from("songs").getPublicUrl(path);
+      const song_url = pub.publicUrl;
+      console.log('URL generada:', song_url);
+      
+      const title = (files.length === 1 && titleInput) ? titleInput : file.name.replace(/\.[^/.]+$/, "");
+      const { error: insErr } = await sb.from("songs").insert([{ album_id: albumId, title, song_url }]);
+      if (insErr) { 
+        console.error('Error DB:', insErr); 
+        fail++; 
+      } else { 
+        ok++; 
+      }
+    }
+    
+    document.getElementById("songTitle").value = "";
+    document.getElementById("songFiles").value = "";
+    alert(`Subida completa: ${ok} ok, ${fail} error(es)`);
+    await refreshCatalog();
+  }
+  
+  async function deleteAlbum(){
+    if (!isAdmin) return alert("No autorizado");
+    const albumId = document.getElementById("deleteAlbumSelect").value;
+    if (!albumId) return alert("Selecciona un álbum");
+    if (!confirm("¿Eliminar álbum y todas sus canciones?")) return;
+    const { error: delSongsErr } = await sb.from("songs").delete().eq("album_id", albumId);
+    if (delSongsErr) { alert("Error borrando canciones: " + delSongsErr.message); return; }
+    const { error: delAlbErr } = await sb.from("albums").delete().eq("id", albumId);
+    if (delAlbErr) { alert("Error borrando álbum: " + delAlbErr.message); return; }
+    alert("Álbum eliminado");
+    if (currentAlbum?.id === albumId) closeAlbumView();
+    await refreshCatalog();
+  }
+  
+  // Inicialización
+  (async () => {
+    console.log('Inicializando aplicación...');
+    const { data } = await sb.auth.getSession();
+    if (data?.session?.user?.email) {
+      const email = data.session.user.email;
+      currentUser = data.session.user;
+      isLoggedIn = true;
+      isAdmin = (email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+      document.getElementById("btn-login").style.display = "none";
+      document.getElementById("btn-logout").style.display = "inline-flex";
+      if(isAdmin){
+        document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("adminTag").style.display = "inline-block";
+      }
+      if(isLoggedIn){
+        document.getElementById("userTag").style.display = "inline-block";
+      }
+    }
+    await refreshCatalog();
+  })();
+</script>
+</body>
+</html>
