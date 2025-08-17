@@ -121,7 +121,7 @@
   #npCard img{width:min(420px,82vw);height:min(420px,82vw);border-radius:14px;object-fit:cover;border:1px solid var(--stroke);background:#0b0b0b}
   #npCard .t{font-size:1.1rem;font-weight:900}
   #npCard .a{color:var(--muted)}
-  /* Barra inferior fija con iconos */
+  /* Barra inferior fija con iconos profesionales */
   #bottomBar {
     position: fixed;
     bottom: 0;
@@ -130,32 +130,35 @@
     height: 60px;
     background: var(--panel2);
     border-top: 1px solid var(--stroke);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    place-items: center;
     padding: 0 30px;
+    box-shadow: 0 -1px 10px rgba(0,0,0,0.8);
     z-index: 40;
   }
   #bottomBar button {
     background: transparent;
     border: none;
-    color: var(--text);
-    font-size: 18px;
+    color: var(--muted);
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: color 0.3s ease;
   }
-  #bottomBar button:hover {
+  #bottomBar button.active, #bottomBar button:hover {
     color: var(--brand);
   }
   #bottomBar .icon {
-    font-size: 24px;
-  }
-  #bottomBar .label {
-    font-size: 12px;
-    font-weight: 500;
+    width: 28px;
+    height: 28px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
   }
   /* Onda de sonido simple con barras animadas */
   .soundwave {
@@ -207,8 +210,8 @@
     .controls .buttons .circle{width:76px;height:76px;font-size:30px}
     .controls .buttons .sm{width:60px;height:60px;font-size:24px}
     #bottomBar {padding: 0 20px;}
-    #bottomBar button {font-size: 16px;}
-    #bottomBar .icon {font-size: 20px;}
+    #bottomBar button {font-size: 12px;}
+    #bottomBar .icon {width: 24px; height: 24px;}
   }
 </style>
 </head>
@@ -341,19 +344,27 @@
     </div>
   </div>
 </div>
-<!-- Barra inferior fija con Inicio, Buscar, Cuenta -->
+<!-- Barra inferior fija con iconos profesionales -->
 <div id="bottomBar">
-  <button id="btn-search" title="Buscar" onclick="focusSearch()">
-    <div class="icon">🔍</div>
-    <div class="label">Buscar</div>
+  <button id="btn-home" title="Inicio" onclick="goHome(); setActiveNav('home')" class="active" aria-label="Inicio">
+    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M3 11L12 2l9 9v9a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-5H9v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-9z"/>
+    </svg>
+    <span class="label">Inicio</span>
   </button>
-  <button id="btn-home" title="Inicio" onclick="goHome()">
-    <div class="icon">🏠</div>
-    <div class="label">Inicio</div>
+  <button id="btn-search" title="Buscar" onclick="focusSearch(); setActiveNav('search')" aria-label="Buscar">
+    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <circle cx="11" cy="11" r="7"/>
+      <line x1="16.5" y1="16.5" x2="21" y2="21"/>
+    </svg>
+    <span class="label">Buscar</span>
   </button>
-  <button id="btn-account" title="Cuenta" onclick="showAccount()">
-    <div class="icon">👤</div>
-    <div class="label">Cuenta</div>
+  <button id="btn-account" title="Cuenta" onclick="showAccount(); setActiveNav('account')" aria-label="Cuenta">
+    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="7" r="4"/>
+      <path d="M5.5 21a7.5 7.5 0 0 1 13 0"/>
+    </svg>
+    <span class="label">Cuenta</span>
   </button>
 </div>
 <!-- Modal Login (simple) -->
@@ -414,6 +425,14 @@
   const avTitle = document.getElementById("avTitle");
   const avMeta  = document.getElementById("avMeta");
   const avSongs = document.getElementById("avSongs");
+  
+  // Funciones de navegación con estado activo
+  function setActiveNav(activeButton) {
+    document.querySelectorAll('#bottomBar button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.getElementById(`btn-${activeButton}`).classList.add('active');
+  }
   
   // Mostrar mensajes de error
   function showError(msg) {
