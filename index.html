@@ -10,7 +10,7 @@
     --bg:#121212;--panel:#181818;--panel2:#1f1f1f;--text:#fff;--muted:#b3b3b3;--brand:#1db954;--brand-hover:#17a84b;--stroke:#2a2a2a;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding-bottom:120px;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding-bottom:70px;}
   header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#1db954 0%,#1db954 60%,#179b47 100%);padding:14px 18px;font-weight:800;letter-spacing:.3px}
   header .row{display:flex;align-items:center;gap:12px;justify-content:space-between}
   .brand{font-size:20px;display:flex;align-items:center;gap:8px}
@@ -95,7 +95,7 @@
   .back-btn:hover{background:#ffffff14}
   /* Player solo aparece cuando hay música reproduciéndose */
   .player{
-    position:fixed;left:0;right:0;bottom:120px;
+    position:fixed;left:0;right:0;bottom:70px;
     background:#181818;border-top:1px solid var(--stroke);
     padding:14px 16px;z-index:20;
     display:none;
@@ -143,7 +143,7 @@
   /* Barra inferior fija con iconos profesionales y nombres */
   #bottomBar {
     position: fixed;
-    bottom: 50px;
+    bottom: 0;
     left: 0;
     width: 100%;
     height: 70px;
@@ -187,22 +187,32 @@
     font-weight: 600;
     margin-top: 2px;
   }
-  /* Footer de derechos */
-  .footer {
+  /* Footer dinámico que aparece al hacer scroll hasta abajo */
+  .scroll-footer {
+    display: none;
     position: fixed;
-    bottom: 0;
+    bottom: 70px;
     left: 0;
     width: 100%;
-    height: 50px;
     background: var(--bg);
     border-top: 1px solid var(--stroke);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 12px 0;
+    text-align: center;
     color: var(--muted);
     font-size: 12px;
     font-weight: 500;
     z-index: 30;
+    animation: slideUpFooter 0.3s ease;
+  }
+  @keyframes slideUpFooter {
+    from { 
+      opacity: 0;
+      transform: translateY(10px); 
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0); 
+    }
   }
   /* Onda de sonido simple con barras animadas */
   .soundwave {
@@ -303,13 +313,14 @@
     .np img{width:72px;height:72px}
     .controls .buttons .circle{width:76px;height:76px;font-size:30px}
     .controls .buttons .sm{width:60px;height:60px;font-size:24px}
-    body{padding-bottom:120px;}
-    .player{bottom:120px;}
-    .player.show{bottom:120px;}
-    #bottomBar {padding: 6px 10px 2px; height: 70px; bottom: 50px;}
+    body{padding-bottom:70px;}
+    .player{bottom:70px;}
+    .player.show{bottom:70px;}
+    #bottomBar {padding: 6px 10px 2px; height: 70px;}
     #bottomBar button {font-size: 9px; gap: 3px;}
     #bottomBar .icon {width: 24px; height: 24px;}
     #bottomBar .label {font-size: 9px;}
+    .scroll-footer {bottom: 70px;}
   }
 </style>
 </head>
@@ -509,8 +520,8 @@
   </button>
 </div>
 
-<!-- Footer con derechos de autor -->
-<div class="footer">
+<!-- Footer dinámico con derechos de autor (aparece solo al hacer scroll hasta abajo) -->
+<div id="scrollFooter" class="scroll-footer">
   &copy; <script>document.write(new Date().getFullYear())</script> Freddy Granados. Todos los derechos reservados.
 </div>
 
@@ -565,6 +576,7 @@
   let queue = [], qIndex = -1, currentAlbum = null, currentPlaylist = null;
   let editingPlaylistId = null, selectedSongForPlaylist = null;
   
+  // UI refs
   const albumsGrid = document.getElementById("albumsGrid");
   const emptyAlbums = document.getElementById("emptyAlbums");
   const npCover = document.getElementById("npCover");
@@ -610,6 +622,23 @@
   const playlistPublic = document.getElementById("playlistPublic");
   const playlistDropdown = document.getElementById("playlistDropdown");
   const playlistDropdownContent = document.getElementById("playlistDropdownContent");
+  
+  // Footer scroll detector
+  const scrollFooter = document.getElementById("scrollFooter");
+  
+  // Detectar scroll para mostrar footer
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight;
+    const winHeight = window.innerHeight;
+    
+    // Mostrar footer cuando llegue al final (con un poco de margen)
+    if (scrollTop + winHeight >= docHeight - 50) {
+      scrollFooter.style.display = 'block';
+    } else {
+      scrollFooter.style.display = 'none';
+    }
+  });
   
   function setActiveNav(activeButton) {
     document.querySelectorAll('#bottomBar button').forEach(btn => btn.classList.remove('active'));
@@ -658,11 +687,11 @@
 
   function showPlayer(){
     playerElement.classList.add('show');
-    document.body.style.paddingBottom = '320px';
+    document.body.style.paddingBottom = '270px';
   }
   function hidePlayer(){
     playerElement.classList.remove('show');
-    document.body.style.paddingBottom = '120px';
+    document.body.style.paddingBottom = '70px';
   }
 
   function toggleSoundwave(show){
@@ -833,6 +862,7 @@
     currentAlbum = null;
   }
   
+  // Continuando con el resto de funciones del script anterior...
   async function loadPlaylists(){
     if (!isLoggedIn) return;
     
