@@ -840,6 +840,7 @@
   let queue = [], qIndex = -1, currentAlbum = null, currentPlaylist = null;
   let editingPlaylistId = null, selectedSongForPlaylist = null;
   let isSearchMode = false;
+  let searchSongsCache = []; // Cache para las canciones de búsqueda
   
   // UI refs
   const albumsGrid = document.getElementById("albumsGrid");
@@ -985,7 +986,7 @@
     }
   }
 
-  // Función de búsqueda
+  // Función de búsqueda CORREGIDA
   function performSearch(query) {
     const term = query.trim().toLowerCase();
     
@@ -1008,6 +1009,9 @@
       song.title.toLowerCase().includes(term) || 
       song.album_title.toLowerCase().includes(term)
     );
+    
+    // Guardar las canciones encontradas para reproducción
+    searchSongsCache = foundSongs;
     
     // Buscar playlists (solo si el usuario está logueado)
     let foundPlaylists = [];
@@ -1131,14 +1135,16 @@
     });
   }
   
+  // FUNCIÓN CORREGIDA para reproducir desde búsqueda
   function playSearchSong(index) {
-    const songs = flatSongs.filter(song => 
-      song.title.toLowerCase().includes(searchInput.value.trim().toLowerCase()) || 
-      song.album_title.toLowerCase().includes(searchInput.value.trim().toLowerCase())
-    );
-    queue = songs;
-    qIndex = -1;
-    startQueueAt(index);
+    console.log('Reproduciendo canción de búsqueda:', index, searchSongsCache[index]);
+    if (searchSongsCache && searchSongsCache[index]) {
+      queue = searchSongsCache;
+      qIndex = -1;
+      startQueueAt(index);
+    } else {
+      showError('Error reproduciendo la canción');
+    }
   }
   
   function openSearchPlaylist(playlistId) {
@@ -1157,6 +1163,7 @@
     searchResults.style.display = 'none';
     hideAllSearchSections();
     noResults.style.display = 'none';
+    searchSongsCache = [];
   }
 
   function showPlayer(){
@@ -1301,6 +1308,7 @@
     });
   }
   
+  // FUNCIÓN CORREGIDA para abrir álbum
   function openAlbum(album){
     currentAlbum = album;
     const songs = songsByAlbum[album.id] || [];
@@ -1319,8 +1327,10 @@
           <div class="title">${s.title}</div>
           <div class="more" onclick="event.stopPropagation(); showAddToPlaylistMenu(event, {id: '${s.id}', title: '${s.title.replace(/'/g, "\\'")}', album_title: '${album.title.replace(/'/g, "\\'")}', cover_url: '${album.cover_url}'})">+</div>
         `;
+        // CORREGIR: usar songs directamente en lugar de crear un nuevo array
         row.onclick = () => {
-          queue = songs.map(t => ({...t, album_title: album.title, cover_url: album.cover_url}));
+          const albumSongs = songs.map(t => ({...t, album_title: album.title, cover_url: album.cover_url}));
+          queue = albumSongs;
           qIndex = -1;
           startQueueAt(idx);
         };
@@ -1336,7 +1346,7 @@
     currentAlbum = null;
   }
   
-  // Resto de funciones (mantengo las funciones principales del código anterior)...
+  // Resto de funciones (mantener las anteriores)...
   async function loadPlaylists(){
     if (!isLoggedIn) return;
     
