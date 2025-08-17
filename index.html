@@ -80,7 +80,7 @@
   .playlist-btn:hover{background:#e55722;transform:scale(1.05)}
   .download-progress{width:100%;height:4px;background:var(--stroke);border-radius:2px;overflow:hidden;margin-top:4px}
   .download-progress-bar{height:100%;background:var(--success);transition:width 0.3s ease;border-radius:2px}
-  #albumView,#favoritesView,#downloadsView,#playlistsView,#playlistView{display:none}
+  #albumView,#favoritesView,#downloadsView,#playlistsView,#playlistView,#searchView{display:none}
   .album-hero,.playlist-hero{display:flex;gap:14px;align-items:center;margin-bottom:20px}
   .album-hero img,.playlist-hero img{width:96px;height:96px;border-radius:12px;border:1px solid var(--stroke);object-fit:cover;background:#0b0b0b}
   .album-hero .info,.playlist-hero .info{min-width:0;flex:1}
@@ -256,6 +256,22 @@
     <button class="control-btn" onclick="showDownloads()" title="Descargas">
       <span>⬇</span> Offline
     </button>
+  </div>
+
+  <div id="searchView" style="display:none;">
+    <div class="backline">
+      <button class="back-btn" onclick="closeSearchView()" title="Volver">←</button>
+      <span class="muted">Volver</span>
+    </div>
+    <div class="section-title">🔍 Buscar Música</div>
+    <div style="margin-bottom:20px;">
+      <input type="text" id="searchInput" placeholder="Buscar canciones, álbumes..." style="width:100%;margin-bottom:12px;" oninput="searchSongs(this.value)">
+    </div>
+    <div id="searchResults" class="search-songs-list"></div>
+    <div id="noSearchResults" class="no-results" style="display:none;">
+      <div style="font-size:48px;margin-bottom:16px">🔍</div>
+      <div>Escribe algo para buscar música</div>
+    </div>
   </div>
 
   <div id="favoritesView" style="display:none;">
@@ -443,7 +459,7 @@
     <svg class="icon" viewBox="0 0 24 24"><path d="M3 11L12 2l9 9v9a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-5H9v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-9z"/></svg>
     <span class="label">Inicio</span>
   </button>
-  <button id="btn-search" title="Buscar" onclick="showFavorites()">
+  <button id="btn-search" title="Buscar" onclick="showSearch()">
     <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
     <span class="label">Buscar</span>
   </button>
@@ -572,6 +588,98 @@ const playlistModal = document.getElementById("playlistModal");
     loadingScreen.style.display = 'none';
   }
 })();
+
+// ===== SISTEMA DE BÚSQUEDA =====
+function showSearch() {
+  hideAllViews();
+  document.getElementById('searchView').style.display = 'block';
+  setActiveNav('search');
+  document.getElementById('searchInput').focus();
+  document.getElementById('noSearchResults').style.display = 'block';
+  document.getElementById('searchResults').innerHTML = '';
+}
+
+function closeSearchView() {
+  document.getElementById('searchView').style.display = 'none';
+  goHome();
+}
+
+function searchSongs(query) {
+  const searchResults = document.getElementById('searchResults');
+  const noResults = document.getElementById('noSearchResults');
+  
+  if (!query || query.trim() === '') {
+    searchResults.innerHTML = '';
+    noResults.innerHTML = `
+      <div style="font-size:48px;margin-bottom:16px">🔍</div>
+      <div>Escribe algo para buscar música</div>
+    `;
+    noResults.style.display = 'block';
+    return;
+  }
+  
+  const searchTerm = query.toLowerCase().trim();
+  const results = flatSongs.filter(song => 
+    song.title.toLowerCase().includes(searchTerm) ||
+    song.album_title.toLowerCase().includes(searchTerm)
+  );
+  
+  if (results.length === 0) {
+    searchResults.innerHTML = '';
+    noResults.innerHTML = `
+      <div style="font-size:48px;margin-bottom:16px">❌</div>
+      <div>No se encontró "${query}"</div>
+      <div style="font-size:14px;color:var(--muted);margin-top:8px">Intenta con otras palabras</div>
+    `;
+    noResults.style.display = 'block';
+    return;
+  }
+  
+  noResults.style.display = 'none';
+  searchResults.innerHTML = '';
+  
+  results.forEach((song, index) => {
+    const isFavorite = favorites.has(song.id);
+    const isDownloaded = downloads.has(song.id);
+    
+    const item = document.createElement('div');
+    item.className = 'search-song-item';
+    item.innerHTML = `
+      <img class="search-song-cover" src="${song.cover_url}" alt="${song.album_title}">
+      <div class="search-song-info">
+        <div class="search-song-title">${highlightSearch(song.title, searchTerm)}</div>
+        <div class="search-song-artist">${highlightSearch(song.album_title, searchTerm)}</div>
+      </div>
+      <div class="search-song-actions">
+        <button class="search-song-play" onclick="playSearchResult(${index})" title="Reproducir">▶</button>
+        <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="toggleFavorite('${song.id}', this)" title="Favorito">${isFavorite ? '❤️' : '🤍'}</button>
+        <button class="download-btn ${isDownloaded ? 'downloaded' : ''}" onclick="downloadSong('${song.id}', '${song.song_url}', '${song.title.replace(/'/g, "\\'")}', this)" title="Descargar">${isDownloaded ? '✓' : '⬇'}</button>
+      </div>
+    `;
+    searchResults.appendChild(item);
+  });
+}
+
+function highlightSearch(text, searchTerm) {
+  if (!searchTerm) return text;
+  const regex = new RegExp(`(${searchTerm})`, 'gi');
+  return text.replace(regex, '<span style="background:#1db954;color:#000;padding:1px 3px;border-radius:3px;">$1</span>');
+}
+
+function playSearchResult(index) {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  const results = flatSongs.filter(song => 
+    song.title.toLowerCase().includes(query) ||
+    song.album_title.toLowerCase().includes(query)
+  );
+  
+  if (results[index]) {
+    queue = results;
+    qIndex = index;
+    playTrackDirectly(queue[qIndex]);
+    showMessage(`▶ Reproduciendo "${results[index].title}"`, 'success');
+  }
+}
 
 // ===== GESTO SIMPLE SOLO EN LA PORTADA =====
 function initializeCoverGesture() {
@@ -1274,6 +1382,7 @@ function hideAllViews() {
   downloadsView.style.display = "none";
   playlistsView.style.display = "none";
   playlistView.style.display = "none";
+  document.getElementById('searchView').style.display = "none";
 }
 
 function loadAppSettings() {
