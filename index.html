@@ -110,6 +110,12 @@
   .error-msg{background:linear-gradient(135deg,var(--error),#cc0000);color:white;padding:12px 16px;border-radius:8px;font-size:12px;font-weight:600}
   .success-msg{background:linear-gradient(135deg,var(--success),#2e7d32);color:white;padding:12px 16px;border-radius:8px;font-size:12px;font-weight:600}
   .warning-msg{background:linear-gradient(135deg,var(--warning),#f57f17);color:black;padding:12px 16px;border-radius:8px;font-size:12px;font-weight:600}
+  #npOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.9);backdrop-filter:blur(20px);display:none;align-items:center;justify-content:center;z-index:40;animation:fadeIn 0.4s ease}
+  #npCard{background:linear-gradient(135deg,#111,#222);border:1px solid var(--stroke);border-radius:18px;width:min(520px,92vw);padding:24px;display:grid;gap:16px;justify-items:center;animation:slideUp 0.4s ease}
+  #npCard img{width:min(420px,82vw);height:min(420px,82vw);border-radius:14px;object-fit:cover;border:1px solid var(--stroke);background:#0b0b0b;transition:all 0.5s ease}
+  #npCard img:hover{transform:scale(1.02)}
+  #npCard .t{font-size:1.2rem;font-weight:900;text-align:center}
+  #npCard .a{color:var(--muted);text-align:center}
   @media (max-width:800px){.inputs{grid-template-columns:1fr}.np img{width:72px;height:72px}.controls .buttons .circle{width:76px;height:76px;font-size:30px}.controls .buttons .sm{width:60px;height:60px;font-size:24px}}
 </style>
 </head>
@@ -198,7 +204,7 @@
   </div>
 </div>
 
-<div class="player" id="player">
+<div class="player" id="player" onclick="openNowPlaying()">
   <div class="np">
     <img id="npCover" alt="cover">
     <div class="titles">
@@ -208,24 +214,50 @@
   </div>
   <div class="controls">
     <div class="buttons">
-      <button class="circle sm" onclick="prevTrack()">⏮</button>
-      <button class="circle" id="playBtn" onclick="togglePlay()">▶</button>
-      <button class="circle sm" onclick="nextTrack()">⏭</button>
+      <button class="circle sm" onclick="event.stopPropagation(); prevTrack()">⏮</button>
+      <button class="circle" id="playBtn" onclick="event.stopPropagation(); togglePlay()">▶</button>
+      <button class="circle sm" onclick="event.stopPropagation(); nextTrack()">⏭</button>
     </div>
     <div class="seek">
       <span id="curTime" class="muted">0:00</span>
-      <input id="seek" type="range" min="0" max="100" value="0" oninput="seekAudio(this.value)" />
+      <input id="seek" type="range" min="0" max="100" value="0" oninput="seekAudio(this.value)" onclick="event.stopPropagation()" />
       <span id="durTime" class="muted">0:00</span>
     </div>
   </div>
   <div class="vol">
     <span class="muted">Vol</span>
-    <input id="vol" type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(this.value)" />
+    <input id="vol" type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(this.value)" onclick="event.stopPropagation()" />
   </div>
   <div class="soundwave" id="soundwave" style="display:none">
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
   </div>
   <audio id="audio" preload="none" crossorigin="anonymous"></audio>
+</div>
+
+<!-- NUEVO: Pantalla completa Now Playing -->
+<div id="npOverlay" onclick="closeNowPlaying()">
+  <div id="npCard" onclick="event.stopPropagation()">
+    <img id="npBigCover" alt="cover">
+    <div class="t" id="npBigTitle">—</div>
+    <div class="a" id="npBigAlbum">—</div>
+    
+    <div class="soundwave" style="margin:20px 0;">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    
+    <div class="controls" style="width:100%;max-width:520px">
+      <div class="buttons">
+        <button class="circle sm" onclick="prevTrack()">⏮</button>
+        <button class="circle" onclick="togglePlay()" id="playBtnBig">▶</button>
+        <button class="circle sm" onclick="nextTrack()">⏭</button>
+      </div>
+      <div class="seek">
+        <span id="curTimeBig" class="muted">0:00</span>
+        <input id="seekBig" type="range" min="0" max="100" value="0" oninput="seekAudio(this.value)" />
+        <span id="durTimeBig" class="muted">0:00</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="bottomBar">
@@ -295,13 +327,22 @@ const avMeta = document.getElementById("avMeta");
 const avSongs = document.getElementById("avSongs");
 const homeContent = document.getElementById("homeContent");
 
+// NUEVOS ELEMENTOS PARA PANTALLA COMPLETA
+const npOverlay = document.getElementById("npOverlay");
+const npBigCover = document.getElementById("npBigCover");
+const npBigTitle = document.getElementById("npBigTitle");
+const npBigAlbum = document.getElementById("npBigAlbum");
+const curTimeBig = document.getElementById("curTimeBig");
+const durTimeBig = document.getElementById("durTimeBig");
+const seekBig = document.getElementById("seekBig");
+const playBtnBig = document.getElementById("playBtnBig");
+
 // ===== INICIALIZACIÓN OPTIMIZADA =====
 (async () => {
   console.log('🚀 Inicializando KLMZ MUSIC...');
   try {
     loadAppSettings();
     
-    // Verificar sesión primero
     const { data } = await sb.auth.getSession();
     if (data?.session?.user?.email) {
       const email = data.session.user.email;
@@ -311,19 +352,16 @@ const homeContent = document.getElementById("homeContent");
       updateUIForUser();
     }
     
-    // Cargar catálogo optimizado
     await refreshCatalogOptimized();
     
-    // Mostrar controles si hay música
     if (albums.length > 0 || flatSongs.length > 0) {
       musicControls.style.display = 'flex';
     }
     
-    // Ocultar loading después de un breve delay
     setTimeout(() => {
       loadingScreen.style.opacity = '0';
       setTimeout(() => { loadingScreen.style.display = 'none'; }, 300);
-    }, 800); // Reducido a 800ms
+    }, 800);
     
     showMessage('¡KLMZ MUSIC cargado!', 'success');
   } catch (error) {
@@ -333,11 +371,10 @@ const homeContent = document.getElementById("homeContent");
   }
 })();
 
-// ===== CARGA OPTIMIZADA DEL CATÁLOGO =====
+// ===== CARGA OPTIMIZADA DEL CATÁLOGO CON CONTADOR CORRECTO =====
 async function refreshCatalogOptimized() {
   console.log('Cargando álbumes...');
   
-  // Cargar álbumes primero (rápido)
   const { data: alb, error: e1 } = await sb.from("albums").select("*").order("created_at", { ascending: false });
   if (e1) { 
     console.error('Error cargando álbumes:', e1); 
@@ -348,13 +385,9 @@ async function refreshCatalogOptimized() {
   albums = alb || [];
   emptyAlbums.style.display = albums.length ? "none" : "block";
   
-  // Renderizar álbumes inmediatamente
-  renderAlbums();
-  
-  // Actualizar selects de admin
   updateAdminSelects();
   
-  // Cargar canciones en paralelo (más rápido)
+  // ARREGLO: Cargar canciones primero, luego renderizar álbumes con contador correcto
   songsByAlbum = {};
   flatSongs = [];
   
@@ -374,10 +407,16 @@ async function refreshCatalogOptimized() {
           cover_url: album.cover_url
         });
       });
+    } else {
+      songsByAlbum[album.id] = []; // Asegurar que existe aunque esté vacío
     }
   });
   
   await Promise.all(songPromises);
+  
+  // Renderizar álbumes DESPUÉS de cargar las canciones
+  renderAlbums();
+  
   console.log('Catálogo cargado:', albums.length, 'álbumes,', flatSongs.length, 'canciones');
 }
 
@@ -406,10 +445,12 @@ function updateAdminSelects() {
   }
 }
 
+// ARREGLO: Renderizar álbumes con contador correcto de canciones
 function renderAlbums() {
   albumsGrid.innerHTML = "";
   albums.forEach(album => {
-    const count = (songsByAlbum[album.id]?.length || 0);
+    // ARREGLO: Obtener contador correcto de canciones
+    const count = songsByAlbum[album.id] ? songsByAlbum[album.id].length : 0;
     const card = document.createElement("div");
     card.className = "album-card";
     card.innerHTML = `
@@ -418,7 +459,6 @@ function renderAlbums() {
       <div class="album-meta">${count} ${count === 1 ? 'canción' : 'canciones'}</div>
     `;
     
-    // ARREGLO: Event listener corregido
     card.addEventListener('click', () => {
       openAlbum(album);
     });
@@ -427,18 +467,16 @@ function renderAlbums() {
   });
 }
 
-// ===== ARREGLO: ABRIR ÁLBUM OPTIMIZADO =====
+// ===== ABRIR ÁLBUM OPTIMIZADO =====
 function openAlbum(album) {
   console.log('Abriendo álbum:', album.title);
   currentAlbum = album;
   const songs = songsByAlbum[album.id] || [];
   
-  // Actualizar información del álbum
   avCover.src = album.cover_url || "";
   avTitle.textContent = album.title;
   avMeta.textContent = `${songs.length} ${songs.length === 1 ? 'canción' : 'canciones'}`;
   
-  // Limpiar y renderizar canciones
   avSongs.innerHTML = "";
   
   if (!songs.length) {
@@ -454,7 +492,6 @@ function openAlbum(album) {
         <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite('${song.id}', this)" title="Favorito">${isFavorite ? '❤️' : '🤍'}</button>
       `;
       
-      // Event listener para reproducir canción
       row.addEventListener('click', () => {
         const albumSongs = songs.map(s => ({
           ...s,
@@ -470,7 +507,6 @@ function openAlbum(album) {
     });
   }
   
-  // Mostrar vista del álbum
   homeContent.style.display = "none";
   albumView.style.display = "block";
   albumView.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -597,7 +633,7 @@ function showAccount() {
   }
 }
 
-// ===== REPRODUCTOR =====
+// ===== REPRODUCTOR MEJORADO CON PANTALLA COMPLETA =====
 function startQueueAt(idx) { 
   if (!queue.length) return; 
   qIndex = idx; 
@@ -618,14 +654,21 @@ function playTrack(song) {
   audioEl.src = song.song_url;
   audioEl.load();
   
+  // Actualizar player pequeño
   npTitle.textContent = song.title;
   npAlbum.textContent = song.album_title || "—";
   npCover.src = song.cover_url || "";
+  
+  // ARREGLO: Actualizar player pantalla completa
+  npBigTitle.textContent = song.title;
+  npBigAlbum.textContent = song.album_title || "—";
+  npBigCover.src = song.cover_url || "";
   
   showPlayer();
   
   audioEl.play().then(() => {
     playBtn.textContent = "⏸";
+    playBtnBig.textContent = "⏸";
     toggleSoundwave(true);
   }).catch((error) => {
     console.error('Error de reproducción:', error);
@@ -638,11 +681,13 @@ function togglePlay() {
   if (audioEl.paused) { 
     audioEl.play().then(() => {
       playBtn.textContent = "⏸"; 
+      playBtnBig.textContent = "⏸";
       toggleSoundwave(true);
     });
   } else { 
     audioEl.pause(); 
     playBtn.textContent = "▶"; 
+    playBtnBig.textContent = "▶";
     toggleSoundwave(false);
   }
 }
@@ -686,6 +731,15 @@ function toggleSoundwave(show) {
   else wave.style.display = 'none';
 }
 
+// ARREGLO: Funciones de pantalla completa
+function openNowPlaying() {
+  npOverlay.style.display = "flex";
+}
+
+function closeNowPlaying() { 
+  npOverlay.style.display = "none"; 
+}
+
 function setVolume(v) { 
   audioEl.volume = v; 
 }
@@ -701,13 +755,18 @@ function fmt(t) {
   return `${m}:${s.toString().padStart(2, "0")}`; 
 }
 
-// ===== EVENT LISTENERS =====
+// ===== EVENT LISTENERS MEJORADOS =====
 audioEl.addEventListener("timeupdate", () => {
   if (!audioEl.duration) return;
   const p = (audioEl.currentTime / audioEl.duration) * 100;
   seekEl.value = p; 
   curTime.textContent = fmt(audioEl.currentTime); 
   durTime.textContent = fmt(audioEl.duration);
+  
+  // ARREGLO: Actualizar también pantalla completa
+  if (seekBig) seekBig.value = p;
+  if (curTimeBig) curTimeBig.textContent = fmt(audioEl.currentTime);
+  if (durTimeBig) durTimeBig.textContent = fmt(audioEl.duration);
 });
 
 audioEl.addEventListener("ended", () => nextTrack());
