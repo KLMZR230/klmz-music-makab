@@ -83,7 +83,7 @@
   .song-plain-item:hover{background:var(--panel);transform:translateX(4px)}
   .song-plain-item .idx{min-width:20px;text-align:right;color:var(--muted)}
   .song-plain-item .title{flex:1;font-weight:600}
-  .song-plain-item .actions{display:flex;gap:6px;align-items:center}
+  .song-plain-item .actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .song-plain-item .more{font-size:18px;color:var(--muted);cursor:pointer;padding:6px;border-radius:50%;transition:all 0.3s ease}
   .song-plain-item .more:hover{background:#ffffff14;transform:scale(1.2)}
   .backline{display:flex;align-items:center;gap:10px;margin-bottom:20px}
@@ -440,8 +440,9 @@ const downloadsList = document.getElementById("downloadsList");
   }
 })();
 
+// ===== CARGA OPTIMIZADA CON CANCIONES VISIBLES =====
 async function refreshCatalogOptimized() {
-  console.log('Cargando álbumes...');
+  console.log('🎵 Cargando catálogo completo...');
   
   const { data: alb, error: e1 } = await sb.from("albums").select("*").order("created_at", { ascending: false });
   if (e1) { 
@@ -455,10 +456,14 @@ async function refreshCatalogOptimized() {
   
   updateAdminSelects();
   
+  // ARREGLO: Resetear datos antes de cargar
   songsByAlbum = {};
   flatSongs = [];
   
-  const songPromises = albums.map(async (album) => {
+  // ARREGLO: Cargar canciones de manera secuencial para asegurar carga completa
+  for (const album of albums) {
+    console.log(`🎵 Cargando canciones del álbum: ${album.title}`);
+    
     const { data: songs, error } = await sb
       .from("songs")
       .select("*")
@@ -467,6 +472,8 @@ async function refreshCatalogOptimized() {
     
     if (!error && songs) {
       songsByAlbum[album.id] = songs;
+      console.log(`✅ Cargadas ${songs.length} canciones para "${album.title}"`);
+      
       songs.forEach(song => {
         flatSongs.push({
           ...song,
@@ -475,18 +482,16 @@ async function refreshCatalogOptimized() {
         });
       });
     } else {
+      console.log(`⚠️ Sin canciones para "${album.title}"`);
       songsByAlbum[album.id] = [];
     }
-  });
-  
-  await Promise.all(songPromises);
+  }
   
   renderAlbums();
   
-  console.log('Catálogo cargado:', albums.length, 'álbumes,', flatSongs.length, 'canciones');
+  console.log(`🎉 Catálogo cargado: ${albums.length} álbumes, ${flatSongs.length} canciones totales`);
 }
 
-// ===== ACTUALIZADO: Selects del admin con opciones para borrar canciones =====
 function updateAdminSelects() {
   const adminSel = document.getElementById("albumSelect");
   const delSel = document.getElementById("deleteAlbumSelect");
@@ -512,7 +517,6 @@ function updateAdminSelects() {
     });
   }
   
-  // NUEVO: Select para eliminar canciones individuales
   if (delSongAlbumSel) {
     delSongAlbumSel.innerHTML = '<option value="">Selecciona un álbum</option>';
     albums.forEach(a => {
@@ -524,7 +528,6 @@ function updateAdminSelects() {
   }
 }
 
-// NUEVA: Función para cargar canciones cuando se selecciona un álbum
 function loadSongsForDeletion() {
   const albumId = document.getElementById("deleteSongAlbumSelect").value;
   const songSelect = document.getElementById("deleteSongSelect");
@@ -550,16 +553,17 @@ function loadSongsForDeletion() {
   deleteBtn.style.display = 'block';
 }
 
+// ARREGLO: Renderizar álbumes con contador correcto
 function renderAlbums() {
   albumsGrid.innerHTML = "";
   albums.forEach(album => {
-    const count = songsByAlbum[album.id] ? songsByAlbum[album.id].length : 0;
+    const songCount = songsByAlbum[album.id] ? songsByAlbum[album.id].length : 0;
     const card = document.createElement("div");
     card.className = "album-card";
     card.innerHTML = `
       <img class="album-cover" src="${album.cover_url}" alt="${album.title}">
       <div class="album-title">${album.title}</div>
-      <div class="album-meta">${count} ${count === 1 ? 'canción' : 'canciones'}</div>
+      <div class="album-meta">${songCount} ${songCount === 1 ? 'canción' : 'canciones'}</div>
     `;
     
     card.addEventListener('click', () => {
@@ -570,11 +574,14 @@ function renderAlbums() {
   });
 }
 
-// ===== ACTUALIZADO: Función de abrir álbum con botón de borrar canciones para admin =====
+// ===== ARREGLO: ABRIR ÁLBUM CON CANCIONES VISIBLES =====
 function openAlbum(album) {
   console.log('🎵 Abriendo álbum:', album.title);
   currentAlbum = album;
+  
+  // ARREGLO: Obtener canciones directamente del objeto cargado
   const songs = songsByAlbum[album.id] || [];
+  console.log(`🎵 Canciones encontradas: ${songs.length}`);
   
   avCover.src = album.cover_url || "";
   avTitle.textContent = album.title;
@@ -583,15 +590,22 @@ function openAlbum(album) {
   avSongs.innerHTML = "";
   
   if (!songs.length) {
-    avSongs.innerHTML = `<div class="muted" style="padding:12px 0">Este álbum no tiene canciones todavía.</div>`;
+    avSongs.innerHTML = `
+      <div class="muted" style="padding:20px;text-align:center">
+        <div style="font-size:48px;margin-bottom:16px">🎵</div>
+        <div>Este álbum no tiene canciones todavía</div>
+        ${isAdmin ? '<div style="margin-top:8px;font-size:14px">Ve al panel admin para agregar canciones</div>' : ''}
+      </div>
+    `;
   } else {
+    console.log(`🎵 Renderizando ${songs.length} canciones`);
+    
     songs.forEach((song, idx) => {
       const isFavorite = favorites.has(song.id);
       const isDownloaded = downloads.has(song.id);
       const row = document.createElement("div");
       row.className = "song-plain-item";
       
-      // ACTUALIZADO: HTML con botón de borrar para admin
       row.innerHTML = `
         <div class="idx">${idx + 1}</div>
         <div class="title">${song.title}</div>
@@ -609,7 +623,7 @@ function openAlbum(album) {
           return;
         }
         
-        console.log('🎵 Click en canción:', song.title);
+        console.log('🎵 Reproduciendo:', song.title);
         
         queue = songs.map(s => ({
           id: s.id,
@@ -632,7 +646,6 @@ function openAlbum(album) {
   albumView.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// NUEVA: Función para eliminar canción desde el álbum
 async function deleteSongFromAlbum(songId, songTitle, albumId) {
   if (!isAdmin) {
     showMessage('No autorizado', 'error');
@@ -651,7 +664,6 @@ async function deleteSongFromAlbum(songId, songTitle, albumId) {
     
     showMessage(`"${songTitle}" eliminada exitosamente`, 'success');
     
-    // Recargar catálogo y reabrir álbum
     await refreshCatalogOptimized();
     const album = albums.find(a => a.id === albumId);
     if (album) {
@@ -664,7 +676,6 @@ async function deleteSongFromAlbum(songId, songTitle, albumId) {
   }
 }
 
-// NUEVA: Función para eliminar canción desde el panel admin
 async function deleteSong() {
   if (!isAdmin) return alert("No autorizado");
   
@@ -687,12 +698,10 @@ async function deleteSong() {
     
     showMessage(`"${songTitle}" eliminada exitosamente`, "success");
     
-    // Resetear selects
     document.getElementById("deleteSongAlbumSelect").value = "";
     document.getElementById("deleteSongSelect").style.display = 'none';
     document.getElementById("deleteSongBtn").style.display = 'none';
     
-    // Recargar catálogo
     await refreshCatalogOptimized();
     
   } catch (error) {
@@ -813,6 +822,136 @@ function showMessage(msg, type = 'info') {
   errorEl.textContent = msg;
   document.body.appendChild(errorEl);
   setTimeout(() => errorEl.remove(), 3000);
+}
+
+// ===== FUNCIÓN UPLOADTONG ARREGLADA =====
+async function uploadSong() {
+  if (!isAdmin) {
+    alert("No autorizado");
+    return;
+  }
+  
+  const albumId = document.getElementById("albumSelect").value;
+  const titleInput = document.getElementById("songTitle").value.trim();
+  const files = document.getElementById("songFiles").files;
+  
+  if (!albumId) {
+    alert("Selecciona un álbum");
+    return;
+  }
+  
+  if (files.length === 0) {
+    alert("Selecciona al menos un archivo de audio");
+    return;
+  }
+  
+  console.log('🎵 Iniciando subida de canciones...');
+  console.log('📁 Álbum ID:', albumId);
+  console.log('🎼 Archivos seleccionados:', files.length);
+  
+  let ok = 0, fail = 0;
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    console.log(`🎵 Procesando archivo ${i + 1}/${files.length}:`, file.name);
+    console.log('📊 Tipo:', file.type, '| Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+    
+    if (!file.type.startsWith('audio/')) {
+      console.error('❌ No es archivo de audio:', file.name);
+      fail++;
+      continue;
+    }
+    
+    try {
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const safeName = file.name.replace(/[^a-zA-Z0-9\.\-_]/g, "-");
+      const path = `${timestamp}-${randomSuffix}-${safeName}`;
+      
+      console.log('📤 Subiendo a storage con path:', path);
+      
+      const { data: uploadData, error: upErr } = await sb.storage
+        .from("songs")
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (upErr) {
+        console.error('❌ Error subiendo archivo:', upErr);
+        showMessage(`Error subiendo ${file.name}: ${upErr.message}`, 'error');
+        fail++;
+        continue;
+      }
+      
+      console.log('✅ Archivo subido exitosamente:', uploadData);
+      
+      const { data: pub } = sb.storage.from("songs").getPublicUrl(path);
+      const song_url = pub.publicUrl;
+      console.log('🔗 URL generada:', song_url);
+      
+      let title;
+      if (files.length === 1 && titleInput) {
+        title = titleInput;
+      } else {
+        title = file.name.replace(/\.[^/.]+$/, "");
+      }
+      
+      console.log('🎵 Título de canción:', title);
+      
+      const { data: songData, error: insErr } = await sb
+        .from("songs")
+        .insert([{
+          album_id: albumId,
+          title: title,
+          song_url: song_url
+        }])
+        .select();
+      
+      if (insErr) {
+        console.error('❌ Error guardando en DB:', insErr);
+        showMessage(`Error guardando ${title}: ${insErr.message}`, 'error');
+        fail++;
+        
+        try {
+          await sb.storage.from("songs").remove([path]);
+        } catch (cleanupErr) {
+          console.error('Error limpiando archivo:', cleanupErr);
+        }
+      } else {
+        console.log('✅ Canción guardada en DB:', songData);
+        ok++;
+        showMessage(`✅ "${title}" subida exitosamente`, 'success');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error procesando archivo:', file.name, error);
+      showMessage(`Error procesando ${file.name}: ${error.message}`, 'error');
+      fail++;
+    }
+  }
+  
+  document.getElementById("songTitle").value = "";
+  document.getElementById("songFiles").value = "";
+  
+  if (ok > 0) {
+    showMessage(`🎉 Proceso completado: ${ok} exitosas, ${fail} errores`, "success");
+    console.log(`✅ Proceso completado: ${ok} exitosas, ${fail} errores`);
+    
+    // ARREGLO: Recargar catálogo y mostrar álbum actualizado
+    await refreshCatalogOptimized();
+    
+    // Si estamos viendo un álbum, refrescarlo
+    if (currentAlbum) {
+      const updatedAlbum = albums.find(a => a.id === albumId);
+      if (updatedAlbum) {
+        openAlbum(updatedAlbum);
+      }
+    }
+  } else {
+    showMessage(`❌ Error: No se pudo subir ninguna canción (${fail} errores)`, "error");
+    console.log(`❌ Todas las subidas fallaron: ${fail} errores`);
+  }
 }
 
 function toggleShuffle() {
@@ -1248,50 +1387,6 @@ async function uploadAlbum() {
   document.getElementById("albumTitle").value = "";
   document.getElementById("albumCover").value = "";
   showMessage("Álbum creado exitosamente", "success");
-  await refreshCatalogOptimized();
-}
-
-async function uploadSong() {
-  if (!isAdmin) return alert("No autorizado");
-  const albumId = document.getElementById("albumSelect").value;
-  const titleInput = document.getElementById("songTitle").value.trim();
-  const files = document.getElementById("songFiles").files;
-  if (!albumId || files.length === 0) return alert("Selecciona un álbum y al menos un archivo de audio");
-  
-  let ok = 0, fail = 0;
-  for (const file of files) {
-    console.log('Subiendo archivo:', file.name, 'Tipo:', file.type, 'Tamaño:', file.size);
-    
-    if (!file.type.startsWith('audio/')) {
-      console.error('Archivo no es audio:', file.name);
-      fail++;
-      continue;
-    }
-    
-    const path = `${Date.now()}-${safeName(file.name)}`;
-    const { error: upErr } = await sb.storage.from("songs").upload(path, file);
-    if (upErr) { 
-      console.error('Error subida:', upErr); 
-      fail++; 
-      continue; 
-    }
-    const { data: pub } = sb.storage.from("songs").getPublicUrl(path);
-    const song_url = pub.publicUrl;
-    console.log('URL generada:', song_url);
-    
-    const title = (files.length === 1 && titleInput) ? titleInput : file.name.replace(/\.[^/.]+$/, "");
-    const { error: insErr } = await sb.from("songs").insert([{ album_id: albumId, title, song_url }]);
-    if (insErr) { 
-      console.error('Error DB:', insErr); 
-      fail++; 
-    } else { 
-      ok++; 
-    }
-  }
-  
-  document.getElementById("songTitle").value = "";
-  document.getElementById("songFiles").value = "";
-  showMessage(`Subida completa: ${ok} exitosas, ${fail} error(es)`, ok > 0 ? "success" : "error");
   await refreshCatalogOptimized();
 }
 
