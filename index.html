@@ -74,7 +74,7 @@
   .album-hero .title{font-size:1.2rem;font-weight:900}
   .album-hero .meta{color:var(--muted);font-size:.9rem}
   .song-plain-list{margin-top:8px}
-  .song-plain-item{padding:12px 8px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;gap:12px;transition:all 0.3s ease;border-radius:8px;margin-bottom:2px}
+  .song-plain-item{padding:12px 8px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;gap:12px;transition:all 0.3s ease;border-radius:8px;margin-bottom:2px;cursor:pointer}
   .song-plain-item:last-child{border-bottom:none}
   .song-plain-item:hover{background:var(--panel);transform:translateX(4px)}
   .song-plain-item .idx{min-width:20px;text-align:right;color:var(--muted)}
@@ -391,6 +391,7 @@ const downloadsView = document.getElementById("downloadsView");
 const favoritesList = document.getElementById("favoritesList");
 const downloadsList = document.getElementById("downloadsList");
 
+// ===== INICIALIZACIÓN =====
 (async () => {
   console.log('🚀 Inicializando KLMZ MUSIC...');
   try {
@@ -465,7 +466,6 @@ async function refreshCatalogOptimized() {
   
   await Promise.all(songPromises);
   
-  // ARREGLADO: Volver a álbumes normales (no por artista)
   renderAlbums();
   
   console.log('Catálogo cargado:', albums.length, 'álbumes,', flatSongs.length, 'canciones');
@@ -496,7 +496,6 @@ function updateAdminSelects() {
   }
 }
 
-// ARREGLADO: Renderizar álbumes normales
 function renderAlbums() {
   albumsGrid.innerHTML = "";
   albums.forEach(album => {
@@ -517,8 +516,9 @@ function renderAlbums() {
   });
 }
 
+// ===== FUNCIÓN CORREGIDA PARA ABRIR ÁLBUM Y REPRODUCIR =====
 function openAlbum(album) {
-  console.log('Abriendo álbum:', album.title);
+  console.log('🎵 Abriendo álbum:', album.title);
   currentAlbum = album;
   const songs = songsByAlbum[album.id] || [];
   
@@ -543,18 +543,27 @@ function openAlbum(album) {
         <button class="download-btn ${isDownloaded ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.id}', '${song.song_url}', '${song.title.replace(/'/g, "\\'")}', this)" title="Descargar">${isDownloaded ? '✓' : '📥'}</button>
       `;
       
-      // ARREGLADO: Event listener para reproducir
-      row.addEventListener('click', () => {
-        console.log('Reproduciendo canción:', song.title);
-        const albumSongs = songs.map(s => ({
-          ...s,
+      // ✅ ARREGLADO: Event listener simple y funcional
+      row.onclick = function(e) {
+        if (e.target.classList.contains('favorite-btn') || e.target.classList.contains('download-btn')) {
+          return; // No reproducir si se clickea botón
+        }
+        
+        console.log('🎵 Click en canción:', song.title);
+        
+        // Crear cola de reproducción
+        queue = songs.map(s => ({
+          id: s.id,
+          title: s.title,
+          song_url: s.song_url,
           album_title: album.title,
           cover_url: album.cover_url
         }));
-        queue = albumSongs;
-        qIndex = -1;
-        startQueueAt(idx);
-      });
+        
+        // Establecer índice y reproducir
+        qIndex = idx;
+        playTrackDirectly(queue[qIndex]);
+      };
       
       avSongs.appendChild(row);
     });
@@ -563,6 +572,52 @@ function openAlbum(album) {
   hideAllViews();
   albumView.style.display = "block";
   albumView.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ===== FUNCIÓN DE REPRODUCCIÓN MEJORADA =====
+function playTrackDirectly(song) {
+  console.log('🎵 Reproduciendo directamente:', song.title);
+  console.log('🎵 URL:', song.song_url);
+  
+  if (!song || !song.song_url) {
+    console.error('❌ Error: canción o URL no válida');
+    showMessage('Error: no se puede reproducir esta canción', 'error');
+    return;
+  }
+  
+  // Parar audio actual
+  audioEl.pause();
+  audioEl.currentTime = 0;
+  
+  // Establecer nueva fuente
+  audioEl.src = song.song_url;
+  
+  // Actualizar interfaz
+  npTitle.textContent = song.title;
+  npAlbum.textContent = song.album_title || "—";
+  npCover.src = song.cover_url || "";
+  
+  npBigTitle.textContent = song.title;
+  npBigAlbum.textContent = song.album_title || "—";
+  npBigCover.src = song.cover_url || "";
+  
+  updateCurrentFavoriteButton();
+  updateCurrentDownloadButton();
+  
+  showPlayer();
+  
+  // Reproducir
+  audioEl.play()
+    .then(() => {
+      console.log('✅ Reproducción exitosa');
+      playBtn.textContent = "⏸";
+      playBtnBig.textContent = "⏸";
+      toggleSoundwave(true);
+    })
+    .catch((error) => {
+      console.error('❌ Error reproduciendo:', error);
+      showMessage(`Error reproduciendo "${song.title}": ${error.message}`, 'error');
+    });
 }
 
 function closeAlbumView() {
@@ -687,7 +742,6 @@ function updateCurrentFavoriteButton() {
   }
 }
 
-// NUEVA: Funciones de descarga offline
 async function downloadSong(songId, songUrl, title, element) {
   if (downloads.has(songId)) {
     showMessage('Esta canción ya está descargada', 'info');
@@ -791,8 +845,8 @@ function playFavoriteSong(index) {
   const favoriteSongs = flatSongs.filter(song => favorites.has(song.id));
   if (favoriteSongs[index]) {
     queue = favoriteSongs;
-    qIndex = -1;
-    startQueueAt(index);
+    qIndex = index;
+    playTrackDirectly(queue[qIndex]);
   }
 }
 
@@ -852,8 +906,8 @@ function playDownloadedSong(index) {
   
   if (downloadedSongs[index]) {
     queue = downloadedSongs;
-    qIndex = -1;
-    startQueueAt(index);
+    qIndex = index;
+    playTrackDirectly(queue[qIndex]);
   }
 }
 
@@ -898,63 +952,6 @@ function showAccount() {
   }
 }
 
-// ARREGLADO: Funciones de reproducción
-function startQueueAt(idx) { 
-  if (!queue.length) return; 
-  qIndex = idx; 
-  playTrack(queue[qIndex]); 
-}
-
-function playTrack(song) {
-  console.log('Reproduciendo:', song.title, song.song_url);
-  
-  if (!song.song_url) {
-    showMessage(`Error: No hay URL para "${song.title}"`, 'error');
-    nextTrack();
-    return;
-  }
-  
-  audioEl.pause();
-  audioEl.currentTime = 0;
-  audioEl.src = song.song_url;
-  audioEl.load();
-  
-  npTitle.textContent = song.title;
-  npAlbum.textContent = song.album_title || "—";
-  npCover.src = song.cover_url || "";
-  
-  npBigTitle.textContent = song.title;
-  npBigAlbum.textContent = song.album_title || "—";
-  npBigCover.src = song.cover_url || "";
-  
-  updateCurrentFavoriteButton();
-  updateCurrentDownloadButton();
-  
-  showPlayer();
-  
-  const playPromise = audioEl.play();
-  if (playPromise !== undefined) {
-    playPromise
-      .then(() => {
-        console.log('Reproducción exitosa:', song.title);
-        playBtn.textContent = "⏸";
-        playBtnBig.textContent = "⏸";
-        toggleSoundwave(true);
-      })
-      .catch((error) => {
-        console.error('Error de reproducción:', error, song.song_url);
-        showMessage(`No se puede reproducir "${song.title}". Formato o archivo inválido.`, 'error');
-        setTimeout(() => {
-          if (queue.length > 1) {
-            nextTrack();
-          } else {
-            hidePlayer();
-          }
-        }, 2000);
-      });
-  }
-}
-
 function togglePlay() {
   if (audioEl.paused) { 
     audioEl.play().then(() => {
@@ -974,7 +971,7 @@ function nextTrack() {
   if (!queue.length) return;
   
   if (repeatMode === 2) {
-    playTrack(queue[qIndex]);
+    playTrackDirectly(queue[qIndex]);
     return;
   }
   
@@ -986,13 +983,13 @@ function nextTrack() {
     return;
   }
   
-  playTrack(queue[qIndex]);
+  playTrackDirectly(queue[qIndex]);
 }
 
 function prevTrack() {
   if (!queue.length) return;
   qIndex = (qIndex - 1 + queue.length) % queue.length;
-  playTrack(queue[qIndex]);
+  playTrackDirectly(queue[qIndex]);
 }
 
 function showPlayer() {
@@ -1032,6 +1029,7 @@ function fmt(t) {
   return `${m}:${s.toString().padStart(2, "0")}`; 
 }
 
+// ===== EVENT LISTENERS =====
 audioEl.addEventListener("timeupdate", () => {
   if (!audioEl.duration) return;
   const p = (audioEl.currentTime / audioEl.duration) * 100;
@@ -1047,14 +1045,6 @@ audioEl.addEventListener("timeupdate", () => {
 audioEl.addEventListener("ended", () => nextTrack());
 audioEl.addEventListener("pause", () => toggleSoundwave(false));
 audioEl.addEventListener("play", () => toggleSoundwave(true));
-
-audioEl.addEventListener('loadstart', () => {
-  console.log('Cargando audio...');
-});
-
-audioEl.addEventListener('canplaythrough', () => {
-  console.log('Audio listo para reproducir');
-});
 
 audioEl.addEventListener('error', (e) => {
   console.error('Error de audio:', e);
