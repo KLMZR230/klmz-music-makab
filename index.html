@@ -128,7 +128,6 @@
   .vol{display:flex;align-items:center;gap:8px}
   .tag{padding:4px 8px;border:1px solid var(--stroke);border-radius:8px;font-size:.8rem;color:var(--muted)}
   .link{color:#9adfff;text-decoration:none}
-  .searchbar{display:grid;grid-template-columns:1fr 220px;gap:10px}
   /* Now Playing pantalla completa */
   #npOverlay{
     position:fixed;inset:0;background:#000c;backdrop-filter:blur(6px);
@@ -284,7 +283,6 @@
   @media (max-width:800px){
     .inputs{grid-template-columns:1fr}
     .player .wrap{grid-template-columns:1fr}
-    .searchbar{grid-template-columns:1fr}
     .np img{width:72px;height:72px}
     .controls .buttons .circle{width:76px;height:76px;font-size:30px}
     .controls .buttons .sm{width:60px;height:60px;font-size:24px}
@@ -303,26 +301,18 @@
   <div class="row">
     <div class="brand"><span class="logo">♫</span> KLMZ MUSIC</div>
     <div class="tools">
-      <span class="muted" id="albumsTitle">Albums</span>
+      <span class="muted" id="albumsTitle">Tu música</span>
       <button class="icon-btn" id="btn-login" title="Admin" onclick="showLogin()">🔑</button>
       <button class="btn ghost" id="btn-logout" style="display:none" onclick="logout()">Salir</button>
     </div>
   </div>
 </header>
 <div class="container">
-  <!-- Buscador / Filtros -->
-  <div class="card stack">
-    <div class="searchbar">
-      <input id="search" type="text" placeholder="Buscar álbum, canción o playlist..." oninput="applyFilters()" />
-      <select id="albumFilter" onchange="applyFilters()">
-        <option value="">Filtrar por álbum</option>
-      </select>
-    </div>
-    <div class="row muted">
-      <span class="tag">Catálogo público</span>
-      <span id="adminTag" class="tag" style="display:none">Admin</span>
-      <span id="userTag" class="tag" style="display:none">Usuario</span>
-    </div>
+  <!-- Información de estado -->
+  <div class="row muted" style="margin-bottom:20px;">
+    <span class="tag">Catálogo público</span>
+    <span id="adminTag" class="tag" style="display:none">Admin</span>
+    <span id="userTag" class="tag" style="display:none">Usuario</span>
   </div>
   
   <!-- Panel Admin -->
@@ -361,7 +351,6 @@
   </div>
   
   <!-- Grilla de Álbumes -->
-  <div class="spacer"></div>
   <div class="section-title">Albums</div>
   <div id="albumsGrid" class="grid albums"></div>
   <div id="emptyAlbums" class="muted" style="display:none">No hay álbumes todavía.</div>
@@ -408,12 +397,6 @@
       </div>
     </div>
     <div id="pvSongs" class="song-plain-list"></div>
-  </div>
-  
-  <!-- Resultados de búsqueda -->
-  <div id="searchResults" class="stack" style="display:none">
-    <div class="section-title">Resultados</div>
-    <div id="songsList" class="list"></div>
   </div>
 </div>
 
@@ -571,10 +554,6 @@
   
   // UI refs
   const albumsGrid = document.getElementById("albumsGrid");
-  const albumFilter = document.getElementById("albumFilter");
-  const searchInput = document.getElementById("search");
-  const searchResults = document.getElementById("searchResults");
-  const songsList = document.getElementById("songsList");
   const emptyAlbums = document.getElementById("emptyAlbums");
   const npCover = document.getElementById("npCover");
   const npTitle = document.getElementById("npTitle");
@@ -639,17 +618,16 @@
     setTimeout(() => errorEl.remove(), 4000);
   }
   
-  // Navegación
+  // Navegación (sin funciones de búsqueda)
   function focusSearch(){
-    document.getElementById('search').focus();
-    document.getElementById('search').scrollIntoView({behavior:'smooth', block:'center'});
+    // La funcionalidad de búsqueda se maneja desde la barra inferior
+    showError('Usa los álbumes y playlists para navegar tu música');
   }
   
   function goHome(){
     window.scrollTo({top:0,behavior:'smooth'});
     closeAlbumView();
     closePlaylistView();
-    document.getElementById('searchResults').style.display = 'none';
     document.getElementById('userPanel').style.display = 'none';
   }
   
@@ -756,7 +734,7 @@
     renderPlaylists();
   }
 
-  // Catálogo - CORREGIDO
+  // Catálogo
   async function refreshCatalog(){
     console.log('Cargando álbumes...');
     const { data: alb, error: e1 } = await sb.from("albums").select("*").order("created_at",{ascending:false});
@@ -774,7 +752,6 @@
     const delSel   = document.getElementById("deleteAlbumSelect");
     if (adminSel) adminSel.innerHTML = "";
     if (delSel) delSel.innerHTML = "";
-    albumFilter.innerHTML = '<option value="">Filtrar por álbum</option>';
     
     for (const a of albums){
       if (adminSel){
@@ -787,9 +764,6 @@
         d.value = a.id; d.textContent = a.title;
         delSel.appendChild(d);
       }
-      const of = document.createElement("option");
-      of.value = a.id; of.textContent = a.title;
-      albumFilter.appendChild(of);
     }
     
     // Cargar canciones de álbumes
@@ -865,7 +839,6 @@
     currentAlbum = null;
   }
   
-  // Resto de funciones de playlist y reproductor... (mantenerlas como estaban)
   // Gestión de Playlists
   async function loadPlaylists(){
     if (!isLoggedIn) return;
@@ -1192,51 +1165,6 @@
     await loadPlaylists();
   }
 
-  // Búsqueda + filtro
-  function applyFilters(){
-    const term = searchInput.value.trim().toLowerCase();
-    const filterAlbumId = albumFilter.value;
-    
-    let filteredAlbums = albums;
-    if (filterAlbumId){
-      filteredAlbums = albums.filter(a => a.id === filterAlbumId);
-    }
-    if (term){
-      filteredAlbums = filteredAlbums.filter(a => a.title.toLowerCase().includes(term));
-    }
-    renderAlbums(filteredAlbums);
-    
-    const songs = flatSongs.filter(s => {
-      const okAlbum = filterAlbumId ? s.album_id === filterAlbumId : true;
-      const okTerm = term ? (s.title.toLowerCase().includes(term) || s.album_title.toLowerCase().includes(term)) : false;
-      return okAlbum && okTerm;
-    });
-    
-    songsList.innerHTML = "";
-    if (songs.length && term){
-      searchResults.style.display = "block";
-      songs.forEach((s,idx)=>{
-        const row = document.createElement("div");
-        row.className = "song-plain-item";
-        row.innerHTML = `
-          <div class="idx">${idx+1}</div>
-          <div class="title">${s.title}</div>
-          <div class="album">${s.album_title}</div>
-          <div class="more" onclick="event.stopPropagation(); showAddToPlaylistMenu(event, {id: '${s.id}', title: '${s.title.replace(/'/g, "\\'")}', album_title: '${s.album_title.replace(/'/g, "\\'")}', cover_url: '${s.cover_url}'})">+</div>
-        `;
-        row.onclick = () => startQueueFromList(songs, idx);
-        songsList.appendChild(row);
-      });
-    } else {
-      if (term){ 
-        searchResults.style.display = "block"; 
-        songsList.innerHTML = `<div class="muted">Sin resultados.</div>`; 
-      } else { 
-        searchResults.style.display = "none"; 
-      }
-    }
-  }
-  
   // Reproductor
   function isValidAudioUrl(url) {
     if (!url || typeof url !== 'string') return false;
@@ -1377,7 +1305,7 @@
     npOverlay.style.display = "none"; 
   }
 
-  // Funciones admin (mantenidas como estaban)
+  // Funciones admin
   function safeName(name){ return name.replace(/[^a-zA-Z0-9\_\-.]+/g,"-"); }
   
   async function uploadAlbum(){
