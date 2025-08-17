@@ -529,7 +529,6 @@ let isAdmin = false, isLoggedIn = false, currentUser = null;
 let albums = [], userPlaylists = [], publicPlaylists = [];
 let songsByAlbum = {}, songsByPlaylist = {}, flatSongs = [];
 let queue = [], qIndex = -1, currentAlbum = null, currentPlaylist = null;
-
 // Utility Functions
 function setActiveNav(activeButton) {
   document.querySelectorAll('#bottomBar button').forEach(btn => btn.classList.remove('active'));
@@ -595,6 +594,162 @@ function updateAdminSelects() {
       editSel.appendChild(option);
     });
   }
+}
+
+// ===== FUNCIONES CORREGIDAS PARA BÚSQUEDA Y PLAYLISTS =====
+
+// Función de búsqueda corregida
+function searchSongs(query) {
+  const resultsEl = document.getElementById('searchResults');
+  const noResultsEl = document.getElementById('noSearchResults');
+  
+  if (!resultsEl || !noResultsEl) return;
+  
+  resultsEl.innerHTML = '';
+  
+  if (!query || query.trim() === '') {
+    noResultsEl.style.display = 'block';
+    return;
+  }
+  
+  noResultsEl.style.display = 'none';
+  
+  // Filtrar canciones en flatSongs
+  const lowerQuery = query.toLowerCase();
+  const filtered = flatSongs.filter(song => {
+    const titleMatch = song.title.toLowerCase().includes(lowerQuery);
+    const albumMatch = song.album_title ? song.album_title.toLowerCase().includes(lowerQuery) : false;
+    // Buscar también por artista si el álbum tiene artista
+    const album = albums.find(a => a.title === song.album_title);
+    const artistMatch = album && album.artist ? album.artist.toLowerCase().includes(lowerQuery) : false;
+    return titleMatch || albumMatch || artistMatch;
+  });
+  
+  if (filtered.length === 0) {
+    noResultsEl.style.display = 'block';
+    return;
+  }
+  
+  filtered.forEach(song => {
+    const album = albums.find(a => a.title === song.album_title);
+    const div = document.createElement('div');
+    div.className = 'search-song-item';
+    div.innerHTML = `
+      <img class="search-song-cover" src="${song.cover_url || ''}" alt="Portada" onerror="this.style.background='var(--panel)'; this.innerHTML='🎵';">
+      <div class="search-song-info">
+        <div class="search-song-title">${song.title}</div>
+        <div class="search-song-artist">${album?.artist || song.album_title || 'Desconocido'}</div>
+      </div>
+      <div class="search-song-actions">
+        <button class="search-song-play" onclick="event.stopPropagation(); playTrackFromSearch('${song.id}')" title="Reproducir">▶</button>
+      </div>
+    `;
+    div.onclick = () => playTrackFromSearch(song.id);
+    resultsEl.appendChild(div);
+  });
+}
+
+// Función para reproducir desde búsqueda
+function playTrackFromSearch(songId) {
+  const song = flatSongs.find(s => s.id === songId);
+  if (!song) {
+    showError('Canción no encontrada');
+    return;
+  }
+  
+  // Crear cola con solo esta canción
+  queue = [song];
+  qIndex = 0;
+  playTrack(song);
+}
+
+// Función corregida para crear playlist
+async function createNewPlaylist() {
+  if (!isLoggedIn) {
+    showError('Debes iniciar sesión para crear playlists');
+    showLogin();
+    return;
+  }
+  
+  const name = prompt('Nombre de la nueva playlist:');
+  if (!name || name.trim() === '') {
+    showError('Nombre inválido');
+    return;
+  }
+  
+  try {
+    const { data, error } = await sb.from('playlists').insert([{
+      name: name.trim(),
+      user_id: currentUser.id,
+      is_public: false,
+      description: null
+    }]);
+    
+    if (error) {
+      showError('Error creando playlist: ' + error.message);
+      return;
+    }
+    
+    showSuccess('Playlist creada exitosamente');
+    await loadPlaylists();
+  } catch (e) {
+    console.error('Error en createNewPlaylist:', e);
+    showError('Error creando playlist');
+  }
+}
+
+// Función corregida para cargar playlists
+async function loadPlaylists() {
+  if (!isLoggedIn) return;
+  
+  try {
+    const { data, error } = await sb
+      .from('playlists')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', {ascending: false});
+    
+    if (error) {
+      showError('Error cargando playlists: ' + error.message);
+      return;
+    }
+    
+    userPlaylists = data || [];
+    
+    const grid = document.getElementById('playlistsGrid');
+    const emptyPlaylists = document.getElementById('emptyPlaylists');
+    
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    
+    if (!userPlaylists.length) {
+      if (emptyPlaylists) emptyPlaylists.style.display = 'block';
+      return;
+    } else {
+      if (emptyPlaylists) emptyPlaylists.style.display = 'none';
+    }
+    
+    userPlaylists.forEach(playlist => {
+      const div = document.createElement('div');
+      div.className = 'playlist-card';
+      div.innerHTML = `
+        <div class="playlist-cover">🎵</div>
+        <div class="playlist-title">${playlist.name}</div>
+        <div class="playlist-meta">Playlist • ${new Date(playlist.created_at).toLocaleDateString()}</div>
+      `;
+      div.onclick = () => openPlaylistDetails(playlist);
+      grid.appendChild(div);
+    });
+  } catch (e) {
+    console.error('Error en loadPlaylists:', e);
+    showError('Error cargando playlists');
+  }
+}
+
+// Función temporal para abrir detalles de playlist
+function openPlaylistDetails(playlist) {
+  alert(`Playlist: ${playlist.name}\nCreada: ${new Date(playlist.created_at).toLocaleDateString()}\n\nFuncionalidad de gestión de canciones en playlist próximamente.`);
 }
 
 // NUEVA FUNCIÓN: Editar información completa del álbum
@@ -1071,6 +1226,7 @@ async function login() {
     
     hideLogin();
     await refreshCatalog();
+    if (isLoggedIn) await loadPlaylists();
     
   } catch (error) {
     console.error('Error en login:', error);
@@ -1253,8 +1409,6 @@ document.getElementById("audio").addEventListener("ended", () => nextTrack());
 // Placeholder functions
 function toggleFavorite(songId) { console.log('Toggle favorite:', songId); }
 function downloadSong(songId) { console.log('Download song:', songId); }
-function searchSongs(value) { console.log('Search:', value); }
-function createNewPlaylist() { console.log('Create playlist'); }
 function showFavorites() { console.log('Show favorites'); }
 function showDownloads() { console.log('Show downloads'); }
 function toggleShuffle() { console.log('Toggle shuffle'); }
