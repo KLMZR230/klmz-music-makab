@@ -289,6 +289,7 @@
       <div class="soundwave" id="soundwave" style="display:none">
         <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
       </div>
+      <audio id="audio" preload="none"></audio>
     </div>
   </div>
 </div>
@@ -439,34 +440,24 @@
     document.getElementById("btn-login").style.display = "inline-flex";
     document.getElementById("btn-logout").style.display = "none";
   }
-  // Restaurar sesión si existe + cargar catálogo
-  (async () => {
-    const { data } = await sb.auth.getSession();
-    if (data?.session?.user?.email) {
-      const email = data.session.user.email;
-      isAdmin = (email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-      document.getElementById("btn-login").style.display = "none";
-      document.getElementById("btn-logout").style.display = "inline-flex";
-      if(isAdmin){
-        document.getElementById("adminPanel").style.display = "block";
-        document.getElementById("adminTag").style.display = "inline-block";
-      }
-    }
-    await refreshCatalog();
-  })();
+
   // Catálogo
   async function refreshCatalog(){
+    console.log('Cargando álbumes...');
     // Cargar álbumes
     const { data: alb, error: e1 } = await sb.from("albums").select("*").order("created_at",{ascending:false});
-    if (e1){ console.error(e1); return; }
+    if (e1){ console.error('Error cargando álbumes:', e1); return; }
     albums = alb || [];
+    console.log('Álbumes cargados:', albums.length);
     emptyAlbums.style.display = albums.length ? "none" : "block";
+    
     // Poner en selector de admin y filtro público
     const adminSel = document.getElementById("albumSelect");
     const delSel   = document.getElementById("deleteAlbumSelect");
     if (adminSel) adminSel.innerHTML = "";
     if (delSel) delSel.innerHTML = "";
     albumFilter.innerHTML = '<option value="">Filtrar por álbum</option>';
+    
     for (const a of albums){
       if (adminSel){
         const o = document.createElement("option");
@@ -482,6 +473,7 @@
       of.value = a.id; of.textContent = a.title;
       albumFilter.appendChild(of);
     }
+    
     // Cargar canciones por álbum (para búsqueda y listas)
     songsByAlbum = {};
     flatSongs = [];
@@ -493,10 +485,13 @@
         flatSongs.push({...s, album_title: a.title, cover_url: a.cover_url});
       }
     }
+    
     // Pintar grilla
     renderAlbums();
   }
+  
   function renderAlbums(list = albums){
+    console.log('Renderizando álbumes:', list.length);
     albumsGrid.innerHTML = "";
     list.forEach(a => {
       const count = (songsByAlbum[a.id]?.length||0);
@@ -511,6 +506,7 @@
       albumsGrid.appendChild(card);
     });
   }
+  
   // Abrir álbum (vista de álbum con lista simple de canciones)
   function openAlbum(album){
     currentAlbum = album;
@@ -546,6 +542,7 @@
     albumView.style.display = "none";
     currentAlbum = null;
   }
+  
   // Búsqueda + filtro (mantiene resultados aparte)
   function applyFilters(){
     const term = searchInput.value.trim().toLowerCase();
@@ -584,6 +581,7 @@
       else { searchResults.style.display = "none"; }
     }
   }
+  
   // Reproductor
   function startQueueFromList(list, idx){ queue = list; qIndex = -1; startQueueAt(idx); }
   function startQueueAt(idx){ if (!queue.length) return; qIndex = idx; playTrack(queue[qIndex]); }
@@ -622,13 +620,6 @@
   function seekAudio(percent){ if (!audioEl.duration || isNaN(audioEl.duration)) return; audioEl.currentTime = (percent/100) * audioEl.duration; }
   function fmt(t){ if(!isFinite(t)) return "0:00"; const m=Math.floor(t/60), s=Math.floor(t%60); return `${m}:${s.toString().padStart(2,"0")}`; }
   
-  // Crear elemento audio
-  const audioElement = document.createElement('audio');
-  audioElement.id = 'audio';
-  audioElement.preload = 'none';
-  document.body.appendChild(audioElement);
-  const audioEl = audioElement;
-  
   audioEl.addEventListener("timeupdate",()=>{
     if (!audioEl.duration) return;
     const p = (audioEl.currentTime / audioEl.duration) * 100;
@@ -646,6 +637,7 @@
   function closeNowPlaying(){ 
     npOverlay.style.display = "none"; 
   }
+  
   // Subidas (Admin)
   function safeName(name){ return name.replace(/[^a-zA-Z0-9\_\-.]+/g,"-"); }
   async function uploadAlbum(){
@@ -687,6 +679,7 @@
     alert(`Subida completa: ${ok} ok, ${fail} error(es)`);
     await refreshCatalog();
   }
+  
   // Eliminar álbum (y sus canciones)
   async function deleteAlbum(){
     if (!isAdmin) return alert("No autorizado");
@@ -704,26 +697,22 @@
     if (currentAlbum?.id === albumId) closeAlbumView();
     await refreshCatalog();
   }
-  // Exponer funciones a botones
-  window.showLogin = showLogin;
-  window.hideLogin = hideLogin;
-  window.login = login;
-  window.logout = logout;
-  window.uploadAlbum = uploadAlbum;
-  window.uploadSong = uploadSong;
-  window.applyFilters = applyFilters;
-  window.openAlbum = openAlbum;
-  window.closeAlbumView = closeAlbumView;
-  window.togglePlay = togglePlay;
-  window.nextTrack = nextTrack;
-  window.prevTrack = prevTrack;
-  window.seekAudio = seekAudio;
-  window.setVolume = setVolume;
-  window.openNowPlaying = openNowPlaying;
-  window.closeNowPlaying = closeNowPlaying;
-  window.focusSearch = focusSearch;
-  window.goHome = goHome;
-  window.showAccount = showAccount;
+  
+  // Restaurar sesión si existe + cargar catálogo
+  (async () => {
+    const { data } = await sb.auth.getSession();
+    if (data?.session?.user?.email) {
+      const email = data.session.user.email;
+      isAdmin = (email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+      document.getElementById("btn-login").style.display = "none";
+      document.getElementById("btn-logout").style.display = "inline-flex";
+      if(isAdmin){
+        document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("adminTag").style.display = "inline-block";
+      }
+    }
+    await refreshCatalog();
+  })();
 </script>
 </body>
 </html>
