@@ -53,6 +53,8 @@ if ('serviceWorker' in navigator) {
   .btn.small{padding:6px 10px;font-size:12px}
   .btn.danger{background:var(--error)}
   .btn.danger:hover{background:#cc0000}
+  .btn.warning{background:var(--warning);color:#000}
+  .btn.warning:hover{background:#f57f17;transform:translateY(-2px)}
   .icon-btn{background:transparent;border:1px solid #ffffff22;color:#fff;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:18px;line-height:1;transition:all 0.3s ease}
   .icon-btn:hover{background:#ffffff14;transform:scale(1.1)}
   .container{padding:18px;max-width:1100px;margin:auto}
@@ -343,25 +345,40 @@ if ('serviceWorker' in navigator) {
     </div>
     <div id="pvSongs" class="song-plain-list"></div>
   </div>
+
+  <!-- PANEL ADMIN MEJORADO CON EDICIÓN COMPLETA -->
   <div id="adminPanel" class="card stack" style="display:none">
-    <div class="section-title">Panel Admin</div>
+    <div class="section-title">🛠️ Panel de Administración</div>
     <div class="inputs">
       <div class="stack">
-        <div class="pill">Crear nuevo álbum</div>
+        <div class="pill">➕ Crear nuevo álbum</div>
         <input id="albumTitle" type="text" placeholder="Título del álbum" />
         <input id="albumArtist" type="text" placeholder="Artista del álbum" />
         <input id="albumCover" type="file" accept="image/*" />
-        <button class="btn" onclick="uploadAlbum()">Subir Álbum</button>
+        <button class="btn" onclick="uploadAlbum()">✨ Subir Álbum</button>
       </div>
       <div class="stack">
-        <div class="pill">Agregar canciones a un álbum existente</div>
+        <div class="pill">🎵 Agregar canciones a álbum</div>
         <select id="albumSelect"></select>
         <input id="songTitle" type="text" placeholder="Título de la canción (opcional si subes 1)" />
         <input id="songFiles" type="file" accept="audio/*" multiple />
-        <button class="btn" onclick="uploadSong()">Subir Canciones</button>
+        <button class="btn" onclick="uploadSong()">📤 Subir Canciones</button>
       </div>
       <div class="stack">
-        <div class="pill">Eliminar canciones individuales</div>
+        <div class="pill">✏️ Editar información de álbum</div>
+        <select id="editInfoAlbumSelect"></select>
+        <div class="row" style="gap:5px">
+          <input id="editAlbumTitle" type="text" placeholder="Nuevo título" />
+          <input id="editAlbumArtist" type="text" placeholder="Nuevo artista" />
+        </div>
+        <input id="editAlbumCover" type="file" accept="image/*" />
+        <div class="row" style="gap:5px">
+          <button class="btn" onclick="editAlbumInfo()">💾 Actualizar Info</button>
+          <button class="btn warning" onclick="editAlbumCoverOnly()">🖼️ Solo Portada</button>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="pill">🗑️ Eliminar canciones individuales</div>
         <select id="deleteSongAlbumSelect" onchange="loadSongsForDeletion()">
           <option value="">Selecciona un álbum</option>
         </select>
@@ -371,18 +388,13 @@ if ('serviceWorker' in navigator) {
         <button class="btn danger" onclick="deleteSong()" id="deleteSongBtn" style="display:none">🗑️ Eliminar Canción</button>
       </div>
       <div class="stack">
-        <div class="pill">Eliminar álbumes completos</div>
+        <div class="pill">💥 Eliminar álbumes completos</div>
         <select id="deleteAlbumSelect"></select>
-        <button class="btn ghost" onclick="deleteAlbum()">Eliminar Álbum Completo</button>
-      </div>
-      <div class="stack">
-        <div class="pill">Editar artista de álbum existente</div>
-        <select id="editAlbumSelect"></select>
-        <input id="editAlbumArtist" type="text" placeholder="Nuevo nombre de artista" />
-        <button class="btn" onclick="editAlbumArtist()">Actualizar Artista</button>
+        <button class="btn danger" onclick="deleteAlbum()">💀 Eliminar Álbum Completo</button>
       </div>
     </div>
   </div>
+
   <div id="homeContent">
     <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:12px">
       <div class="section-title" style="margin:0">Albums</div>
@@ -552,7 +564,7 @@ function showSuccess(msg) {
 function updateAdminSelects() {
   const adminSel = document.getElementById("albumSelect");
   const delSel = document.getElementById("deleteAlbumSelect");
-  const editSel = document.getElementById("editAlbumSelect");
+  const editSel = document.getElementById("editInfoAlbumSelect");
 
   if (adminSel) {
     adminSel.innerHTML = '<option value="">Selecciona un álbum</option>';
@@ -575,7 +587,7 @@ function updateAdminSelects() {
   }
   
   if (editSel) {
-    editSel.innerHTML = '<option value="">Selecciona un álbum</option>';
+    editSel.innerHTML = '<option value="">Selecciona un álbum para editar</option>';
     albums.forEach(album => {
       const option = document.createElement("option");
       option.value = album.id;
@@ -585,28 +597,83 @@ function updateAdminSelects() {
   }
 }
 
-// NUEVA FUNCIÓN MEJORADA: Editar artista de álbum
-async function editAlbumArtist() {
+// NUEVA FUNCIÓN: Editar información completa del álbum
+async function editAlbumInfo() {
   if (!isAdmin) return alert("No autorizado");
-  const albumId = document.getElementById("editAlbumSelect").value;
+  const albumId = document.getElementById("editInfoAlbumSelect").value;
+  const newTitle = document.getElementById("editAlbumTitle").value.trim();
   const newArtist = document.getElementById("editAlbumArtist").value.trim();
-  if (!albumId || !newArtist) {
-    showError("Elige un álbum y escribe un nombre de artista");
+  
+  if (!albumId) {
+    showError("Selecciona un álbum para editar");
+    return;
+  }
+  
+  if (!newTitle && !newArtist) {
+    showError("Ingresa al menos un título o artista nuevo");
     return;
   }
   
   try {
-    const { error } = await sb.from("albums").update({ artist: newArtist }).eq("id", albumId);
+    const updateData = {};
+    if (newTitle) updateData.title = newTitle;
+    if (newArtist) updateData.artist = newArtist;
+    
+    const { error } = await sb.from("albums").update(updateData).eq("id", albumId);
     if (error) {
-      showError("Error actualizando artista: " + error.message);
+      showError("Error actualizando álbum: " + error.message);
       return;
     }
-    showSuccess("Artista actualizado correctamente");
+    
+    showSuccess("Información del álbum actualizada correctamente");
+    document.getElementById("editAlbumTitle").value = "";
     document.getElementById("editAlbumArtist").value = "";
     await refreshCatalog();
   } catch (error) {
-    console.error('Error en editAlbumArtist:', error);
-    showError('Error actualizando artista');
+    console.error('Error en editAlbumInfo:', error);
+    showError('Error actualizando información del álbum');
+  }
+}
+
+// NUEVA FUNCIÓN: Editar solo portada del álbum
+async function editAlbumCoverOnly() {
+  if (!isAdmin) return alert("No autorizado");
+  const albumId = document.getElementById("editInfoAlbumSelect").value;
+  const file = document.getElementById("editAlbumCover").files[0];
+  
+  if (!albumId) {
+    showError("Selecciona un álbum");
+    return;
+  }
+  
+  if (!file) {
+    showError("Selecciona una nueva imagen de portada");
+    return;
+  }
+  
+  try {
+    const path = `${Date.now()}-${safeName(file.name)}`;
+    const { error: upErr } = await sb.storage.from("covers").upload(path, file);
+    if (upErr) {
+      showError("Error subiendo portada: " + upErr.message);
+      return;
+    }
+    
+    const { data: pub } = sb.storage.from("covers").getPublicUrl(path);
+    const cover_url = pub.publicUrl;
+    
+    const { error } = await sb.from("albums").update({ cover_url }).eq("id", albumId);
+    if (error) {
+      showError("Error actualizando portada: " + error.message);
+      return;
+    }
+    
+    showSuccess("Portada del álbum actualizada correctamente");
+    document.getElementById("editAlbumCover").value = "";
+    await refreshCatalog();
+  } catch (error) {
+    console.error('Error en editAlbumCoverOnly:', error);
+    showError('Error actualizando portada');
   }
 }
 
@@ -875,7 +942,7 @@ function closeNowPlaying() {
   if (npOverlay) npOverlay.style.display = "none"; 
 }
 
-// NAVEGACIÓN ARREGLADA
+// Navigation Functions
 function hideAllViews() {
   document.getElementById('homeContent').style.display = 'none';
   document.getElementById('searchView').style.display = 'none';
@@ -931,7 +998,7 @@ function closePlaylistsView() {
 
 function showAccount() {
   if(isAdmin) {
-    alert('Cuenta Admin: ' + ADMIN_EMAIL + '\n\nFuncionalidades:\n• Crear álbumes\n• Subir canciones\n• Eliminar álbumes\n• Editar artistas\n• Gestionar playlists');
+    alert('Cuenta Admin: ' + ADMIN_EMAIL + '\n\nFuncionalidades:\n• Crear álbumes\n• Subir canciones\n• Editar información completa\n• Eliminar álbumes\n• Gestionar playlists');
   } else if (isLoggedIn) {
     alert('Información de Cuenta\n\nUsuario: ' + currentUser.email + '\n\nFuncionalidades:\n• Crear playlists\n• Gestionar tu música');
   } else {
@@ -1035,7 +1102,7 @@ async function logout() {
   }
 }
 
-// Admin Functions MEJORADAS
+// Admin Functions
 function safeName(name) { 
   return name.replace(/[^a-zA-Z0-9_\-.]+/g, "-"); 
 }
@@ -1043,7 +1110,7 @@ function safeName(name) {
 async function uploadAlbum() {
   if (!isAdmin) return alert("No autorizado");
   const title = document.getElementById("albumTitle").value.trim();
-  const artist = document.getElementById("albumArtist").value.trim(); // MEJORADO: Campo artista obligatorio
+  const artist = document.getElementById("albumArtist").value.trim();
   const file = document.getElementById("albumCover").files[0];
   
   if (!title || !artist || !file) return alert("Completa título, artista y portada");
@@ -1058,16 +1125,15 @@ async function uploadAlbum() {
     
     const { error: insErr } = await sb.from("albums").insert([{ 
       title, 
-      artist, // OBLIGATORIO ahora
+      artist, 
       cover_url 
     }]);
     if (insErr) return alert("Error guardando álbum: " + insErr.message);
     
-    // Limpiar campos
     document.getElementById("albumTitle").value = "";
     document.getElementById("albumArtist").value = "";
     document.getElementById("albumCover").value = "";
-    showSuccess("Álbum creado exitosamente con artista");
+    showSuccess("Álbum creado exitosamente");
     await refreshCatalog();
   } catch (error) {
     console.error('Error en uploadAlbum:', error);
@@ -1141,6 +1207,26 @@ async function deleteAlbum() {
   }
 }
 
+// Event listener para autocompletar información al editar
+document.addEventListener("DOMContentLoaded", () => {
+  const editSel = document.getElementById("editInfoAlbumSelect");
+  if (editSel) {
+    editSel.addEventListener("change", function() {
+      const albumId = this.value;
+      const album = albums.find(a => a.id === albumId);
+      const editTitleInput = document.getElementById("editAlbumTitle");
+      const editArtistInput = document.getElementById("editAlbumArtist");
+      
+      if (editTitleInput && editArtistInput && album) {
+        editTitleInput.value = album.title || "";
+        editArtistInput.value = album.artist || "";
+        editTitleInput.placeholder = `Actual: ${album.title}`;
+        editArtistInput.placeholder = `Actual: ${album.artist || 'Sin artista'}`;
+      }
+    });
+  }
+});
+
 // Event Listeners
 document.getElementById("audio").addEventListener("timeupdate", () => {
   const audioEl = document.getElementById("audio");
@@ -1163,21 +1249,6 @@ document.getElementById("audio").addEventListener("timeupdate", () => {
 });
 
 document.getElementById("audio").addEventListener("ended", () => nextTrack());
-
-// Event listener para autocompletar artista al editar
-document.addEventListener("DOMContentLoaded", () => {
-  const editSel = document.getElementById("editAlbumSelect");
-  if (editSel) {
-    editSel.addEventListener("change", function() {
-      const albumId = this.value;
-      const album = albums.find(a => a.id === albumId);
-      const editArtistInput = document.getElementById("editAlbumArtist");
-      if (editArtistInput) {
-        editArtistInput.value = album ? (album.artist || "") : "";
-      }
-    });
-  }
-});
 
 // Placeholder functions
 function toggleFavorite(songId) { console.log('Toggle favorite:', songId); }
