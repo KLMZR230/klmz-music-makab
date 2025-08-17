@@ -33,6 +33,8 @@
   .btn:hover{background:var(--brand-hover);transform:translateY(-2px);box-shadow:0 4px 8px rgba(29,185,84,0.3)}
   .btn.ghost{background:transparent;border:1px solid #fff1}
   .btn.small{padding:6px 10px;font-size:12px}
+  .btn.danger{background:var(--error)}
+  .btn.danger:hover{background:#cc0000}
   .icon-btn{background:transparent;border:1px solid #ffffff22;color:#fff;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:18px;line-height:1;transition:all 0.3s ease}
   .icon-btn:hover{background:#ffffff14;transform:scale(1.1)}
   .container{padding:18px;max-width:1100px;margin:auto}
@@ -65,6 +67,8 @@
   .download-btn{background:var(--success);border:none;color:white;padding:6px 10px;border-radius:15px;cursor:pointer;font-size:11px;transition:all 0.3s ease;display:flex;align-items:center;gap:4px}
   .download-btn:hover{background:#45a049;transform:scale(1.05)}
   .download-btn.downloaded{background:var(--muted);cursor:default}
+  .delete-song-btn{background:var(--error);border:none;color:white;padding:6px 10px;border-radius:15px;cursor:pointer;font-size:11px;transition:all 0.3s ease;display:flex;align-items:center;gap:4px}
+  .delete-song-btn:hover{background:#cc0000;transform:scale(1.05)}
   .download-progress{width:100%;height:4px;background:var(--stroke);border-radius:2px;overflow:hidden;margin-top:4px}
   .download-progress-bar{height:100%;background:var(--success);transition:width 0.3s ease;border-radius:2px}
   #albumView,#favoritesView,#downloadsView{display:none}
@@ -79,6 +83,7 @@
   .song-plain-item:hover{background:var(--panel);transform:translateX(4px)}
   .song-plain-item .idx{min-width:20px;text-align:right;color:var(--muted)}
   .song-plain-item .title{flex:1;font-weight:600}
+  .song-plain-item .actions{display:flex;gap:6px;align-items:center}
   .song-plain-item .more{font-size:18px;color:var(--muted);cursor:pointer;padding:6px;border-radius:50%;transition:all 0.3s ease}
   .song-plain-item .more:hover{background:#ffffff14;transform:scale(1.2)}
   .backline{display:flex;align-items:center;gap:10px;margin-bottom:20px}
@@ -132,7 +137,7 @@
   #npCard img:hover{transform:scale(1.02)}
   #npCard .t{font-size:1.2rem;font-weight:900;text-align:center}
   #npCard .a{color:var(--muted);text-align:center}
-  @media (max-width:800px){.inputs{grid-template-columns:1fr}.np img{width:72px;height:72px}.controls .buttons .circle{width:76px;height:76px;font-size:30px}.controls .buttons .sm{width:60px;height:60px;font-size:24px}}
+  @media (max-width:800px){.inputs{grid-template-columns:1fr}.np img{width:72px;height:72px}.controls .buttons .circle{width:76px;height:76px;font-size:30px}.controls .buttons .sm{width:60px;height:60px;font-size:24px}.song-plain-item .actions{flex-direction:column;gap:4px}}
 </style>
 </head>
 <body>
@@ -221,9 +226,19 @@
         <button class="btn" onclick="uploadSong()">Subir Canciones</button>
       </div>
       <div class="stack">
-        <div class="pill">Borrar</div>
+        <div class="pill">Eliminar canciones individuales</div>
+        <select id="deleteSongAlbumSelect" onchange="loadSongsForDeletion()">
+          <option value="">Selecciona un álbum</option>
+        </select>
+        <select id="deleteSongSelect" style="display:none">
+          <option value="">Selecciona una canción</option>
+        </select>
+        <button class="btn danger" onclick="deleteSong()" id="deleteSongBtn" style="display:none">🗑️ Eliminar Canción</button>
+      </div>
+      <div class="stack">
+        <div class="pill">Eliminar álbumes completos</div>
         <select id="deleteAlbumSelect"></select>
-        <button class="btn ghost" onclick="deleteAlbum()">Eliminar Álbum</button>
+        <button class="btn ghost" onclick="deleteAlbum()">Eliminar Álbum Completo</button>
       </div>
     </div>
   </div>
@@ -471,9 +486,11 @@ async function refreshCatalogOptimized() {
   console.log('Catálogo cargado:', albums.length, 'álbumes,', flatSongs.length, 'canciones');
 }
 
+// ===== ACTUALIZADO: Selects del admin con opciones para borrar canciones =====
 function updateAdminSelects() {
   const adminSel = document.getElementById("albumSelect");
   const delSel = document.getElementById("deleteAlbumSelect");
+  const delSongAlbumSel = document.getElementById("deleteSongAlbumSelect");
   
   if (adminSel) {
     adminSel.innerHTML = "";
@@ -494,6 +511,43 @@ function updateAdminSelects() {
       delSel.appendChild(d);
     });
   }
+  
+  // NUEVO: Select para eliminar canciones individuales
+  if (delSongAlbumSel) {
+    delSongAlbumSel.innerHTML = '<option value="">Selecciona un álbum</option>';
+    albums.forEach(a => {
+      const o = document.createElement("option");
+      o.value = a.id;
+      o.textContent = a.title;
+      delSongAlbumSel.appendChild(o);
+    });
+  }
+}
+
+// NUEVA: Función para cargar canciones cuando se selecciona un álbum
+function loadSongsForDeletion() {
+  const albumId = document.getElementById("deleteSongAlbumSelect").value;
+  const songSelect = document.getElementById("deleteSongSelect");
+  const deleteBtn = document.getElementById("deleteSongBtn");
+  
+  if (!albumId) {
+    songSelect.style.display = 'none';
+    deleteBtn.style.display = 'none';
+    return;
+  }
+  
+  const songs = songsByAlbum[albumId] || [];
+  songSelect.innerHTML = '<option value="">Selecciona una canción</option>';
+  
+  songs.forEach(song => {
+    const option = document.createElement("option");
+    option.value = song.id;
+    option.textContent = song.title;
+    songSelect.appendChild(option);
+  });
+  
+  songSelect.style.display = 'block';
+  deleteBtn.style.display = 'block';
 }
 
 function renderAlbums() {
@@ -516,7 +570,7 @@ function renderAlbums() {
   });
 }
 
-// ===== FUNCIÓN CORREGIDA PARA ABRIR ÁLBUM Y REPRODUCIR =====
+// ===== ACTUALIZADO: Función de abrir álbum con botón de borrar canciones para admin =====
 function openAlbum(album) {
   console.log('🎵 Abriendo álbum:', album.title);
   currentAlbum = album;
@@ -536,22 +590,27 @@ function openAlbum(album) {
       const isDownloaded = downloads.has(song.id);
       const row = document.createElement("div");
       row.className = "song-plain-item";
+      
+      // ACTUALIZADO: HTML con botón de borrar para admin
       row.innerHTML = `
         <div class="idx">${idx + 1}</div>
         <div class="title">${song.title}</div>
-        <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite('${song.id}', this)" title="Favorito">${isFavorite ? '❤️' : '🤍'}</button>
-        <button class="download-btn ${isDownloaded ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.id}', '${song.song_url}', '${song.title.replace(/'/g, "\\'")}', this)" title="Descargar">${isDownloaded ? '✓' : '📥'}</button>
+        <div class="actions">
+          <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite('${song.id}', this)" title="Favorito">${isFavorite ? '❤️' : '🤍'}</button>
+          <button class="download-btn ${isDownloaded ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.id}', '${song.song_url}', '${song.title.replace(/'/g, "\\'")}', this)" title="Descargar">${isDownloaded ? '✓' : '📥'}</button>
+          ${isAdmin ? `<button class="delete-song-btn" onclick="event.stopPropagation(); deleteSongFromAlbum('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${album.id}')" title="Eliminar canción">🗑️</button>` : ''}
+        </div>
       `;
       
-      // ✅ ARREGLADO: Event listener simple y funcional
       row.onclick = function(e) {
-        if (e.target.classList.contains('favorite-btn') || e.target.classList.contains('download-btn')) {
-          return; // No reproducir si se clickea botón
+        if (e.target.classList.contains('favorite-btn') || 
+            e.target.classList.contains('download-btn') || 
+            e.target.classList.contains('delete-song-btn')) {
+          return;
         }
         
         console.log('🎵 Click en canción:', song.title);
         
-        // Crear cola de reproducción
         queue = songs.map(s => ({
           id: s.id,
           title: s.title,
@@ -560,7 +619,6 @@ function openAlbum(album) {
           cover_url: album.cover_url
         }));
         
-        // Establecer índice y reproducir
         qIndex = idx;
         playTrackDirectly(queue[qIndex]);
       };
@@ -574,7 +632,75 @@ function openAlbum(album) {
   albumView.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// ===== FUNCIÓN DE REPRODUCCIÓN MEJORADA =====
+// NUEVA: Función para eliminar canción desde el álbum
+async function deleteSongFromAlbum(songId, songTitle, albumId) {
+  if (!isAdmin) {
+    showMessage('No autorizado', 'error');
+    return;
+  }
+  
+  if (!confirm(`¿Eliminar "${songTitle}" permanentemente?`)) return;
+  
+  try {
+    const { error } = await sb.from("songs").delete().eq("id", songId);
+    
+    if (error) {
+      showMessage('Error eliminando canción: ' + error.message, 'error');
+      return;
+    }
+    
+    showMessage(`"${songTitle}" eliminada exitosamente`, 'success');
+    
+    // Recargar catálogo y reabrir álbum
+    await refreshCatalogOptimized();
+    const album = albums.find(a => a.id === albumId);
+    if (album) {
+      openAlbum(album);
+    }
+    
+  } catch (error) {
+    console.error('Error eliminando canción:', error);
+    showMessage('Error eliminando canción', 'error');
+  }
+}
+
+// NUEVA: Función para eliminar canción desde el panel admin
+async function deleteSong() {
+  if (!isAdmin) return alert("No autorizado");
+  
+  const songId = document.getElementById("deleteSongSelect").value;
+  if (!songId) return alert("Selecciona una canción");
+  
+  const songSelect = document.getElementById("deleteSongSelect");
+  const selectedOption = songSelect.options[songSelect.selectedIndex];
+  const songTitle = selectedOption.textContent;
+  
+  if (!confirm(`¿Eliminar "${songTitle}" permanentemente?`)) return;
+  
+  try {
+    const { error } = await sb.from("songs").delete().eq("id", songId);
+    
+    if (error) {
+      alert("Error eliminando canción: " + error.message);
+      return;
+    }
+    
+    showMessage(`"${songTitle}" eliminada exitosamente`, "success");
+    
+    // Resetear selects
+    document.getElementById("deleteSongAlbumSelect").value = "";
+    document.getElementById("deleteSongSelect").style.display = 'none';
+    document.getElementById("deleteSongBtn").style.display = 'none';
+    
+    // Recargar catálogo
+    await refreshCatalogOptimized();
+    
+  } catch (error) {
+    console.error('Error eliminando canción:', error);
+    alert('Error eliminando canción');
+  }
+}
+
 function playTrackDirectly(song) {
   console.log('🎵 Reproduciendo directamente:', song.title);
   console.log('🎵 URL:', song.song_url);
@@ -585,14 +711,10 @@ function playTrackDirectly(song) {
     return;
   }
   
-  // Parar audio actual
   audioEl.pause();
   audioEl.currentTime = 0;
-  
-  // Establecer nueva fuente
   audioEl.src = song.song_url;
   
-  // Actualizar interfaz
   npTitle.textContent = song.title;
   npAlbum.textContent = song.album_title || "—";
   npCover.src = song.cover_url || "";
@@ -606,7 +728,6 @@ function playTrackDirectly(song) {
   
   showPlayer();
   
-  // Reproducir
   audioEl.play()
     .then(() => {
       console.log('✅ Reproducción exitosa');
@@ -944,7 +1065,7 @@ function goHome() {
 
 function showAccount() {
   if (isAdmin) {
-    alert('Cuenta Admin: ' + ADMIN_EMAIL + '\n\nFuncionalidades:\n• Crear álbumes\n• Subir canciones\n• Eliminar álbumes');
+    alert('Cuenta Admin: ' + ADMIN_EMAIL + '\n\nFuncionalidades:\n• Crear álbumes\n• Subir canciones\n• Eliminar canciones individuales\n• Eliminar álbumes completos');
   } else if (isLoggedIn) {
     alert('Usuario: ' + currentUser.email);
   } else {
@@ -1029,7 +1150,6 @@ function fmt(t) {
   return `${m}:${s.toString().padStart(2, "0")}`; 
 }
 
-// ===== EVENT LISTENERS =====
 audioEl.addEventListener("timeupdate", () => {
   if (!audioEl.duration) return;
   const p = (audioEl.currentTime / audioEl.duration) * 100;
