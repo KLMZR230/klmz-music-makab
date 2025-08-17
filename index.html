@@ -69,6 +69,7 @@
   .song-plain-item .idx{min-width:20px;text-align:right;color:var(--muted)}
   .song-plain-item .title{flex:1;font-weight:600}
   .song-plain-item .more{font-size:18px;color:var(--muted)}
+  .song-plain-item.error{color:#ff6b6b}
   .backline{display:flex;align-items:center;gap:10px}
   .back-btn{background:transparent;border:1px solid #ffffff22;color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;display:grid;place-items:center;cursor:pointer}
   .back-btn:hover{background:#ffffff14}
@@ -181,6 +182,23 @@
     0%, 40%, 100% { height: 15px; }
     20% { height: 35px; }
   }
+  /* Error indicator */
+  .error-msg {
+    background: #ff4444;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 100;
+    animation: fadeInOut 4s ease;
+  }
+  @keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    10%, 90% { opacity: 1; }
+  }
   @media (max-width:800px){
     .inputs{grid-template-columns:1fr}
     .player .wrap{grid-template-columns:1fr}
@@ -272,7 +290,7 @@
     <div class="np">
       <img id="npCover" alt="cover">
       <div class="titles">
-        <div id="npTitle" class="t">Nada reproduciéndose</div>
+        <div id="npTitle" class="t">Cargando...</div>
         <div id="npAlbum" class="a">—</div>
       </div>
     </div>
@@ -296,7 +314,7 @@
       <div class="soundwave" id="soundwave" style="display:none">
         <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
       </div>
-      <audio id="audio" preload="none"></audio>
+      <audio id="audio" preload="none" crossorigin="anonymous"></audio>
     </div>
   </div>
 </div>
@@ -396,6 +414,15 @@
   const avTitle = document.getElementById("avTitle");
   const avMeta  = document.getElementById("avMeta");
   const avSongs = document.getElementById("avSongs");
+  
+  // Mostrar mensajes de error
+  function showError(msg) {
+    const errorEl = document.createElement('div');
+    errorEl.className = 'error-msg';
+    errorEl.textContent = msg;
+    document.body.appendChild(errorEl);
+    setTimeout(() => errorEl.remove(), 4000);
+  }
   
   // Funciones de la barra inferior
   function focusSearch(){
@@ -603,33 +630,95 @@
     }
   }
   
-  // Reproductor
+  // Validar URL de canción
+  function isValidAudioUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'https:' && url.includes('supabase');
+    } catch {
+      return false;
+    }
+  }
+  
+  // Reproductor con mejor manejo de errores
   function startQueueFromList(list, idx){ queue = list; qIndex = -1; startQueueAt(idx); }
   function startQueueAt(idx){ if (!queue.length) return; qIndex = idx; playTrack(queue[qIndex]); }
+  
   function playTrack(song){
+    console.log('Intentando reproducir:', song.title, song.song_url);
+    
+    if (!song.song_url || !isValidAudioUrl(song.song_url)) {
+      showError(`Error: URL de audio no válida para "${song.title}"`);
+      nextTrack();
+      return;
+    }
+    
+    // Limpiar audio anterior
+    audioEl.pause();
+    audioEl.currentTime = 0;
+    
+    // Configurar nueva canción
     audioEl.src = song.song_url;
-    audioEl.play().catch(()=>{});
+    audioEl.load(); // Importante: forzar recarga
+    
+    // Actualizar UI inmediatamente
     npTitle.textContent = song.title;
     npAlbum.textContent = song.album_title || "—";
     npCover.src = song.cover_url || "";
     npBigTitle.textContent = song.title;
     npBigAlbum.textContent = song.album_title || "—";
     npBigCover.src = song.cover_url || "";
-    playBtn.textContent = "⏸";
-    playBtnBig.textContent = "⏸";
-    toggleSoundwave(true);
-    // Mostrar reproductor y abrir pantalla completa
+    
+    // Mostrar reproductor
     showPlayer();
-    setTimeout(() => {
-      npOverlay.style.display = 'flex';
-    }, 300);
+    
+    // Intentar reproducir con mejor manejo de errores
+    const playPromise = audioEl.play();
+    
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          console.log('Reproducción exitosa:', song.title);
+          playBtn.textContent = "⏸";
+          playBtnBig.textContent = "⏸";
+          toggleSoundwave(true);
+          // Mostrar pantalla completa después de que empiece la reproducción
+          setTimeout(() => {
+            npOverlay.style.display = 'flex';
+          }, 500);
+        })
+        .catch((error) => {
+          console.error('Error de reproducción:', error, song.song_url);
+          showError(`No se puede reproducir "${song.title}". Formato o archivo inválido.`);
+          
+          // Intentar siguiente canción automáticamente
+          setTimeout(() => {
+            if (queue.length > 1) {
+              nextTrack();
+            } else {
+              hidePlayer();
+            }
+          }, 2000);
+        });
+    }
   }
+  
   function togglePlay(){
     if (audioEl.paused){ 
-      audioEl.play(); 
-      playBtn.textContent="⏸"; 
-      playBtnBig.textContent="⏸"; 
-      toggleSoundwave(true);
+      const playPromise = audioEl.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            playBtn.textContent="⏸"; 
+            playBtnBig.textContent="⏸"; 
+            toggleSoundwave(true);
+          })
+          .catch((error) => {
+            console.error('Error al reanudar:', error);
+            showError('Error al reanudar reproducción');
+          });
+      }
     }
     else { 
       audioEl.pause(); 
@@ -638,11 +727,41 @@
       toggleSoundwave(false);
     }
   }
-  function nextTrack(){ if (!queue.length) return; qIndex = (qIndex + 1) % queue.length; playTrack(queue[qIndex]); }
-  function prevTrack(){ if (!queue.length) return; qIndex = (qIndex - 1 + queue.length) % queue.length; playTrack(queue[qIndex]); }
+  
+  function nextTrack(){ 
+    if (!queue.length) return; 
+    qIndex = (qIndex + 1) % queue.length; 
+    playTrack(queue[qIndex]); 
+  }
+  
+  function prevTrack(){ 
+    if (!queue.length) return; 
+    qIndex = (qIndex - 1 + queue.length) % queue.length; 
+    playTrack(queue[qIndex]); 
+  }
+  
   function setVolume(v){ audioEl.volume = v; }
   function seekAudio(percent){ if (!audioEl.duration || isNaN(audioEl.duration)) return; audioEl.currentTime = (percent/100) * audioEl.duration; }
   function fmt(t){ if(!isFinite(t)) return "0:00"; const m=Math.floor(t/60), s=Math.floor(t%60); return `${m}:${s.toString().padStart(2,"0")}`; }
+  
+  // Event listeners con mejor manejo
+  audioEl.addEventListener('loadstart', () => {
+    console.log('Cargando audio...');
+    npTitle.textContent = 'Cargando...';
+  });
+  
+  audioEl.addEventListener('canplaythrough', () => {
+    console.log('Audio listo para reproducir');
+  });
+  
+  audioEl.addEventListener('error', (e) => {
+    console.error('Error de audio:', e);
+    const currentSong = queue[qIndex];
+    if (currentSong) {
+      showError(`Error cargando "${currentSong.title}"`);
+      setTimeout(() => nextTrack(), 2000);
+    }
+  });
   
   audioEl.addEventListener("timeupdate",()=>{
     if (!audioEl.duration) return;
@@ -650,6 +769,7 @@
     seekEl.value = p; curTime.textContent = fmt(audioEl.currentTime); durTime.textContent = fmt(audioEl.duration);
     seekBig.value = p; curTimeBig.textContent = fmt(audioEl.currentTime); durTimeBig.textContent = fmt(audioEl.duration);
   });
+  
   audioEl.addEventListener("ended",()=> nextTrack());
   audioEl.addEventListener("pause",()=> toggleSoundwave(false));
   audioEl.addEventListener("play",()=> toggleSoundwave(true));
@@ -680,23 +800,46 @@
     alert("Álbum creado");
     await refreshCatalog();
   }
+  
   async function uploadSong(){
     if (!isAdmin) return alert("No autorizado");
     const albumId = document.getElementById("albumSelect").value;
     const titleInput = document.getElementById("songTitle").value.trim();
     const files = document.getElementById("songFiles").files;
     if (!albumId || files.length === 0) return alert("Selecciona un álbum y al menos un archivo de audio");
+    
     let ok = 0, fail = 0;
     for (const file of files) {
+      console.log('Subiendo archivo:', file.name, 'Tipo:', file.type, 'Tamaño:', file.size);
+      
+      // Validar tipo de archivo
+      if (!file.type.startsWith('audio/')) {
+        console.error('Archivo no es audio:', file.name);
+        fail++;
+        continue;
+      }
+      
       const path = `${Date.now()}-${safeName(file.name)}`;
       const { error: upErr } = await sb.storage.from("songs").upload(path, file);
-      if (upErr) { console.error(upErr); fail++; continue; }
+      if (upErr) { 
+        console.error('Error subida:', upErr); 
+        fail++; 
+        continue; 
+      }
       const { data: pub } = sb.storage.from("songs").getPublicUrl(path);
       const song_url = pub.publicUrl;
-      const title = (files.length === 1 && titleInput) ? titleInput : file.name;
+      console.log('URL generada:', song_url);
+      
+      const title = (files.length === 1 && titleInput) ? titleInput : file.name.replace(/\.[^/.]+$/, "");
       const { error: insErr } = await sb.from("songs").insert([{ album_id: albumId, title, song_url }]);
-      if (insErr) { console.error(insErr); fail++; } else { ok++; }
+      if (insErr) { 
+        console.error('Error DB:', insErr); 
+        fail++; 
+      } else { 
+        ok++; 
+      }
     }
+    
     document.getElementById("songTitle").value = "";
     document.getElementById("songFiles").value = "";
     alert(`Subida completa: ${ok} ok, ${fail} error(es)`);
