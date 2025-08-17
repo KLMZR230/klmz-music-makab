@@ -354,6 +354,24 @@ if ('serviceWorker' in navigator) {
     border-color:rgba(29, 185, 84, 0.5);
   }
   
+  /* EXPANSIÓN DE ÁLBUM INTEGRADA */
+  .album-expansion {
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: top;
+    grid-column: 1 / -1;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 24px;
+    margin: 20px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  
+  .album-expansion.slide-down {
+    animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
   /* PLAYLISTS SIGUEN CUADRADAS */
   .playlist-cover{
     width:100%;
@@ -1413,6 +1431,7 @@ if ('serviceWorker' in navigator) {
     #npCard img{width:min(300px,80vw);height:min(300px,80vw)}
     #npCard .t{font-size:20px}
     #npCard .a{font-size:16px}
+    .album-expansion{padding:16px;margin:12px 0}
   }
   
   @media (max-width:480px){
@@ -1433,6 +1452,7 @@ if ('serviceWorker' in navigator) {
     .controls .buttons .sm{width:44px;height:44px;font-size:16px}
     .album-hero,.playlist-hero{flex-direction:column;text-align:center;gap:16px}
     .album-hero img,.playlist-hero img{width:100px;height:100px}
+    .album-expansion{padding:12px;margin:8px 0}
   }
 </style>
 </head>
@@ -2138,65 +2158,143 @@ function renderAlbums(list = albums) {
   });
 }
 
+// ===== FUNCIÓN DE ÁLBUM CON EXPANSIÓN INTEGRADA =====
 function openAlbum(album) {
   console.log('🎵 Abriendo álbum:', album.title);
   currentAlbum = album;
   const songs = songsByAlbum[album.id] || [];
   
-  const avCover = document.getElementById("avCover");
-  const avTitle = document.getElementById("avTitle");
-  const avMeta = document.getElementById("avMeta");
-  const avSongs = document.getElementById("avSongs");
-  const albumView = document.getElementById("albumView");
+  // Encontrar la tarjeta del álbum para expandir ahí mismo
+  const albumsGrid = document.getElementById("albumsGrid");
+  const albumCards = albumsGrid.querySelectorAll('.album-card');
   
-  if (avCover) avCover.src = album.cover_url || "";
-  if (avTitle) avTitle.textContent = album.title;
-  if (avMeta) avMeta.textContent = `${album.artist || 'Sin artista'} • ${songs.length} ${songs.length === 1 ? 'canción' : 'canciones'}`;
+  let targetCard = null;
+  albumCards.forEach(card => {
+    const title = card.querySelector('.album-title').textContent;
+    if (title === album.title) {
+      targetCard = card;
+    }
+  });
   
-  if (avSongs) {
-    avSongs.innerHTML = "";
-    
-    if (!songs.length) {
-      avSongs.innerHTML = `
-        <div class="no-results" style="padding:40px 0">
-          <div style="font-size:48px;margin-bottom:16px">🎵</div>
-          <div>Este álbum no tiene canciones todavía</div>
+  if (!targetCard) return;
+  
+  // Remover expansiones previas
+  const existingExpansion = albumsGrid.querySelector('.album-expansion');
+  if (existingExpansion) {
+    existingExpansion.remove();
+  }
+  
+  // Crear la expansión con las canciones
+  const expansion = document.createElement('div');
+  expansion.className = 'album-expansion slide-up';
+  
+  // Header del álbum expandido
+  const headerHTML = `
+    <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 24px; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+      <img src="${album.cover_url || ''}" alt="${album.title}" 
+           style="width: 120px; height: 120px; border-radius: 16px; object-fit: cover; box-shadow: 0 8px 25px rgba(0,0,0,0.4);"
+           onerror="this.style.background='var(--panel)'; this.innerHTML='🎵'; this.style.display='flex'; this.style.alignItems='center'; this.style.justifyContent='center'; this.style.fontSize='3rem';">
+      <div style="flex: 1;">
+        <h2 style="margin: 0 0 8px 0; font-size: 32px; font-weight: 900; background: linear-gradient(135deg, var(--brand), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${album.title}</h2>
+        <p style="margin: 0 0 12px 0; color: var(--muted); font-size: 18px; font-weight: 500;">${album.artist || 'Sin artista'} • ${songs.length} ${songs.length === 1 ? 'canción' : 'canciones'}</p>
+        <div style="display: flex; gap: 12px; margin-top: 16px;">
+          <button class="btn small" onclick="playAllFromAlbum('${album.id}')" style="background: linear-gradient(135deg, var(--brand), var(--brand-hover));">▶ Reproducir todo</button>
+          <button class="btn small ghost" onclick="closeAlbumExpansion()" style="background: rgba(255,255,255,0.1);">✕ Cerrar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Lista de canciones
+  let songsHTML = '';
+  if (!songs.length) {
+    songsHTML = `
+      <div style="text-align: center; padding: 60px 40px; color: var(--muted);">
+        <div style="font-size: 64px; margin-bottom: 20px;">🎵</div>
+        <div style="font-size: 18px; font-weight: 500;">Este álbum no tiene canciones todavía</div>
+      </div>
+    `;
+  } else {
+    songsHTML = '<div style="display: grid; gap: 8px;">';
+    songs.forEach((song, idx) => {
+      songsHTML += `
+        <div class="song-plain-item slide-up" style="animation-delay: ${idx * 0.05}s; cursor: pointer; padding: 16px; border-radius: 12px; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.05);" 
+             onclick="playAlbumSong('${album.id}', ${idx})"
+             onmouseover="this.style.background='rgba(29, 185, 84, 0.1)'; this.style.transform='translateX(8px)'; this.style.borderColor='rgba(29, 185, 84, 0.3)';"
+             onmouseout="this.style.background='transparent'; this.style.transform='translateX(0)'; this.style.borderColor='rgba(255,255,255,0.05)';">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="min-width: 32px; text-align: center; color: var(--muted); font-weight: 600; font-size: 14px;">${idx + 1}</div>
+            <div style="flex: 1; font-weight: 600; font-size: 16px;">${song.title}</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="favorite-btn" onclick="event.stopPropagation(); toggleFavorite('${song.id}')" title="Favorito" style="background: none; border: none; color: var(--muted); font-size: 18px; padding: 8px; border-radius: 50%; transition: all 0.3s ease; cursor: pointer;">🤍</button>
+              <button class="download-btn" onclick="event.stopPropagation(); downloadSong('${song.id}')" title="Descargar" style="background: linear-gradient(135deg, var(--success), #2e7d32); border: none; color: white; padding: 8px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">⬇</button>
+            </div>
+          </div>
         </div>
       `;
-    } else {
-      songs.forEach((song, idx) => {
-        const row = document.createElement("div");
-        row.className = "song-plain-item slide-up";
-        row.style.animationDelay = `${idx * 0.05}s`;
-        
-        row.innerHTML = `
-          <div class="idx">${idx + 1}</div>
-          <div class="title">${song.title}</div>
-          <div class="actions">
-            <button class="favorite-btn" onclick="event.stopPropagation(); toggleFavorite('${song.id}')" title="Favorito">🤍</button>
-            <button class="download-btn" onclick="event.stopPropagation(); downloadSong('${song.id}')" title="Descargar">⬇</button>
-          </div>
-        `;
-        
-        row.onclick = () => {
-          queue = songs.map(s => ({
-            ...s, 
-            album_title: album.title, 
-            cover_url: album.cover_url
-          }));
-          qIndex = -1;
-          startQueueAt(idx);
-        };
-        
-        avSongs.appendChild(row);
-      });
-    }
+    });
+    songsHTML += '</div>';
   }
   
-  if (albumView) {
-    albumView.style.display = "block";
-    albumView.scrollIntoView({behavior: "smooth", block: "start"});
+  expansion.innerHTML = headerHTML + songsHTML;
+  
+  // Insertar la expansión después de la tarjeta del álbum
+  targetCard.parentNode.insertBefore(expansion, targetCard.nextSibling);
+  
+  // Scroll suave hacia la expansión
+  setTimeout(() => {
+    expansion.scrollIntoView({behavior: 'smooth', block: 'center'});
+  }, 100);
+}
+
+// Función para reproducir una canción específica del álbum
+function playAlbumSong(albumId, songIndex) {
+  const album = albums.find(a => a.id === albumId);
+  if (!album) return;
+  
+  const songs = songsByAlbum[albumId] || [];
+  if (!songs[songIndex]) return;
+  
+  queue = songs.map(s => ({
+    ...s, 
+    album_title: album.title, 
+    cover_url: album.cover_url
+  }));
+  qIndex = songIndex;
+  playTrack(queue[qIndex]);
+}
+
+// Función para reproducir todo el álbum
+function playAllFromAlbum(albumId) {
+  const album = albums.find(a => a.id === albumId);
+  if (!album) return;
+  
+  const songs = songsByAlbum[albumId] || [];
+  if (!songs.length) {
+    showError('Este álbum no tiene canciones');
+    return;
   }
+  
+  queue = songs.map(s => ({
+    ...s, 
+    album_title: album.title, 
+    cover_url: album.cover_url
+  }));
+  qIndex = 0;
+  playTrack(queue[0]);
+  showSuccess(`▶ Reproduciendo "${album.title}" completo`);
+}
+
+// Función para cerrar la expansión del álbum
+function closeAlbumExpansion() {
+  const expansion = document.querySelector('.album-expansion');
+  if (expansion) {
+    expansion.classList.add('slide-down');
+    setTimeout(() => {
+      expansion.remove();
+    }, 300);
+  }
+  currentAlbum = null;
 }
 
 function closeAlbumView() {
