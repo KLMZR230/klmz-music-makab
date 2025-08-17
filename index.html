@@ -531,41 +531,28 @@
 </div>
 
 <script>
-  /* == TUS DATOS DE SUPABASE == */
   const SUPABASE_URL  = "https://nqbldvpnqhngdtalvzov.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0";
   const ADMIN_EMAIL = "klmzr@gmail.com";
-  /* ======= */
+  
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   
-  // Estado
-  let isAdmin = false;
-  let isLoggedIn = false;
-  let currentUser = null;
-  let albums = [];
-  let userPlaylists = [];
-  let publicPlaylists = [];
-  let songsByAlbum = {};
-  let songsByPlaylist = {};
-  let flatSongs = [];
-  let queue = [];
-  let qIndex = -1;
-  let currentAlbum = null;
-  let currentPlaylist = null;
-  let editingPlaylistId = null;
-  let selectedSongForPlaylist = null;
+  let isAdmin = false, isLoggedIn = false, currentUser = null;
+  let albums = [], userPlaylists = [], publicPlaylists = [];
+  let songsByAlbum = {}, songsByPlaylist = {}, flatSongs = [];
+  let queue = [], qIndex = -1, currentAlbum = null, currentPlaylist = null;
+  let editingPlaylistId = null, selectedSongForPlaylist = null;
   
-  // UI refs
   const albumsGrid = document.getElementById("albumsGrid");
   const emptyAlbums = document.getElementById("emptyAlbums");
   const npCover = document.getElementById("npCover");
   const npTitle = document.getElementById("npTitle");
   const npAlbum = document.getElementById("npAlbum");
-  const playBtn  = document.getElementById("playBtn");
-  const audioEl  = document.getElementById("audio");
-  const seekEl   = document.getElementById("seek");
-  const curTime  = document.getElementById("curTime");
-  const durTime  = document.getElementById("durTime");
+  const playBtn = document.getElementById("playBtn");
+  const audioEl = document.getElementById("audio");
+  const seekEl = document.getElementById("seek");
+  const curTime = document.getElementById("curTime");
+  const durTime = document.getElementById("durTime");
   const npOverlay = document.getElementById("npOverlay");
   const npBigCover = document.getElementById("npBigCover");
   const npBigTitle = document.getElementById("npBigTitle");
@@ -576,14 +563,12 @@
   const playBtnBig = document.getElementById("playBtnBig");
   const playerElement = document.getElementById("player");
   
-  // Album view refs
   const albumView = document.getElementById("albumView");
   const avCover = document.getElementById("avCover");
   const avTitle = document.getElementById("avTitle");
-  const avMeta  = document.getElementById("avMeta");
+  const avMeta = document.getElementById("avMeta");
   const avSongs = document.getElementById("avSongs");
 
-  // Playlist refs
   const playlistView = document.getElementById("playlistView");
   const pvCover = document.getElementById("pvCover");
   const pvTitle = document.getElementById("pvTitle");
@@ -596,7 +581,6 @@
   const publicPlaylistsSection = document.getElementById("publicPlaylistsSection");
   const emptyPlaylists = document.getElementById("emptyPlaylists");
   
-  // Modal refs
   const playlistModal = document.getElementById("playlistModal");
   const playlistModalTitle = document.getElementById("playlistModalTitle");
   const playlistName = document.getElementById("playlistName");
@@ -605,11 +589,8 @@
   const playlistDropdown = document.getElementById("playlistDropdown");
   const playlistDropdownContent = document.getElementById("playlistDropdownContent");
   
-  // Funciones básicas
   function setActiveNav(activeButton) {
-    document.querySelectorAll('#bottomBar button').forEach(btn => {
-      btn.classList.remove('active');
-    });
+    document.querySelectorAll('#bottomBar button').forEach(btn => btn.classList.remove('active'));
     document.getElementById(`btn-${activeButton}`).classList.add('active');
   }
   
@@ -621,9 +602,7 @@
     setTimeout(() => errorEl.remove(), 4000);
   }
   
-  // Navegación (sin funciones de búsqueda)
   function focusSearch(){
-    // La funcionalidad de búsqueda se maneja desde la barra inferior
     showError('Usa los álbumes y playlists para navegar tu música');
   }
   
@@ -655,7 +634,6 @@
     }
   }
 
-  // Reproductor
   function showPlayer(){
     playerElement.classList.add('show');
     document.body.style.paddingBottom = '270px';
@@ -667,14 +645,10 @@
 
   function toggleSoundwave(show){
     const wave = document.getElementById('soundwave');
-    if(show){
-      wave.style.display = 'flex';
-    } else {
-      wave.style.display = 'none';
-    }
+    if(show) wave.style.display = 'flex';
+    else wave.style.display = 'none';
   }
 
-  // Login/Logout
   function showLogin(){ document.getElementById("loginModal").style.display="block"; }
   function hideLogin(){ document.getElementById("loginModal").style.display="none"; }
   
@@ -737,7 +711,6 @@
     renderPlaylists();
   }
 
-  // Catálogo
   async function refreshCatalog(){
     console.log('Cargando álbumes...');
     const { data: alb, error: e1 } = await sb.from("albums").select("*").order("created_at",{ascending:false});
@@ -750,9 +723,8 @@
     console.log('Álbumes cargados:', albums.length);
     emptyAlbums.style.display = albums.length ? "none" : "block";
     
-    // Llenar selectores admin
     const adminSel = document.getElementById("albumSelect");
-    const delSel   = document.getElementById("deleteAlbumSelect");
+    const delSel = document.getElementById("deleteAlbumSelect");
     if (adminSel) adminSel.innerHTML = "";
     if (delSel) delSel.innerHTML = "";
     
@@ -769,7 +741,6 @@
       }
     }
     
-    // Cargar canciones de álbumes
     songsByAlbum = {};
     flatSongs = [];
     for (const a of albums){
@@ -781,10 +752,8 @@
       }
     }
     
-    // Renderizar álbumes
     renderAlbums();
     
-    // Cargar playlists si está logueado
     if (isLoggedIn) {
       await loadPlaylists();
     }
@@ -842,7 +811,6 @@
     currentAlbum = null;
   }
   
-  // Gestión de Playlists
   async function loadPlaylists(){
     if (!isLoggedIn) return;
     
@@ -945,7 +913,6 @@
     });
   }
   
-  // Modal de playlist
   function showCreatePlaylistModal(){
     if (!isLoggedIn) {
       showLogin();
@@ -1012,7 +979,6 @@
     showError(editingPlaylistId ? 'Playlist actualizada' : 'Playlist creada');
   }
   
-  // Abrir playlist
   function openPlaylist(playlist){
     currentPlaylist = playlist;
     const songs = songsByPlaylist[playlist.id] || [];
@@ -1057,7 +1023,6 @@
     currentPlaylist = null;
   }
   
-  // Agregar canción a playlist
   function showAddToPlaylistMenu(event, song) {
     if (!isLoggedIn) {
       showLogin();
@@ -1168,7 +1133,6 @@
     await loadPlaylists();
   }
 
-  // Reproductor
   function isValidAudioUrl(url) {
     if (!url || typeof url !== 'string') return false;
     try {
@@ -1271,7 +1235,6 @@
   function seekAudio(percent){ if (!audioEl.duration || isNaN(audioEl.duration)) return; audioEl.currentTime = (percent/100) * audioEl.duration; }
   function fmt(t){ if(!isFinite(t)) return "0:00"; const m=Math.floor(t/60), s=Math.floor(t%60); return `${m}:${s.toString().padStart(2,"0")}`; }
   
-  // Event listeners del audio
   audioEl.addEventListener('loadstart', () => {
     console.log('Cargando audio...');
     npTitle.textContent = 'Cargando...';
@@ -1308,13 +1271,12 @@
     npOverlay.style.display = "none"; 
   }
 
-  // Funciones admin
   function safeName(name){ return name.replace(/[^a-zA-Z0-9\_\-.]+/g,"-"); }
   
   async function uploadAlbum(){
     if (!isAdmin) return alert("No autorizado");
     const title = document.getElementById("albumTitle").value.trim();
-    const file  = document.getElementById("albumCover").files[0];
+    const file = document.getElementById("albumCover").files[0];
     if (!title || !file) return alert("Completa título y portada");
     const path = `${Date.now()}-${safeName(file.name)}`;
     const { error: upErr } = await sb.storage.from("covers").upload(path, file);
@@ -1382,3 +1344,32 @@
     if (delSongsErr) { alert("Error borrando canciones: " + delSongsErr.message); return; }
     const { error: delAlbErr } = await sb.from("albums").delete().eq("id", albumId);
     if (delAlbErr) { alert("Error borrando álbum: " + delAlbErr.message); return; }
+    alert("Álbum eliminado");
+    if (currentAlbum?.id === albumId) closeAlbumView();
+    await refreshCatalog();
+  }
+  
+  // Inicialización
+  (async () => {
+    console.log('Inicializando aplicación...');
+    const { data } = await sb.auth.getSession();
+    if (data?.session?.user?.email) {
+      const email = data.session.user.email;
+      currentUser = data.session.user;
+      isLoggedIn = true;
+      isAdmin = (email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+      document.getElementById("btn-login").style.display = "none";
+      document.getElementById("btn-logout").style.display = "inline-flex";
+      if(isAdmin){
+        document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("adminTag").style.display = "inline-block";
+      }
+      if(isLoggedIn){
+        document.getElementById("userTag").style.display = "inline-block";
+      }
+    }
+    await refreshCatalog();
+  })();
+</script>
+</body>
+</html>
