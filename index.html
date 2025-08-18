@@ -304,27 +304,34 @@ function saveLocalFavorites(favorites) {
     localStorage.setItem('klmz_favorites', JSON.stringify(favorites));
 }
 
-// FUNCIONES OFFLINE
-async function downloadSong(songId, songUrl, songTitle, albumTitle) {
+// FUNCIONES OFFLINE CORREGIDAS
+async function storeSongOffline(songId, songUrl, songTitle, albumTitle) {
     try {
         const response = await fetch(songUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const blob = await response.blob();
         
-        const transaction = offlineDB.transaction(['songs'], 'readwrite');
-        const store = transaction.objectStore('songs');
-        
-        await store.put({
-            id: songId,
-            title: songTitle,
-            albumTitle: albumTitle,
-            blob: blob,
-            downloadDate: Date.now()
+        return new Promise((resolve, reject) => {
+            const transaction = offlineDB.transaction(['songs'], 'readwrite');
+            const store = transaction.objectStore('songs');
+            
+            const request = store.put({
+                id: songId,
+                title: songTitle,
+                albumTitle: albumTitle,
+                blob: blob,
+                downloadDate: Date.now()
+            });
+            
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
         });
         
-        return true;
     } catch (error) {
         console.error('Error descargando canción:', error);
-        return false;
+        throw error;
     }
 }
 
@@ -333,20 +340,25 @@ async function downloadAlbumCover(albumId, coverUrl) {
         const response = await fetch(coverUrl);
         const blob = await response.blob();
         
-        const transaction = offlineDB.transaction(['albums'], 'readwrite');
-        const store = transaction.objectStore('albums');
-        
-        await store.put({
-            id: albumId,
-            coverBlob: blob
+        return new Promise((resolve, reject) => {
+            const transaction = offlineDB.transaction(['albums'], 'readwrite');
+            const store = transaction.objectStore('albums');
+            
+            const request = store.put({
+                id: albumId,
+                coverBlob: blob
+            });
+            
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
         });
         
-        return true;
     } catch (error) {
         return false;
     }
 }
 
+// FUNCIÓN DE DESCARGA CORREGIDA
 window.downloadSong = async function(songId, songTitle, albumTitle) {
     if (isOffline) {
         alert('Necesitas conexión para descargar canciones');
@@ -354,42 +366,44 @@ window.downloadSong = async function(songId, songTitle, albumTitle) {
     }
     
     const btn = event.target;
+    const originalText = btn.textContent;
     btn.textContent = 'Descargando...';
     btn.classList.add('downloading');
     btn.disabled = true;
     
     try {
-        const {data: song} = await supabase.from('songs').select(`
+        const {data: song, error} = await supabase.from('songs').select(`
             id, title, song_url,
             albums:album_id (id, title, artist, cover_url)
         `).eq('id', songId).single();
         
+        if (error) {
+            throw new Error('Error obteniendo datos de la canción: ' + error.message);
+        }
+        
         if (song) {
-            const success = await downloadSong(songId, song.song_url, songTitle, albumTitle);
+            await storeSongOffline(songId, song.song_url, songTitle, albumTitle);
             
             if (song.albums?.cover_url) {
                 await downloadAlbumCover(song.albums.id, song.albums.cover_url);
             }
             
-            if (success) {
-                btn.textContent = '✓';
-                btn.disabled = true;
-                btn.classList.remove('downloading');
-                updateStorageInfo();
-                loadOfflineSongs();
-                alert(`"${songTitle}" descargada para uso offline`);
-            } else {
-                btn.textContent = '⬇';
-                btn.disabled = false;
-                btn.classList.remove('downloading');
-                alert('Error al descargar la canción');
-            }
+            btn.textContent = '✓';
+            btn.disabled = true;
+            btn.classList.remove('downloading');
+            updateStorageInfo();
+            loadOfflineSongs();
+            alert(`"${songTitle}" descargada para uso offline`);
+        } else {
+            throw new Error('No se encontró la canción');
         }
+        
     } catch (error) {
-        btn.textContent = '⬇';
+        console.error('Error en descarga:', error);
+        btn.textContent = originalText;
         btn.disabled = false;
         btn.classList.remove('downloading');
-        alert('Error al descargar la canción');
+        alert('Error al descargar: ' + error.message);
     }
 }
 
@@ -427,29 +441,6 @@ async function getOfflineSong(songId) {
             
             request.onsuccess = () => {
                 resolve(request.result);
-            };
-            
-            request.onerror = () => {
-                resolve(null);
-            };
-        });
-    } catch (error) {
-        return null;
-    }
-}
-
-async function getOfflineAlbumCover(albumId) {
-    try {
-        if (!offlineDB) return null;
-        
-        return new Promise((resolve) => {
-            const transaction = offlineDB.transaction(['albums'], 'readonly');
-            const store = transaction.objectStore('albums');
-            const request = store.get(albumId);
-            
-            request.onsuccess = () => {
-                const result = request.result;
-                resolve(result ? URL.createObjectURL(result.coverBlob) : null);
             };
             
             request.onerror = () => {
@@ -633,11 +624,16 @@ window.toggleFavorite = function(songId, el) {
     }
 }
 
+// FAVORITOS CORREGIDO (SEPARADO DE BIBLIOTECA)
 window.showFavorites = function() {
-    showSection('library');
+    // CAMBIAR A UNA NUEVA SECCIÓN PARA FAVORITOS
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    document.getElementById('library-section').classList.add('active');
+    
     document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
     document.getElementById('nav-favs').classList.add('active');
     
+    // MOSTRAR SOLO FAVORITOS, NO LA BIBLIOTECA
     const content = document.getElementById('library-content');
     content.innerHTML = '<h3>❤️ Mis Favoritos</h3><div id="favorites-songs">Cargando...</div>';
     
@@ -659,11 +655,15 @@ async function loadOfflineFavorites(favorites) {
     const validSongs = [];
     
     try {
-        if (!offlineDB) return;
+        if (!offlineDB) {
+            document.getElementById('favorites-songs').innerHTML = '<p>No tienes favoritos descargados.</p>';
+            return;
+        }
         
         const transaction = offlineDB.transaction(['songs'], 'readonly');
         const store = transaction.objectStore('songs');
         
+        let processed = 0;
         for (const songId of favorites) {
             const request = store.get(songId);
             request.onsuccess = () => {
@@ -678,7 +678,8 @@ async function loadOfflineFavorites(favorites) {
                     });
                 }
                 
-                if (validSongs.length === favorites.length) {
+                processed++;
+                if (processed === favorites.length) {
                     displayFavorites(validSongs);
                 }
             };
@@ -1014,6 +1015,7 @@ window.closeAdminModal = function() {
     document.getElementById('admin-modal').style.display = 'none';
 }
 
+// SHOWSECTION CORREGIDO
 window.showSection = function(section) {
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section + '-section').classList.add('active');
@@ -1023,6 +1025,16 @@ window.showSection = function(section) {
     if(section=='search') document.getElementById('nav-search').classList.add('active');
     if(section=='library') {
         document.getElementById('nav-library').classList.add('active');
+        // MOSTRAR LA BIBLIOTECA NORMAL (NO FAVORITOS)
+        const content = document.getElementById('library-content');
+        content.innerHTML = `
+            <div class="storage-info">
+                <h3>📱 Música Offline</h3>
+                <p>Espacio usado: <span id="storage-used">0 MB</span></p>
+                <button class="btn-danger" onclick="clearOfflineData()" style="width: auto; margin-top: 0.5rem;">Limpiar música offline</button>
+            </div>
+            <div id="offline-songs-list">No hay canciones descargadas</div>
+        `;
         updateStorageInfo();
         loadOfflineSongs();
     }
@@ -1365,7 +1377,7 @@ window.closeFullPlayer = function() {
 }
 
 document.getElementById('mini-player').onclick = function(e) {
-    if (e.target.id !== 'mini-play-btn') {
+    if e.target.id !== 'mini-play-btn') {
         window.showFullPlayer();
     }
 }
