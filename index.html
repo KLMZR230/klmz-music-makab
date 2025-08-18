@@ -70,7 +70,6 @@
         .content-section.active { display: block; }
         .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: background 0.3s; }
         .back-btn:hover { background: #333; }
-        .create-playlist { background: #1DB954; color: #fff; border: none; padding: 0.7rem; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 1rem; }
         @media (min-width:900px) { aside { display:block;} main{margin-left:220px; max-width:none;}}
     </style>
 </head>
@@ -83,11 +82,7 @@
 </header>
 <div class="app-container">
     <aside id="sidebar">
-        <div class="sidebar-section">
-            <h3>Playlists</h3>
-            <button class="create-playlist" onclick="createPlaylist()">➕ Crear playlist</button>
-            <div class="sidebar-menu" id="playlists-menu"></div>
-        </div>
+        <!-- Sección de playlists eliminada completamente -->
     </aside>
     <main>
         <section class="content-section active" id="home-section">
@@ -105,7 +100,7 @@
         <section class="content-section" id="library-section">
             <div class="section-title">Tu biblioteca</div>
             <div id="library-content">
-                <p>Aquí aparecerán tus playlists guardadas.</p>
+                <p>Aquí aparecerán tus álbumes guardados.</p>
             </div>
         </section>
         <section class="content-section" id="admin-section">
@@ -124,7 +119,6 @@
     <div class="bottom-nav-item" onclick="showSection('search')" id="nav-search"><span class="icon">⌕</span><small>Buscar</small></div>
     <div class="bottom-nav-item" onclick="showSection('library')" id="nav-library"><span class="icon">≡</span><small>Biblioteca</small></div>
     <div class="bottom-nav-item" onclick="showFavorites()" id="nav-favs"><span class="icon">♡</span><small>Favoritos</small></div>
-    <div class="bottom-nav-item" onclick="createPlaylist()" id="nav-playlist"><span class="icon">+</span><small>Playlist</small></div>
     <div class="bottom-nav-item" onclick="showAuth('login')" id="nav-login"><span class="icon">●</span><small>Acceso</small></div>
 </nav>
 <div class="player" id="mini-player" style="display:none;">
@@ -238,40 +232,13 @@ function isAdmin() {
     return currentUser && currentUser.email === ADMIN_EMAIL;
 }
 
-// FUNCIONES DE FAVORITOS Y PLAYLISTS CON LOCALSTORAGE (SIN LOGIN)
+// FUNCIONES DE FAVORITOS CON LOCALSTORAGE (SIN LOGIN)
 function getLocalFavorites() {
     return JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
 }
 
 function saveLocalFavorites(favorites) {
     localStorage.setItem('klmz_favorites', JSON.stringify(favorites));
-}
-
-function getLocalPlaylists() {
-    return JSON.parse(localStorage.getItem('klmz_playlists') || '[]');
-}
-
-function saveLocalPlaylists(playlists) {
-    localStorage.setItem('klmz_playlists', JSON.stringify(playlists));
-}
-
-// Cargar playlists locales
-function loadLocalPlaylists() {
-    const playlists = getLocalPlaylists();
-    updatePlaylistsMenu(playlists);
-}
-
-// Actualizar menú de playlists
-function updatePlaylistsMenu(playlists = []) {
-    const menu = document.getElementById('playlists-menu');
-    menu.innerHTML = '';
-    playlists.forEach(playlist => {
-        const item = document.createElement('a');
-        item.href = '#';
-        item.innerHTML = `🎵 ${playlist.name}`;
-        item.onclick = () => showPlaylistSongs(playlist);
-        menu.appendChild(item);
-    });
 }
 
 // Agregar/quitar favoritos (LOCAL)
@@ -290,125 +257,6 @@ window.toggleFavorite = function(songId) {
     // Actualizar UI si estamos en vista de álbum
     if (currentAlbum) {
         showAlbumDetail(currentAlbum);
-    }
-}
-
-// Crear nueva playlist (LOCAL) - SIN ENLACE
-window.createPlaylist = function() {
-    const name = prompt('Nombre de la playlist:');
-    if (name && name.trim()) {
-        const playlists = getLocalPlaylists();
-        const newPlaylist = {
-            id: Date.now().toString(),
-            name: name.trim(),
-            songs: []
-        };
-        playlists.push(newPlaylist);
-        saveLocalPlaylists(playlists);
-        loadLocalPlaylists();
-    }
-}
-
-// Mostrar canciones de playlist (LOCAL)
-function showPlaylistSongs(playlist) {
-    showSection('library');
-    const content = document.getElementById('library-content');
-    content.innerHTML = `
-        <h3>🎵 ${playlist.name}</h3>
-        <button class="btn-danger" onclick="deletePlaylist('${playlist.id}')" style="width: auto; margin-bottom: 1rem;">Eliminar Playlist</button>
-        <div id="playlist-songs">Cargando...</div>
-    `;
-    
-    if (!playlist.songs || playlist.songs.length === 0) {
-        document.getElementById('playlist-songs').innerHTML = '<p>Esta playlist está vacía.</p>';
-        return;
-    }
-    
-    // Buscar información completa de las canciones
-    const songPromises = playlist.songs.map(songId => {
-        return supabase.from('songs').select(`
-            id, title, song_url,
-            albums:album_id (id, title, artist, cover_url)
-        `).eq('id', songId).single();
-    });
-    
-    Promise.all(songPromises).then(results => {
-        const validSongs = results.filter(result => !result.error && result.data);
-        const songsDiv = document.getElementById('playlist-songs');
-        
-        if (validSongs.length === 0) {
-            songsDiv.innerHTML = '<p>No se encontraron canciones válidas en esta playlist.</p>';
-            return;
-        }
-        
-        songsDiv.innerHTML = '<ul class="song-list">' + validSongs.map((result, idx) => {
-            const song = result.data;
-            const album = song.albums;
-            return `
-                <li onclick="playPlaylistSong(${idx}, '${playlist.id}')">
-                    ${song.title} - ${album?.artist || 'Desconocido'}
-                    <span class="play-icon">▶</span>
-                </li>
-            `;
-        }).join('') + '</ul>';
-    });
-}
-
-// Eliminar playlist
-window.deletePlaylist = function(playlistId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta playlist?')) return;
-    
-    let playlists = getLocalPlaylists();
-    playlists = playlists.filter(p => p.id !== playlistId);
-    saveLocalPlaylists(playlists);
-    loadLocalPlaylists();
-    showSection('library');
-    document.getElementById('library-content').innerHTML = '<p>Playlist eliminada correctamente.</p>';
-}
-
-// Reproducir canción de playlist (LOCAL)
-window.playPlaylistSong = function(index, playlistId) {
-    const playlists = getLocalPlaylists();
-    const playlist = playlists.find(p => p.id === playlistId);
-    if (!playlist || !playlist.songs[index]) return;
-    
-    const songId = playlist.songs[index];
-    supabase.from('songs').select(`
-        id, title, song_url,
-        albums:album_id (id, title, artist, cover_url)
-    `).eq('id', songId).single().then(({data: song}) => {
-        if (song) {
-            const album = song.albums;
-            playSong(song, album, [song], 0);
-        }
-    });
-}
-
-// Agregar canción a playlist (LOCAL)
-window.addToPlaylist = function(songId) {
-    const playlists = getLocalPlaylists();
-    
-    if (playlists.length === 0) {
-        alert('Primero crea una playlist');
-        return;
-    }
-    
-    const playlistNames = playlists.map(p => p.name);
-    const selectedName = prompt(`Agregar a playlist:\n${playlistNames.map((name, i) => `${i+1}. ${name}`).join('\n')}\n\nEscribe el número:`);
-    
-    const index = parseInt(selectedName) - 1;
-    if (index >= 0 && index < playlists.length) {
-        const playlist = playlists[index];
-        
-        // Verificar si ya está en la playlist
-        if (playlist.songs.includes(songId)) {
-            alert('Esta canción ya está en la playlist');
-            return;
-        }
-        
-        playlist.songs.push(songId);
-        saveLocalPlaylists(playlists);
-        alert(`Agregado a "${playlist.name}"`);
     }
 }
 
@@ -774,19 +622,8 @@ window.showSection = function(section) {
     if(section=='search') document.getElementById('nav-search').classList.add('active');
     if(section=='library') {
         document.getElementById('nav-library').classList.add('active');
-        // Mostrar playlists al entrar a biblioteca
         const content = document.getElementById('library-content');
-        const playlists = getLocalPlaylists();
-        if (playlists.length === 0) {
-            content.innerHTML = '<p>No tienes playlists aún. ¡Crea tu primera playlist!</p>';
-        } else {
-            content.innerHTML = '<h3>Tus Playlists</h3>' + playlists.map(playlist => `
-                <div style="background: #242424; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; cursor: pointer;" onclick="showPlaylistSongs({id: '${playlist.id}', name: '${playlist.name}', songs: ${JSON.stringify(playlist.songs).replace(/"/g, '&quot;')}})">
-                    <strong>🎵 ${playlist.name}</strong>
-                    <br><small>${playlist.songs.length} canciones</small>
-                </div>
-            `).join('');
-        }
+        content.innerHTML = '<p>Aquí aparecerán tus álbumes guardados.</p>';
     }
 }
 
@@ -971,9 +808,6 @@ function showAlbumDetail(album) {
                         <span onclick="toggleFavorite('${song.id}')" style="cursor: pointer; color: ${isFavorite ? '#1DB954' : '#666'};">
                             ${isFavorite ? '❤️' : '🤍'}
                         </span>
-                        <span onclick="addToPlaylist('${song.id}')" style="cursor: pointer; color: #666;">
-                            ➕
-                        </span>
                         ${isAdmin() ? `<span onclick="deleteSong('${song.id}')" style="cursor: pointer; color: #e22134;">🗑️</span>` : ''}
                         <span class="play-icon" onclick="playSongFromPlaylist(${idx}, '${album.id}')">▶</span>
                     </div>
@@ -1151,7 +985,6 @@ document.getElementById('audio-player').addEventListener('pause', function() {
 // Initialize app
 fetchAlbums();
 fetchAllSongs();
-loadLocalPlaylists();
 
 // Check auth state
 supabase.auth.onAuthStateChange((event, session) => {
