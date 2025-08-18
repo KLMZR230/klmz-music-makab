@@ -24,6 +24,7 @@
         .sidebar-menu { display: flex; flex-direction: column; gap: 0.5rem; }
         .sidebar-menu a { color: #b3b3b3; text-decoration: none; padding: 0.7rem; border-radius: 4px; transition: all 0.3s; }
         .sidebar-menu a:hover, .sidebar-menu a.active { color: #fff; background: rgba(255,255,255,0.1); }
+        .sidebar-menu a.fav-link { color: #ff6b6b; }
         .create-playlist { background: #1DB954; color: #fff; border: none; padding: 0.7rem; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 1rem; }
         main { flex: 1; padding: 1rem; max-width: 900px; margin: 0 auto; }
         .section-title { font-size: 1.8rem; font-weight: bold; margin-bottom: 1.5rem; }
@@ -119,6 +120,7 @@
                     <a href="#" onclick="showSection('home')" class="active">🏠 Inicio</a>
                     <a href="#" onclick="showSection('search')">🔍 Buscar</a>
                     <a href="#" onclick="showSection('library')">📚 Tu biblioteca</a>
+                    <a href="#" onclick="showFavorites()" class="fav-link">❤️ Favoritos</a>
                 </div>
             </div>
             
@@ -261,6 +263,236 @@
         let isPlaying = false;
         let allAlbums = [];
         let allSongs = [];
+        let currentUser = null;
+        let userFavorites = [];
+        let userPlaylists = [];
+
+        // Cargar favoritos del usuario
+        async function loadUserFavorites() {
+            if (!currentUser) return;
+            const { data } = await supabase
+                .from('favorites')
+                .select('song_id')
+                .eq('user_id', currentUser.id);
+            userFavorites = data ? data.map(f => f.song_id) : [];
+        }
+
+        // Cargar playlists del usuario
+        async function loadUserPlaylists() {
+            if (!currentUser) return;
+            const { data } = await supabase
+                .from('playlists')
+                .select('*')
+                .eq('user_id', currentUser.id);
+            userPlaylists = data || [];
+            updatePlaylistsMenu();
+        }
+
+        // Actualizar menú de playlists
+        function updatePlaylistsMenu() {
+            const menu = document.getElementById('playlists-menu');
+            menu.innerHTML = '';
+            userPlaylists.forEach(playlist => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.innerHTML = `🎵 ${playlist.name}`;
+                item.onclick = () => showPlaylistSongs(playlist);
+                menu.appendChild(item);
+            });
+        }
+
+        // Agregar/quitar favoritos
+        window.toggleFavorite = async function(songId) {
+            if (!currentUser) {
+                alert('Debes iniciar sesión para usar favoritos');
+                return;
+            }
+            
+            const isFavorite = userFavorites.includes(songId);
+            
+            if (isFavorite) {
+                await supabase
+                    .from('favorites')
+                    .delete()
+                    .eq('user_id', currentUser.id)
+                    .eq('song_id', songId);
+                userFavorites = userFavorites.filter(id => id !== songId);
+            } else {
+                await supabase
+                    .from('favorites')
+                    .insert([{ user_id: currentUser.id, song_id: songId }]);
+                userFavorites.push(songId);
+            }
+            
+            // Actualizar UI si estamos en vista de álbum
+            if (currentAlbum) {
+                showAlbumDetail(currentAlbum);
+            }
+        }
+
+        // Crear nueva playlist
+        window.createPlaylist = async function() {
+            if (!currentUser) {
+                alert('Debes iniciar sesión para crear playlists');
+                return;
+            }
+            
+            const name = prompt('Nombre de la playlist:');
+            if (name) {
+                const { data } = await supabase
+                    .from('playlists')
+                    .insert([{ user_id: currentUser.id, name: name }])
+                    .select();
+                
+                if (data && data[0]) {
+                    userPlaylists.push(data);
+                    updatePlaylistsMenu();
+                }
+            }
+        }
+
+        // Mostrar canciones de playlist
+        async function showPlaylistSongs(playlist) {
+            showSection('library');
+            const content = document.getElementById('library-content');
+            content.innerHTML = `
+                <h3>🎵 ${playlist.name}</h3>
+                <div id="playlist-songs">Cargando...</div>
+            `;
+            
+            const { data } = await supabase
+                .from('playlist_songs')
+                .select(`
+                    songs:song_id (
+                        id, title, song_url,
+                        albums:album_id (title, artist, cover_url)
+                    )
+                `)
+                .eq('playlist_id', playlist.id);
+            
+            const songsDiv = document.getElementById('playlist-songs');
+            if (!data || data.length === 0) {
+                songsDiv.innerHTML = '<p>Esta playlist está vacía.</p>';
+                return;
+            }
+            
+            songsDiv.innerHTML = '<ul class="song-list">' + data.map((item, idx) => {
+                const song = item.songs;
+                const album = song.albums;
+                return `
+                    <li onclick="playPlaylistSong(${idx}, '${playlist.id}')">
+                        ${song.title} - ${album?.artist || 'Desconocido'}
+                        <span class="play-icon">▶</span>
+                    </li>
+                `;
+            }).join('') + '</ul>';
+        }
+
+        // Reproducir canción de playlist
+        window.playPlaylistSong = async function(index, playlistId) {
+            const { data } = await supabase
+                .from('playlist_songs')
+                .select(`
+                    songs:song_id (
+                        id, title, song_url,
+                        albums:album_id (id, title, artist, cover_url)
+                    )
+                `)
+                .eq('playlist_id', playlistId);
+            
+            if (data && data[index]) {
+                const song = data[index].songs;
+                const album = song.albums;
+                currentPlaylist = data.map(item => item.songs);
+                currentIndex = index;
+                playSong(song, album, currentPlaylist, index);
+            }
+        }
+
+        // Agregar canción a playlist
+        window.addToPlaylist = async function(songId) {
+            if (!currentUser) {
+                alert('Debes iniciar sesión para usar playlists');
+                return;
+            }
+            
+            if (userPlaylists.length === 0) {
+                alert('Primero crea una playlist');
+                return;
+            }
+            
+            const playlistNames = userPlaylists.map(p => p.name);
+            const selectedName = prompt(`Agregar a playlist:\n${playlistNames.map((name, i) => `${i+1}. ${name}`).join('\n')}\n\nEscribe el número:`);
+            
+            const index = parseInt(selectedName) - 1;
+            if (index >= 0 && index < userPlaylists.length) {
+                const playlist = userPlaylists[index];
+                await supabase
+                    .from('playlist_songs')
+                    .insert([{ playlist_id: playlist.id, song_id: songId }]);
+                alert(`Agregado a "${playlist.name}"`);
+            }
+        }
+
+        // Mostrar favoritos
+        window.showFavorites = async function() {
+            if (!currentUser) {
+                alert('Debes iniciar sesión para ver favoritos');
+                return;
+            }
+            
+            showSection('library');
+            const content = document.getElementById('library-content');
+            content.innerHTML = '<h3>❤️ Mis Favoritos</h3><div id="favorites-songs">Cargando...</div>';
+            
+            const { data } = await supabase
+                .from('favorites')
+                .select(`
+                    songs:song_id (
+                        id, title, song_url,
+                        albums:album_id (title, artist, cover_url)
+                    )
+                `)
+                .eq('user_id', currentUser.id);
+            
+            const songsDiv = document.getElementById('favorites-songs');
+            if (!data || data.length === 0) {
+                songsDiv.innerHTML = '<p>No tienes favoritos aún.</p>';
+                return;
+            }
+            
+            songsDiv.innerHTML = '<ul class="song-list">' + data.map((item, idx) => {
+                const song = item.songs;
+                const album = song.albums;
+                return `
+                    <li onclick="playFavoriteSong(${idx})">
+                        ${song.title} - ${album?.artist || 'Desconocido'}
+                        <span class="play-icon">▶</span>
+                    </li>
+                `;
+            }).join('') + '</ul>';
+        }
+
+        // Reproducir canción favorita
+        window.playFavoriteSong = async function(index) {
+            const { data } = await supabase
+                .from('favorites')
+                .select(`
+                    songs:song_id (
+                        id, title, song_url,
+                        albums:album_id (id, title, artist, cover_url)
+                    )
+                `)
+                .eq('user_id', currentUser.id);
+            
+            if (data && data[index]) {
+                const song = data[index].songs;
+                const album = song.albums;
+                currentPlaylist = data.map(item => item.songs);
+                currentIndex = index;
+                playSong(song, album, currentPlaylist, index);
+            }
+        }
 
         // Global functions
         window.showSection = function(section) {
@@ -309,7 +541,10 @@
             } else {
                 alert('¡Sesión iniciada correctamente!');
                 closeAuth();
+                currentUser = data.user;
                 updateAuthUI(data.user);
+                loadUserFavorites();
+                loadUserPlaylists();
             }
         }
 
@@ -335,22 +570,6 @@
                 alert('¡Registro exitoso! Revisa tu email para confirmar tu cuenta.');
                 closeAuth();
             }
-        }
-
-        window.createPlaylist = function() {
-            const name = prompt('Nombre de la playlist:');
-            if (name) {
-                const playlistsMenu = document.getElementById('playlists-menu');
-                const playlistItem = document.createElement('a');
-                playlistItem.href = '#';
-                playlistItem.textContent = '🎵 ' + name;
-                playlistItem.onclick = () => showPlaylist(name);
-                playlistsMenu.appendChild(playlistItem);
-            }
-        }
-
-        window.showPlaylist = function(name) {
-            alert('Mostrando playlist: ' + name);
         }
 
         window.searchMusic = function() {
@@ -431,6 +650,7 @@
 
         // Nueva función para mostrar detalle de un álbum
         function showAlbumDetail(album) {
+            currentAlbum = album;
             // Oculta grid y muestra solo el detalle
             document.getElementById('albums').style.display = 'none';
             let albumDetail = document.getElementById('album-detail');
@@ -455,10 +675,25 @@
                 }
                 
                 currentPlaylist = data;
-                listDiv.innerHTML = '<ul>' + data.map((song, idx) =>
-                    `<li onclick="playSongFromPlaylist(${idx}, '${album.id}')">
-                        ${song.title || 'Canción sin nombre'} <span class="play-icon">▶</span>
-                    </li>`).join('') + '</ul>';
+                listDiv.innerHTML = '<ul>' + data.map((song, idx) => {
+                    const isFavorite = userFavorites.includes(song.id);
+                    return `
+                        <li>
+                            <div onclick="playSongFromPlaylist(${idx}, '${album.id}')" style="flex: 1; cursor: pointer;">
+                                ${song.title || 'Canción sin nombre'}
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <span onclick="toggleFavorite('${song.id}')" style="cursor: pointer; color: ${isFavorite ? '#1DB954' : '#666'};">
+                                    ${isFavorite ? '❤️' : '🤍'}
+                                </span>
+                                <span onclick="addToPlaylist('${song.id}')" style="cursor: pointer; color: #666;">
+                                    ➕
+                                </span>
+                                <span class="play-icon" onclick="playSongFromPlaylist(${idx}, '${album.id}')">▶</span>
+                            </div>
+                        </li>
+                    `;
+                }).join('') + '</ul>';
             });
         }
 
@@ -634,7 +869,10 @@
         // Check auth state
         supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
+                currentUser = session.user;
                 updateAuthUI(session.user);
+                loadUserFavorites();
+                loadUserPlaylists();
             }
         });
     </script>
