@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <title>KLMZ MUSIC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- PWA Configuration -->
     <meta name="theme-color" content="#1DB954">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
@@ -75,24 +73,18 @@
         .content-section.active { display: block; }
         .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: background 0.3s; }
         .back-btn:hover { background: #333; }
-        
-        /* Estilos offline */
         .offline-indicator { position: fixed; top: 70px; right: 20px; background: #e22134; color: #fff; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.8rem; z-index: 1000; display: none; }
         .download-btn { background: #1DB954; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-left: 0.5rem; }
         .download-btn.downloading { background: #ffa500; cursor: not-allowed; }
         .download-btn:disabled { background: #666; cursor: not-allowed; }
         .storage-info { background: #333; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
-        
-        /* Copyright footer */
         .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
-        
         @media (min-width:900px) { aside { display:block;} main{margin-left:220px; max-width:none;}}
     </style>
 </head>
 <body>
 
 <div class="offline-indicator" id="offline-indicator">🔴 Sin conexión - Modo offline</div>
-
 <header>
     <span class="logo">KLMZ MUSIC</span>
     <div class="user-actions">
@@ -108,7 +100,6 @@
             <div class="album-grid" id="albums"></div>
             <div id="album-detail" style="display:none;"></div>
         </section>
-        
         <section class="content-section" id="search-section">
             <div class="section-title">Buscar música</div>
             <div style="margin-bottom: 2rem;">
@@ -116,7 +107,6 @@
             </div>
             <div id="search-results"></div>
         </section>
-        
         <section class="content-section" id="library-section">
             <div class="section-title">Tu biblioteca</div>
             <div class="storage-info">
@@ -128,7 +118,6 @@
                 <div id="offline-songs-list">No hay canciones descargadas</div>
             </div>
         </section>
-        
         <section class="content-section" id="admin-section">
             <div class="section-title">Panel de Administración</div>
             <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
@@ -190,40 +179,21 @@
         <div id="login-form">
             <h2>Iniciar sesión</h2>
             <form onsubmit="login(event)">
-                <div class="form-group">
-                    <label>Email:</label>
-                    <input type="email" id="login-email" required>
-                </div>
-                <div class="form-group">
-                    <label>Contraseña:</label>
-                    <input type="password" id="login-password" required>
-                </div>
+                <div class="form-group"><label>Email:</label><input type="email" id="login-email" required></div>
+                <div class="form-group"><label>Contraseña:</label><input type="password" id="login-password" required></div>
                 <button type="submit" class="btn-primary">Iniciar sesión</button>
             </form>
-            <p style="text-align: center; margin-top: 1rem;">
-                ¿No tienes cuenta? <a href="#" onclick="showAuth('register')" style="color: #1DB954;">Regístrate</a>
-            </p>
+            <p style="text-align: center; margin-top: 1rem;">¿No tienes cuenta? <a href="#" onclick="showAuth('register')" style="color: #1DB954;">Regístrate</a></p>
         </div>
         <div id="register-form" style="display: none;">
             <h2>Registrarse</h2>
             <form onsubmit="register(event)">
-                <div class="form-group">
-                    <label>Email:</label>
-                    <input type="email" id="register-email" required>
-                </div>
-                <div class="form-group">
-                    <label>Contraseña:</label>
-                    <input type="password" id="register-password" required>
-                </div>
-                <div class="form-group">
-                    <label>Confirmar contraseña:</label>
-                    <input type="password" id="register-confirm" required>
-                </div>
+                <div class="form-group"><label>Email:</label><input type="email" id="register-email" required></div>
+                <div class="form-group"><label>Contraseña:</label><input type="password" id="register-password" required></div>
+                <div class="form-group"><label>Confirmar contraseña:</label><input type="password" id="register-confirm" required></div>
                 <button type="submit" class="btn-primary">Registrarse</button>
             </form>
-            <p style="text-align: center; margin-top: 1rem;">
-                ¿Ya tienes cuenta? <a href="#" onclick="showAuth('login')" style="color: #1DB954;">Inicia sesión</a>
-            </p>
+            <p style="text-align: center; margin-top: 1rem;">¿Ya tienes cuenta? <a href="#" onclick="showAuth('login')" style="color: #1DB954;">Inicia sesión</a></p>
         </div>
     </div>
 </div>
@@ -235,11 +205,8 @@
     </div>
 </div>
 
-<!-- Copyright Footer -->
 <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
-
 <audio id="audio-player"></audio>
-
 <script>
 // Variables globales
 let supabase = null;
@@ -253,12 +220,36 @@ let allSongs = [];
 let currentUser = null;
 let isOffline = false;
 let offlineDB;
+let supabaseLoaded = false;
 
 const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
 const ADMIN_EMAIL = 'klmzr@gmail.com';
 
-// Inicializar IndexedDB
+// ✅ FUNCIÓN CORREGIDA PARA EVITAR CONNECTION REFUSED
+async function loadSupabaseIfOnline() {
+    if (!navigator.onLine) return false;
+    
+    try {
+        const response = await fetch('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm', { 
+            method: 'HEAD',
+            cache: 'no-cache'
+        });
+        
+        if (response.ok) {
+            const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+            const { createClient } = module;
+            supabase = createClient(supabaseUrl, supabaseKey);
+            supabaseLoaded = true;
+            return true;
+        }
+    } catch (error) {
+        console.log('Supabase no disponible:', error.message);
+    }
+    
+    return false;
+}
+
 async function initOfflineDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('KLMZ_MUSIC_OFFLINE', 1);
@@ -271,11 +262,9 @@ async function initOfflineDB() {
         
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            
             if (!db.objectStoreNames.contains('songs')) {
                 db.createObjectStore('songs', { keyPath: 'id' });
             }
-            
             if (!db.objectStoreNames.contains('albums')) {
                 db.createObjectStore('albums', { keyPath: 'id' });
             }
@@ -283,7 +272,6 @@ async function initOfflineDB() {
     });
 }
 
-// Verificar conexión
 function checkConnection() {
     isOffline = !navigator.onLine;
     const indicator = document.getElementById('offline-indicator');
@@ -293,14 +281,26 @@ function checkConnection() {
         loadOfflineData();
     } else {
         indicator.style.display = 'none';
-        if (supabase) {
+        if (supabaseLoaded && supabase) {
             fetchAlbums();
             fetchAllSongs();
         }
     }
 }
 
-window.addEventListener('online', checkConnection);
+window.addEventListener('online', () => {
+    if (!supabaseLoaded) {
+        loadSupabaseIfOnline().then(loaded => {
+            if (loaded) {
+                checkConnection();
+                initSupabaseAuth();
+            }
+        });
+    } else {
+        checkConnection();
+    }
+});
+
 window.addEventListener('offline', checkConnection);
 
 function isAdmin() {
@@ -314,7 +314,7 @@ function getLocalFavorites() {
 function saveLocalFavorites(favorites) {
     localStorage.setItem('klmz_favorites', JSON.stringify(favorites));
 }
-// FUNCIONES OFFLINE
+
 async function storeSongOffline(songId, songUrl, songTitle, albumTitle) {
     try {
         const response = await fetch(songUrl);
@@ -346,7 +346,7 @@ async function storeSongOffline(songId, songUrl, songTitle, albumTitle) {
 }
 
 window.downloadSong = async function(songId, songTitle, albumTitle) {
-    if (isOffline) {
+    if (isOffline || !supabaseLoaded) {
         alert('Necesitas conexión para descargar canciones');
         return;
     }
@@ -398,13 +398,8 @@ async function isSongDownloaded(songId) {
             const store = transaction.objectStore('songs');
             const request = store.get(songId);
             
-            request.onsuccess = () => {
-                resolve(!!request.result);
-            };
-            
-            request.onerror = () => {
-                resolve(false);
-            };
+            request.onsuccess = () => resolve(!!request.result);
+            request.onerror = () => resolve(false);
         });
     } catch (error) {
         return false;
@@ -420,13 +415,8 @@ async function getOfflineSong(songId) {
             const store = transaction.objectStore('songs');
             const request = store.get(songId);
             
-            request.onsuccess = () => {
-                resolve(request.result);
-            };
-            
-            request.onerror = () => {
-                resolve(null);
-            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
         });
     } catch (error) {
         return null;
@@ -578,7 +568,6 @@ window.clearOfflineData = async function() {
     
     try {
         const transaction = offlineDB.transaction(['songs', 'albums'], 'readwrite');
-        
         await transaction.objectStore('songs').clear();
         await transaction.objectStore('albums').clear();
         
@@ -606,11 +595,6 @@ window.toggleFavorite = function(songId, el) {
         el.style.color = isFavorite ? '#666' : '#1DB954';
         el.textContent = isFavorite ? '🤍' : '❤️';
     }
-    
-    const favoritesSection = document.getElementById('favorites-songs');
-    if (favoritesSection) {
-        showFavorites();
-    }
 }
 
 window.showFavorites = function() {
@@ -630,7 +614,7 @@ window.showFavorites = function() {
         return;
     }
     
-    if (isOffline || !supabase) {
+    if (isOffline || !supabaseLoaded) {
         loadOfflineFavorites(favorites);
     } else {
         loadOnlineFavorites(favorites);
@@ -676,7 +660,7 @@ async function loadOfflineFavorites(favorites) {
 }
 
 async function loadOnlineFavorites(favorites) {
-    if (!supabase) return;
+    if (!supabaseLoaded || !supabase) return;
     
     const songPromises = favorites.map(songId => {
         return supabase.from('songs').select(`
@@ -715,7 +699,7 @@ function displayFavorites(validSongs) {
 }
 
 window.playFavoriteSong = async function(songId) {
-    if (isOffline || !supabase) {
+    if (isOffline || !supabaseLoaded) {
         const offlineSong = await getOfflineSong(songId);
         if (offlineSong) {
             playOfflineSong(offlineSong);
@@ -735,9 +719,8 @@ window.playFavoriteSong = async function(songId) {
     }
 }
 
-// FUNCIONES DE ADMINISTRACIÓN
 window.showUploadAlbum = function() {
-    if (isOffline || !supabase) {
+    if (isOffline || !supabaseLoaded) {
         alert('Necesitas conexión para usar funciones de administrador');
         return;
     }
@@ -750,18 +733,9 @@ window.showUploadAlbum = function() {
     document.getElementById('admin-modal-content').innerHTML = `
         <h2>Subir Álbum</h2>
         <form onsubmit="uploadAlbum(event)">
-            <div class="form-group">
-                <label>Título del álbum:</label>
-                <input type="text" id="album-title" required>
-            </div>
-            <div class="form-group">
-                <label>Artista:</label>
-                <input type="text" id="album-artist" required>
-            </div>
-            <div class="form-group">
-                <label>Carátula del álbum:</label>
-                <input type="file" id="album-cover-file" accept="image/*" required>
-            </div>
+            <div class="form-group"><label>Título del álbum:</label><input type="text" id="album-title" required></div>
+            <div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div>
+            <div class="form-group"><label>Carátula del álbum:</label><input type="file" id="album-cover-file" accept="image/*" required></div>
             <button type="submit" class="btn-primary">Subir Álbum</button>
         </form>
     `;
@@ -769,7 +743,7 @@ window.showUploadAlbum = function() {
 }
 
 window.showUploadSong = function() {
-    if (isOffline || !isAdmin() || !supabase) return;
+    if (isOffline || !isAdmin() || !supabaseLoaded) return;
     
     supabase.from('albums').select('*').then(({data}) => {
         const albumOptions = data ? data.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('') : '';
@@ -777,21 +751,9 @@ window.showUploadSong = function() {
         document.getElementById('admin-modal-content').innerHTML = `
             <h2>Subir Canción</h2>
             <form onsubmit="uploadSong(event)">
-                <div class="form-group">
-                    <label>Álbum:</label>
-                    <select id="song-album" required>
-                        <option value="">Selecciona un álbum</option>
-                        ${albumOptions}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Título de la canción:</label>
-                    <input type="text" id="song-title" required>
-                </div>
-                <div class="form-group">
-                    <label>Archivo de audio:</label>
-                    <input type="file" id="song-file" accept="audio/*" required>
-                </div>
+                <div class="form-group"><label>Álbum:</label><select id="song-album" required><option value="">Selecciona un álbum</option>${albumOptions}</select></div>
+                <div class="form-group"><label>Título de la canción:</label><input type="text" id="song-title" required></div>
+                <div class="form-group"><label>Archivo de audio:</label><input type="file" id="song-file" accept="audio/*" required></div>
                 <button type="submit" class="btn-primary">Subir Canción</button>
             </form>
         `;
@@ -800,13 +762,13 @@ window.showUploadSong = function() {
 }
 
 window.showManageAlbums = function() {
-    if (isOffline || !isAdmin() || !supabase) return;
+    if (isOffline || !isAdmin() || !supabaseLoaded) return;
     showSection('admin');
     loadAlbumsForManagement();
 }
 
 async function loadAlbumsForManagement() {
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const { data } = await supabase.from('albums').select('*');
     const content = document.getElementById('admin-content');
@@ -818,10 +780,7 @@ async function loadAlbumsForManagement() {
     
     content.innerHTML = '<h3>Gestionar Álbumes</h3>' + data.map(album => `
         <div class="admin-item">
-            <div>
-                <strong>${album.title}</strong><br>
-                <small>${album.artist}</small>
-            </div>
+            <div><strong>${album.title}</strong><br><small>${album.artist}</small></div>
             <div class="admin-actions">
                 <button class="btn-primary" onclick="editAlbum('${album.id}')" style="width: auto; margin: 0;">Editar</button>
                 <button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar</button>
@@ -832,7 +791,7 @@ async function loadAlbumsForManagement() {
 
 window.uploadAlbum = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const title = document.getElementById('album-title').value;
     const artist = document.getElementById('album-artist').value;
@@ -843,7 +802,7 @@ window.uploadAlbum = async function(event) {
         return;
     }
     
-    const file = fileInput.files[0];
+    const file = fileInput.files;
     const ext = file.name.split('.').pop();
     const filePath = `covers/${Date.now()}.${ext}`;
     
@@ -869,7 +828,7 @@ window.uploadAlbum = async function(event) {
 
 window.uploadSong = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const album_id = document.getElementById('song-album').value;
     const title = document.getElementById('song-title').value;
@@ -880,7 +839,7 @@ window.uploadSong = async function(event) {
         return;
     }
     
-    const file = fileInput.files[0];
+    const file = fileInput.files;
     const ext = file.name.split('.').pop();
     const filePath = `songs/${Date.now()}.${ext}`;
     
@@ -905,25 +864,16 @@ window.uploadSong = async function(event) {
 }
 
 window.editAlbum = async function(albumId) {
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const { data } = await supabase.from('albums').select('*').eq('id', albumId).single();
     
     document.getElementById('admin-modal-content').innerHTML = `
         <h2>Editar Álbum</h2>
         <form onsubmit="updateAlbum(event, '${albumId}')">
-            <div class="form-group">
-                <label>Título del álbum:</label>
-                <input type="text" id="edit-album-title" value="${data.title}" required>
-            </div>
-            <div class="form-group">
-                <label>Artista:</label>
-                <input type="text" id="edit-album-artist" value="${data.artist}" required>
-            </div>
-            <div class="form-group">
-                <label>Nueva carátula (opcional):</label>
-                <input type="file" id="edit-album-cover" accept="image/*">
-            </div>
+            <div class="form-group"><label>Título del álbum:</label><input type="text" id="edit-album-title" value="${data.title}" required></div>
+            <div class="form-group"><label>Artista:</label><input type="text" id="edit-album-artist" value="${data.artist}" required></div>
+            <div class="form-group"><label>Nueva carátula (opcional):</label><input type="file" id="edit-album-cover" accept="image/*"></div>
             <button type="submit" class="btn-primary">Actualizar Álbum</button>
         </form>
     `;
@@ -932,7 +882,7 @@ window.editAlbum = async function(albumId) {
 
 window.updateAlbum = async function(event, albumId) {
     event.preventDefault();
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const title = document.getElementById('edit-album-title').value;
     const artist = document.getElementById('edit-album-artist').value;
@@ -941,7 +891,7 @@ window.updateAlbum = async function(event, albumId) {
     let cover_url = null;
     
     if (fileInput.files[0]) {
-        const file = fileInput.files;
+        const file = fileInput.files[0];
         const ext = file.name.split('.').pop();
         const filePath = `covers/${Date.now()}.${ext}`;
         
@@ -972,7 +922,7 @@ window.updateAlbum = async function(event, albumId) {
 }
 
 window.deleteAlbum = async function(albumId) {
-    if (!supabase || !confirm('¿Estás seguro de que quieres eliminar este álbum?')) return;
+    if (!supabaseLoaded || !confirm('¿Estás seguro de que quieres eliminar este álbum?')) return;
     
     const { error } = await supabase.from('albums').delete().eq('id', albumId);
     
@@ -986,7 +936,7 @@ window.deleteAlbum = async function(albumId) {
 }
 
 window.deleteSong = async function(songId) {
-    if (!supabase || !isAdmin()) return;
+    if (!supabaseLoaded || !isAdmin()) return;
     if (!confirm('¿Estás seguro de que quieres eliminar esta canción?')) return;
     
     const { error } = await supabase.from('songs').delete().eq('id', songId);
@@ -1027,7 +977,7 @@ window.showSection = function(section) {
 }
 
 window.showAuth = function(type) {
-    if (isOffline || !supabase) {
+    if (isOffline || !supabaseLoaded) {
         alert('Necesitas conexión para iniciar sesión');
         return;
     }
@@ -1048,7 +998,7 @@ window.closeAuth = function() {
 
 window.login = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
@@ -1076,7 +1026,7 @@ window.login = async function(event) {
 
 window.register = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const email = document.getElementById('register-email').value;
     const password = document.getElementById('register-password').value;
@@ -1109,7 +1059,7 @@ window.searchMusic = function() {
         return;
     }
     
-    if (isOffline || !supabase) {
+    if (isOffline || !supabaseLoaded) {
         searchOfflineMusic(query, results);
     } else {
         searchOnlineMusic(query, results);
@@ -1252,7 +1202,7 @@ async function showAlbumDetail(album) {
         <div class="song-list" id="detail-song-list"><div style="padding: 1.2rem; text-align: center;">Cargando canciones...</div></div>
     `;
 
-    if (isOffline || !supabase) {
+    if (isOffline || !supabaseLoaded) {
         document.getElementById('detail-song-list').innerHTML = '<div style="padding: 1.2rem; text-align: center;">No disponible offline.</div>';
         return;
     }
@@ -1377,7 +1327,7 @@ function updateAuthUI(user) {
 }
 
 window.logout = async function() {
-    if (supabase) {
+    if (supabaseLoaded && supabase) {
         await supabase.auth.signOut();
     }
     location.reload();
@@ -1410,7 +1360,7 @@ function displayAlbums(albums) {
 }
 
 async function fetchAlbums() {
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const { data, error } = await supabase.from('albums').select('*');
     if (error || !data) {
@@ -1423,7 +1373,7 @@ async function fetchAlbums() {
 }
 
 async function fetchAllSongs() {
-    if (!supabase) return;
+    if (!supabaseLoaded) return;
     
     const { data, error } = await supabase.from('songs').select('*');
     if (!error && data) {
@@ -1475,39 +1425,37 @@ document.getElementById('audio-player').addEventListener('pause', function() {
     updateFullPlayer(currentSong, currentAlbum);
 });
 
-// Initialize app
+// ✅ FUNCIÓN DE INICIALIZACIÓN SUPABASE (EVITA CONNECTION REFUSED)
+async function initSupabaseAuth() {
+    if (supabaseLoaded && supabase) {
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+                currentUser = session.user;
+                updateAuthUI(session.user);
+                
+                if (isAdmin()) {
+                    const navLogin = document.getElementById('nav-login');
+                    navLogin.onclick = () => showSection('admin');
+                    navLogin.innerHTML = '<span class="icon">⚙</span><small>Admin</small>';
+                }
+            }
+        });
+    }
+}
+
+// ✅ INICIALIZACIÓN CORREGIDA (SIN CONNECTION REFUSED)
 async function initApp() {
     try {
         await initOfflineDB();
         
+        // ✅ SOLO INTENTA CARGAR SUPABASE SI HAY CONEXIÓN
         if (navigator.onLine) {
-            try {
-                const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-                const { createClient } = module;
-                supabase = createClient(supabaseUrl, supabaseKey);
-                
-                supabase.auth.onAuthStateChange((event, session) => {
-                    if (session?.user) {
-                        currentUser = session.user;
-                        updateAuthUI(session.user);
-                        
-                        if (isAdmin()) {
-                            const navLogin = document.getElementById('nav-login');
-                            navLogin.onclick = () => showSection('admin');
-                            navLogin.innerHTML = '<span class="icon">⚙</span><small>Admin</small>';
-                        }
-                    }
-                });
-                
+            const supabaseLoaded = await loadSupabaseIfOnline();
+            if (supabaseLoaded) {
+                initSupabaseAuth();
                 fetchAlbums();
                 fetchAllSongs();
-                
-            } catch (error) {
-                console.log('Supabase no disponible, usando solo modo offline');
-                isOffline = true;
             }
-        } else {
-            isOffline = true;
         }
         
         checkConnection();
@@ -1515,7 +1463,8 @@ async function initApp() {
         
     } catch (error) {
         console.error('Error inicializando app:', error);
-        document.getElementById('albums').innerHTML = '<p>Aplicación iniciada. Descarga canciones cuando tengas conexión.</p>';
+        // ✅ MUESTRA LA INTERFAZ AUNQUE HAYA ERRORES
+        document.getElementById('albums').innerHTML = '<p>🎵 KLMZ Music iniciado. Descarga canciones cuando tengas conexión.</p>';
     }
 }
 
