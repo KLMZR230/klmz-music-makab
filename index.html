@@ -8,8 +8,6 @@
     <!-- PWA Configuration -->
     <meta name="theme-color" content="#1DB954">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiS0xNWiBNVVNJQyIsInNob3J0X25hbWUiOiJLTE1aIE11c2ljIiwiZGVzY3JpcHRpb24iOiJBcGxpY2FjacOzbiBkZSBtw7pzaWNhIiwic3RhcnRfdXJsIjoiLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMxODE4MTgiLCJ0aGVtZV9jb2xvciI6IiMxREI5NTQiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRJNElpQm9aV2xuYUhROUlqRXlPQ0lpSUhacFpYZENiM2c5SWpBZ01DQXhNamdnTVRJNElpQm1hV3hzUFNJalFVRkJRVUVpUGp4eVpXTjBJSGRwWkhSb1BTSXhNamdpSUdobGFXZG9kRDBpTVRJNElpQm1hV3hzUFNJaU1VUkNPVFkwSWk4K1BDOXpkbWMrIiwic2l6ZXMiOiIxMjh4MTI4IiwidHlwZSI6ImltYWdlL3N2Zyt4bWwifV19">
     
     <style>
         * { box-sizing: border-box; }
@@ -88,15 +86,11 @@
         /* Copyright footer */
         .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
         
-        /* Loading indicator */
-        .loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #1DB954; font-size: 1.2rem; z-index: 1000; }
-        
         @media (min-width:900px) { aside { display:block;} main{margin-left:220px; max-width:none;}}
     </style>
 </head>
 <body>
 
-<div class="loading" id="loading">🎵 Cargando KLMZ Music...</div>
 <div class="offline-indicator" id="offline-indicator">🔴 Sin conexión - Modo offline</div>
 
 <header>
@@ -260,23 +254,9 @@ let currentUser = null;
 let isOffline = false;
 let offlineDB;
 
-// Configuración de Supabase (solo si hay conexión)
 const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
 const ADMIN_EMAIL = 'klmzr@gmail.com';
-
-// Registrar Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js')
-            .then(function(registration) {
-                console.log('SW registered: ', registration);
-            })
-            .catch(function(registrationError) {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
-}
 
 // Inicializar IndexedDB
 async function initOfflineDB() {
@@ -334,7 +314,6 @@ function getLocalFavorites() {
 function saveLocalFavorites(favorites) {
     localStorage.setItem('klmz_favorites', JSON.stringify(favorites));
 }
-
 // FUNCIONES OFFLINE
 async function storeSongOffline(songId, songUrl, songTitle, albumTitle) {
     try {
@@ -864,7 +843,7 @@ window.uploadAlbum = async function(event) {
         return;
     }
     
-    const file = fileInput.files;
+    const file = fileInput.files[0];
     const ext = file.name.split('.').pop();
     const filePath = `covers/${Date.now()}.${ext}`;
     
@@ -901,7 +880,7 @@ window.uploadSong = async function(event) {
         return;
     }
     
-    const file = fileInput.files;
+    const file = fileInput.files[0];
     const ext = file.name.split('.').pop();
     const filePath = `songs/${Date.now()}.${ext}`;
     
@@ -1499,22 +1478,14 @@ document.getElementById('audio-player').addEventListener('pause', function() {
 // Initialize app
 async function initApp() {
     try {
-        // Ocultar loading después de un tiempo
-        setTimeout(() => {
-            document.getElementById('loading').style.display = 'none';
-        }, 2000);
-        
-        // Inicializar IndexedDB siempre
         await initOfflineDB();
         
-        // Intentar cargar Supabase solo si hay conexión
         if (navigator.onLine) {
             try {
                 const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
                 const { createClient } = module;
                 supabase = createClient(supabaseUrl, supabaseKey);
                 
-                // Check auth state
                 supabase.auth.onAuthStateChange((event, session) => {
                     if (session?.user) {
                         currentUser = session.user;
@@ -1528,7 +1499,6 @@ async function initApp() {
                     }
                 });
                 
-                // Cargar datos online
                 fetchAlbums();
                 fetchAllSongs();
                 
@@ -1540,7 +1510,6 @@ async function initApp() {
             isOffline = true;
         }
         
-        // Verificar conexión y cargar datos apropiados
         checkConnection();
         updateStorageInfo();
         
