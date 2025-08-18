@@ -70,6 +70,8 @@
         .close-modal { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
         .content-section { display: none; }
         .content-section.active { display: block; }
+        .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: background 0.3s; }
+        .back-btn:hover { background: #333; }
         @media (max-width: 768px) {
             .nav-mobile { display: block; }
             nav { display: none; position: fixed; top: 60px; left: 0; right: 0; background: #121212; flex-direction: column; padding: 1rem; z-index: 1000; }
@@ -139,6 +141,7 @@
                 <div class="album-grid" id="albums">
                     <!-- Álbumes cargados desde Supabase -->
                 </div>
+                <div id="album-detail" style="display:none;"></div>
             </section>
 
             <!-- Search Section -->
@@ -422,6 +425,45 @@
             document.getElementById('full-play-btn').textContent = isPlaying ? '⏸' : '▶';
         }
 
+        // Nueva función para mostrar solo la cuadrícula de álbumes
+        window.showAlbumsGrid = function() {
+            document.getElementById('album-detail').style.display = 'none';
+            document.getElementById('albums').style.display = '';
+        }
+
+        // Nueva función para mostrar detalle de un álbum
+        function showAlbumDetail(album) {
+            // Oculta grid y muestra solo el detalle
+            document.getElementById('albums').style.display = 'none';
+            let albumDetail = document.getElementById('album-detail');
+            albumDetail.style.display = 'block';
+
+            albumDetail.innerHTML = `
+                <button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    ${album.cover_url ? `<img class="album-img" src="${album.cover_url}" alt="Carátula Álbum" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem;">` : '<div class="album-img" style="width: 200px; height: 200px; margin: 0 auto 1rem;"></div>'}
+                    <div class="album-title" style="font-size: 1.5rem; margin-bottom: 0.5rem;">${album.title || 'Sin nombre'}</div>
+                    <div class="album-artist" style="font-size: 1.1rem; color: #b3b3b3;">${album.artist || 'Desconocido'}</div>
+                </div>
+                <div class="song-list" id="detail-song-list"><div style="padding: 1.2rem; text-align: center;">Cargando canciones...</div></div>
+            `;
+
+            // Listar canciones
+            supabase.from('songs').select('*').eq('album_id', album.id).then(({data, error}) => {
+                const listDiv = document.getElementById('detail-song-list');
+                if (error || !data || data.length === 0) {
+                    listDiv.innerHTML = '<div style="padding: 1.2rem; text-align: center;">No hay canciones en este álbum.</div>';
+                    return;
+                }
+                
+                currentPlaylist = data;
+                listDiv.innerHTML = '<ul>' + data.map((song, idx) =>
+                    `<li onclick="playSongFromPlaylist(${idx}, '${album.id}')">
+                        ${song.title || 'Canción sin nombre'} <span class="play-icon">▶</span>
+                    </li>`).join('') + '</ul>';
+            });
+        }
+
         // Player functions
         window.playSong = function(song, album, playlist = [], index = 0) {
             currentSong = song;
@@ -515,36 +557,8 @@
                 ${album.cover_url ? `<img class="album-img" src="${album.cover_url}" alt="Carátula Álbum">` : `<div class="album-img"></div>`}
                 <div class="album-title">${album.title || 'Sin nombre'}</div>
                 <div class="album-artist">${album.artist || 'Desconocido'}</div>
-                <div class="song-list" id="songs-for-${album.id}"></div>
             `;
-
-            // Mostrar las canciones al hacer click en el álbum
-            albumCard.addEventListener('click', async () => {
-                const songListDiv = albumCard.querySelector('.song-list');
-                
-                if (songListDiv.style.display === 'block') {
-                    songListDiv.style.display = 'none';
-                    songListDiv.innerHTML = '';
-                } else {
-                    songListDiv.style.display = 'block';
-                    songListDiv.innerHTML = 'Cargando canciones...';
-
-                    const { data, error } = await supabase.from('songs').select('*').eq('album_id', album.id);
-                    if (error || !data || data.length === 0) {
-                        songListDiv.innerHTML = '<div style="padding: 8px;">No hay canciones en este álbum.</div>';
-                        return;
-                    }
-
-                    const albumObj = allAlbums.find(a => a.id === album.id);
-                    currentPlaylist = data;
-                    songListDiv.innerHTML = '<ul>' + data.map((song, index) => `
-                        <li onclick="playSongFromPlaylist(${index}, '${album.id}')">
-                            ${song.title || 'Canción sin nombre'}
-                            <span class="play-icon">▶</span>
-                        </li>
-                    `).join('') + '</ul>';
-                }
-            });
+            albumCard.addEventListener('click', () => showAlbumDetail(album));
             return albumCard;
         }
 
