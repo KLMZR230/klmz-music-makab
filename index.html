@@ -29,7 +29,7 @@
         .album-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.5rem; }
         .album-card { background: #242424; border-radius: 8px; padding: 1rem; transition: all 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; }
         .album-card:hover { background: #2a2a2a; transform: translateY(-4px); }
-        .album-img { border-radius: 50% !important; width: 120px; height: 120px; object-fit: cover; margin-bottom: 0.8rem; background: #333; }
+        .album-img { border-radius: 50% !important; width: 80px; height: 80px; object-fit: cover; margin-bottom: 0.8rem; background: #333; }
         .album-title { font-size: 1rem; font-weight: bold; margin-bottom: 0.5rem; }
         .album-artist { font-size: 0.9rem; color: #b3b3b3; }
         .song-list { width: 100%; margin-top: 1rem; }
@@ -515,9 +515,36 @@
                 ${album.cover_url ? `<img class="album-img" src="${album.cover_url}" alt="Carátula Álbum">` : `<div class="album-img"></div>`}
                 <div class="album-title">${album.title || 'Sin nombre'}</div>
                 <div class="album-artist">${album.artist || 'Desconocido'}</div>
-                <div class="song-list" id="songs-for-${album.id}" style="display:none;"></div>
+                <div class="song-list" id="songs-for-${album.id}"></div>
             `;
-            albumCard.addEventListener('click', () => toggleSongs(album.id));
+
+            // Mostrar las canciones al hacer click en el álbum
+            albumCard.addEventListener('click', async () => {
+                const songListDiv = albumCard.querySelector('.song-list');
+                
+                if (songListDiv.style.display === 'block') {
+                    songListDiv.style.display = 'none';
+                    songListDiv.innerHTML = '';
+                } else {
+                    songListDiv.style.display = 'block';
+                    songListDiv.innerHTML = 'Cargando canciones...';
+
+                    const { data, error } = await supabase.from('songs').select('*').eq('album_id', album.id);
+                    if (error || !data || data.length === 0) {
+                        songListDiv.innerHTML = '<div style="padding: 8px;">No hay canciones en este álbum.</div>';
+                        return;
+                    }
+
+                    const albumObj = allAlbums.find(a => a.id === album.id);
+                    currentPlaylist = data;
+                    songListDiv.innerHTML = '<ul>' + data.map((song, index) => `
+                        <li onclick="playSongFromPlaylist(${index}, '${album.id}')">
+                            ${song.title || 'Canción sin nombre'}
+                            <span class="play-icon">▶</span>
+                        </li>
+                    `).join('') + '</ul>';
+                }
+            });
             return albumCard;
         }
 
@@ -541,38 +568,6 @@
             const { data, error } = await supabase.from('songs').select('*');
             if (!error && data) {
                 allSongs = data;
-            }
-        }
-
-        window.toggleSongs = async function(albumId) {
-            const songListDiv = document.getElementById(`songs-for-${albumId}`);
-            if (!songListDiv) return;
-
-            if (songListDiv.style.display === 'block') {
-                songListDiv.style.display = 'none';
-                songListDiv.innerHTML = '';
-            } else {
-                songListDiv.style.display = 'block';
-                songListDiv.innerHTML = 'Cargando canciones...';
-
-                const { data, error } = await supabase.from('songs').select('*').eq('album_id', albumId);
-                if (error || !data) {
-                    songListDiv.innerHTML = 'Error al cargar canciones.';
-                    return;
-                }
-                if (!data.length) {
-                    songListDiv.innerHTML = 'No hay canciones en este álbum.';
-                    return;
-                }
-
-                const album = allAlbums.find(a => a.id === albumId);
-                currentPlaylist = data;
-                songListDiv.innerHTML = '<ul>' + data.map((song, index) => `
-                    <li onclick="playSongFromPlaylist(${index}, '${albumId}')">
-                        ${song.title || 'Canción sin nombre'}
-                        <span class="play-icon">▶</span>
-                    </li>
-                `).join('') + '</ul>';
             }
         }
 
