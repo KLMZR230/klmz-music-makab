@@ -229,13 +229,15 @@
 
 <audio id="audio-player"></audio>
 
-<script>
-// Variables globales
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
 const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
 const ADMIN_EMAIL = 'klmzr@gmail.com';
 
-let supabase = null;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 let currentSong = null;
 let currentAlbum = null;
 let currentPlaylist = [];
@@ -282,10 +284,8 @@ function checkConnection() {
         loadOfflineData();
     } else {
         indicator.style.display = 'none';
-        if (supabase) {
-            fetchAlbums();
-            fetchAllSongs();
-        }
+        fetchAlbums();
+        fetchAllSongs();
     }
 }
 
@@ -304,7 +304,7 @@ function saveLocalFavorites(favorites) {
     localStorage.setItem('klmz_favorites', JSON.stringify(favorites));
 }
 
-// FUNCIONES OFFLINE CORREGIDAS
+// FUNCIONES OFFLINE
 async function storeSongOffline(songId, songUrl, songTitle, albumTitle) {
     try {
         const response = await fetch(songUrl);
@@ -335,30 +335,6 @@ async function storeSongOffline(songId, songUrl, songTitle, albumTitle) {
     }
 }
 
-async function downloadAlbumCover(albumId, coverUrl) {
-    try {
-        const response = await fetch(coverUrl);
-        const blob = await response.blob();
-        
-        return new Promise((resolve, reject) => {
-            const transaction = offlineDB.transaction(['albums'], 'readwrite');
-            const store = transaction.objectStore('albums');
-            
-            const request = store.put({
-                id: albumId,
-                coverBlob: blob
-            });
-            
-            request.onsuccess = () => resolve(true);
-            request.onerror = () => reject(request.error);
-        });
-        
-    } catch (error) {
-        return false;
-    }
-}
-
-// FUNCIÓN DE DESCARGA CORREGIDA
 window.downloadSong = async function(songId, songTitle, albumTitle) {
     if (isOffline) {
         alert('Necesitas conexión para descargar canciones');
@@ -384,10 +360,6 @@ window.downloadSong = async function(songId, songTitle, albumTitle) {
         if (song) {
             await storeSongOffline(songId, song.song_url, songTitle, albumTitle);
             
-            if (song.albums?.cover_url) {
-                await downloadAlbumCover(song.albums.id, song.albums.cover_url);
-            }
-            
             btn.textContent = '✓';
             btn.disabled = true;
             btn.classList.remove('downloading');
@@ -407,12 +379,11 @@ window.downloadSong = async function(songId, songTitle, albumTitle) {
     }
 }
 
-// FUNCIÓN CORREGIDA para verificar descargas
 async function isSongDownloaded(songId) {
     try {
         if (!offlineDB) return false;
         
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const transaction = offlineDB.transaction(['songs'], 'readonly');
             const store = transaction.objectStore('songs');
             const request = store.get(songId);
@@ -600,7 +571,6 @@ window.clearOfflineData = async function() {
     }
 }
 
-// FUNCIÓN CORREGIDA DE FAVORITOS
 window.toggleFavorite = function(songId, el) {
     let favorites = getLocalFavorites();
     const isFavorite = favorites.includes(songId);
@@ -624,16 +594,13 @@ window.toggleFavorite = function(songId, el) {
     }
 }
 
-// FAVORITOS CORREGIDO (SEPARADO DE BIBLIOTECA)
 window.showFavorites = function() {
-    // CAMBIAR A UNA NUEVA SECCIÓN PARA FAVORITOS
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
     document.getElementById('library-section').classList.add('active');
     
     document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
     document.getElementById('nav-favs').classList.add('active');
     
-    // MOSTRAR SOLO FAVORITOS, NO LA BIBLIOTECA
     const content = document.getElementById('library-content');
     content.innerHTML = '<h3>❤️ Mis Favoritos</h3><div id="favorites-songs">Cargando...</div>';
     
@@ -644,7 +611,7 @@ window.showFavorites = function() {
         return;
     }
     
-    if (isOffline || !supabase) {
+    if (isOffline) {
         loadOfflineFavorites(favorites);
     } else {
         loadOnlineFavorites(favorites);
@@ -727,7 +694,7 @@ function displayFavorites(validSongs) {
 }
 
 window.playFavoriteSong = async function(songId) {
-    if (isOffline || !supabase) {
+    if (isOffline) {
         const offlineSong = await getOfflineSong(songId);
         if (offlineSong) {
             playOfflineSong(offlineSong);
@@ -747,7 +714,7 @@ window.playFavoriteSong = async function(songId) {
     }
 }
 
-// FUNCIONES DE ADMINISTRACIÓN (solo online)
+// FUNCIONES DE ADMINISTRACIÓN
 window.showUploadAlbum = function() {
     if (isOffline) {
         alert('Necesitas conexión para usar funciones de administrador');
@@ -818,8 +785,6 @@ window.showManageAlbums = function() {
 }
 
 async function loadAlbumsForManagement() {
-    if (!supabase) return;
-    
     const { data } = await supabase.from('albums').select('*');
     const content = document.getElementById('admin-content');
     
@@ -844,7 +809,6 @@ async function loadAlbumsForManagement() {
 
 window.uploadAlbum = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
     
     const title = document.getElementById('album-title').value;
     const artist = document.getElementById('album-artist').value;
@@ -881,7 +845,6 @@ window.uploadAlbum = async function(event) {
 
 window.uploadSong = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
     
     const album_id = document.getElementById('song-album').value;
     const title = document.getElementById('song-title').value;
@@ -917,8 +880,6 @@ window.uploadSong = async function(event) {
 }
 
 window.editAlbum = async function(albumId) {
-    if (!supabase) return;
-    
     const { data } = await supabase.from('albums').select('*').eq('id', albumId).single();
     
     document.getElementById('admin-modal-content').innerHTML = `
@@ -944,7 +905,6 @@ window.editAlbum = async function(albumId) {
 
 window.updateAlbum = async function(event, albumId) {
     event.preventDefault();
-    if (!supabase) return;
     
     const title = document.getElementById('edit-album-title').value;
     const artist = document.getElementById('edit-album-artist').value;
@@ -984,7 +944,7 @@ window.updateAlbum = async function(event, albumId) {
 }
 
 window.deleteAlbum = async function(albumId) {
-    if (!supabase || !confirm('¿Estás seguro de que quieres eliminar este álbum?')) return;
+    if (!confirm('¿Estás seguro de que quieres eliminar este álbum?')) return;
     
     const { error } = await supabase.from('albums').delete().eq('id', albumId);
     
@@ -998,7 +958,7 @@ window.deleteAlbum = async function(albumId) {
 }
 
 window.deleteSong = async function(songId) {
-    if (!supabase || !isAdmin()) return;
+    if (!isAdmin()) return;
     if (!confirm('¿Estás seguro de que quieres eliminar esta canción?')) return;
     
     const { error } = await supabase.from('songs').delete().eq('id', songId);
@@ -1015,7 +975,6 @@ window.closeAdminModal = function() {
     document.getElementById('admin-modal').style.display = 'none';
 }
 
-// SHOWSECTION CORREGIDO
 window.showSection = function(section) {
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section + '-section').classList.add('active');
@@ -1025,7 +984,6 @@ window.showSection = function(section) {
     if(section=='search') document.getElementById('nav-search').classList.add('active');
     if(section=='library') {
         document.getElementById('nav-library').classList.add('active');
-        // MOSTRAR LA BIBLIOTECA NORMAL (NO FAVORITOS)
         const content = document.getElementById('library-content');
         content.innerHTML = `
             <div class="storage-info">
@@ -1062,7 +1020,6 @@ window.closeAuth = function() {
 
 window.login = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
     
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
@@ -1090,7 +1047,6 @@ window.login = async function(event) {
 
 window.register = async function(event) {
     event.preventDefault();
-    if (!supabase) return;
     
     const email = document.getElementById('register-email').value;
     const password = document.getElementById('register-password').value;
@@ -1123,7 +1079,7 @@ window.searchMusic = function() {
         return;
     }
     
-    if (isOffline || !supabase) {
+    if (isOffline) {
         searchOfflineMusic(query, results);
     } else {
         searchOnlineMusic(query, results);
@@ -1266,7 +1222,7 @@ async function showAlbumDetail(album) {
         <div class="song-list" id="detail-song-list"><div style="padding: 1.2rem; text-align: center;">Cargando canciones...</div></div>
     `;
 
-    if (!supabase || isOffline) {
+    if (isOffline) {
         document.getElementById('detail-song-list').innerHTML = '<div style="padding: 1.2rem; text-align: center;">No disponible offline.</div>';
         return;
     }
@@ -1282,7 +1238,6 @@ async function showAlbumDetail(album) {
     currentPlaylist = songs;
     const favorites = getLocalFavorites();
     
-    // PROCESAMIENTO SECUENCIAL CORREGIDO
     const songsWithDownloadStatus = [];
     for (const song of songs) {
         const isDownloaded = await isSongDownloaded(song.id);
@@ -1377,7 +1332,7 @@ window.closeFullPlayer = function() {
 }
 
 document.getElementById('mini-player').onclick = function(e) {
-    if e.target.id !== 'mini-play-btn') {
+    if (e.target.id !== 'mini-play-btn') {
         window.showFullPlayer();
     }
 }
@@ -1392,9 +1347,7 @@ function updateAuthUI(user) {
 }
 
 window.logout = async function() {
-    if (supabase) {
-        await supabase.auth.signOut();
-    }
+    await supabase.auth.signOut();
     location.reload();
 }
 
@@ -1425,8 +1378,6 @@ function displayAlbums(albums) {
 }
 
 async function fetchAlbums() {
-    if (!supabase) return;
-    
     const { data, error } = await supabase.from('albums').select('*');
     if (error || !data) {
         document.getElementById('albums').innerHTML = 'Error al cargar álbumes.';
@@ -1438,8 +1389,6 @@ async function fetchAlbums() {
 }
 
 async function fetchAllSongs() {
-    if (!supabase) return;
-    
     const { data, error } = await supabase.from('songs').select('*');
     if (!error && data) {
         allSongs = data;
@@ -1490,53 +1439,31 @@ document.getElementById('audio-player').addEventListener('pause', function() {
     updateFullPlayer(currentSong, currentAlbum);
 });
 
+// Check auth state
+supabase.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+        currentUser = session.user;
+        updateAuthUI(session.user);
+        
+        if (isAdmin()) {
+            const navLogin = document.getElementById('nav-login');
+            navLogin.onclick = () => showSection('admin');
+            navLogin.innerHTML = '<span class="icon">⚙</span><small>Admin</small>';
+        }
+    }
+});
+
 // Initialize app
 async function initApp() {
     try {
-        // Inicializar IndexedDB siempre
         await initOfflineDB();
-        
-        // Intentar cargar Supabase solo si hay conexión
-        if (navigator.onLine) {
-            try {
-                const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-                const { createClient } = module;
-                supabase = createClient(supabaseUrl, supabaseKey);
-                
-                // Check auth state
-                supabase.auth.onAuthStateChange((event, session) => {
-                    if (session?.user) {
-                        currentUser = session.user;
-                        updateAuthUI(session.user);
-                        
-                        if (isAdmin()) {
-                            const navLogin = document.getElementById('nav-login');
-                            navLogin.onclick = () => showSection('admin');
-                            navLogin.innerHTML = '<span class="icon">⚙</span><small>Admin</small>';
-                        }
-                    }
-                });
-                
-                // Cargar datos online
-                fetchAlbums();
-                fetchAllSongs();
-                
-            } catch (error) {
-                console.log('Supabase no disponible, usando solo modo offline');
-                isOffline = true;
-            }
-        } else {
-            isOffline = true;
-        }
-        
-        // Verificar conexión y cargar datos apropiados
         checkConnection();
+        fetchAlbums();
+        fetchAllSongs();
         updateStorageInfo();
-        
     } catch (error) {
         console.error('Error inicializando app:', error);
-        // Mostrar interfaz básica aunque haya errores
-        document.getElementById('albums').innerHTML = '<p>Aplicación iniciada en modo offline</p>';
+        document.getElementById('albums').innerHTML = '<p>Error al inicializar la aplicación</p>';
     }
 }
 
