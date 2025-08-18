@@ -45,7 +45,10 @@
             display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.2rem;
         }
         .album-card {
-            background: #242424; border-radius: 8px; padding: 1rem; min-height: 200px; display: flex; flex-direction: column; align-items: center; text-align: center;
+            background: #242424; border-radius: 8px; padding: 1rem; min-height: 200px; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; transition: background 0.3s;
+        }
+        .album-card:hover {
+            background: #2a2a2a;
         }
         .album-img {
             width: 120px; height: 120px; background: #333; border-radius: 8px; margin-bottom: 0.8rem; object-fit: cover;
@@ -55,6 +58,18 @@
         }
         .album-artist {
             font-size: 0.92rem; color: #b3b3b3;
+        }
+        .song-list {
+            width: 100%; margin-top: 10px;
+        }
+        .song-list ul {
+            list-style: none; padding: 0; margin: 0;
+        }
+        .song-list li {
+            padding: 5px 0; cursor: pointer; color: #1DB954; border-bottom: 1px solid #333;
+        }
+        .song-list li:hover {
+            color: #fff;
         }
         footer {
             background: #181818; padding: 1.2rem 2rem; text-align: center; color: #b3b3b3; font-size: 0.95rem;
@@ -105,8 +120,10 @@
     </footer>
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
+
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         async function fetchAlbums() {
@@ -114,21 +131,73 @@
             const container = document.getElementById('albums');
             if (error || !data) {
                 container.innerHTML = 'Error al cargar álbumes.';
+                console.error('Error:', error);
                 return;
             }
             if (!data.length) {
                 container.innerHTML = 'No hay álbumes aún.';
                 return;
             }
-            container.innerHTML = data.map(album => `
-              <div class="album-card">
-                ${(album.cover_url ? `<img class="album-img" src="${album.cover_url}" alt="Carátula Álbum">`
-                : `<div class="album-img"></div>`)}
-                <div class="album-title">${album.name || 'Sin nombre'}</div>
-                <div class="album-artist">${album.artist || 'Desconocido'}</div>
-              </div>
-            `).join('');
+
+            container.innerHTML = '';
+
+            data.forEach(album => {
+                const albumCard = document.createElement('div');
+                albumCard.className = 'album-card';
+                albumCard.innerHTML = `
+                    ${album.cover_url ? `<img class="album-img" src="${album.cover_url}" alt="Carátula Álbum">` : `<div class="album-img"></div>`}
+                    <div class="album-title">${album.name || 'Sin nombre'}</div>
+                    <div class="album-artist">${album.artist || 'Desconocido'}</div>
+                    <div class="song-list" id="songs-for-${album.id}" style="display:none;"></div>
+                `;
+
+                albumCard.addEventListener('click', () => toggleSongs(album.id));
+                container.appendChild(albumCard);
+            });
         }
+
+        // Función para mostrar/ocultar las canciones al dar clic en álbum
+        async function toggleSongs(albumId) {
+            const songListDiv = document.getElementById(`songs-for-${albumId}`);
+            if (!songListDiv) return;
+
+            if (songListDiv.style.display === 'block') {
+                songListDiv.style.display = 'none';
+                songListDiv.innerHTML = '';
+            } else {
+                songListDiv.style.display = 'block';
+                songListDiv.innerHTML = 'Cargando canciones...';
+
+                // Consultar canciones según album_id
+                const { data, error } = await supabase.from('songs').select('*').eq('album_id', albumId);
+                if (error || !data) {
+                    songListDiv.innerHTML = 'Error al cargar canciones.';
+                    console.error('Error al cargar canciones:', error);
+                    return;
+                }
+                if (!data.length) {
+                    songListDiv.innerHTML = 'No hay canciones en este álbum.';
+                    return;
+                }
+
+                // Crear lista de canciones
+                songListDiv.innerHTML = '<ul>' + data.map(song => `
+                    <li onclick="playSong('${song.url || '#'}')">${song.name || 'Canción sin nombre'}</li>
+                `).join('') + '</ul>';
+            }
+        }
+
+        // Función básica para reproducir canciones (puedes expandirla)
+        window.playSong = function(url) {
+            if (url && url !== '#') {
+                console.log('Reproducir:', url);
+                // Aquí puedes agregar un reproductor de audio
+                // Por ejemplo: new Audio(url).play();
+            } else {
+                alert('URL de canción no disponible');
+            }
+        }
+
         fetchAlbums();
     </script>
 </body>
