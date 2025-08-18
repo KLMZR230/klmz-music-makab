@@ -372,32 +372,45 @@ window.downloadSong = async function(songId, songTitle, albumTitle) {
             }
             
             if (success) {
-                btn.textContent = '✓ Descargada';
+                btn.textContent = '✓';
                 btn.disabled = true;
+                btn.classList.remove('downloading');
                 updateStorageInfo();
                 loadOfflineSongs();
                 alert(`"${songTitle}" descargada para uso offline`);
             } else {
-                btn.textContent = '⬇ Descargar';
+                btn.textContent = '⬇';
                 btn.disabled = false;
                 btn.classList.remove('downloading');
                 alert('Error al descargar la canción');
             }
         }
     } catch (error) {
-        btn.textContent = '⬇ Descargar';
+        btn.textContent = '⬇';
         btn.disabled = false;
         btn.classList.remove('downloading');
         alert('Error al descargar la canción');
     }
 }
 
+// FUNCIÓN CORREGIDA para verificar descargas
 async function isSongDownloaded(songId) {
     try {
-        const transaction = offlineDB.transaction(['songs'], 'readonly');
-        const store = transaction.objectStore('songs');
-        const result = await store.get(songId);
-        return !!result;
+        if (!offlineDB) return false;
+        
+        return new Promise((resolve, reject) => {
+            const transaction = offlineDB.transaction(['songs'], 'readonly');
+            const store = transaction.objectStore('songs');
+            const request = store.get(songId);
+            
+            request.onsuccess = () => {
+                resolve(!!request.result);
+            };
+            
+            request.onerror = () => {
+                resolve(false);
+            };
+        });
     } catch (error) {
         return false;
     }
@@ -405,9 +418,21 @@ async function isSongDownloaded(songId) {
 
 async function getOfflineSong(songId) {
     try {
-        const transaction = offlineDB.transaction(['songs'], 'readonly');
-        const store = transaction.objectStore('songs');
-        return await store.get(songId);
+        if (!offlineDB) return null;
+        
+        return new Promise((resolve) => {
+            const transaction = offlineDB.transaction(['songs'], 'readonly');
+            const store = transaction.objectStore('songs');
+            const request = store.get(songId);
+            
+            request.onsuccess = () => {
+                resolve(request.result);
+            };
+            
+            request.onerror = () => {
+                resolve(null);
+            };
+        });
     } catch (error) {
         return null;
     }
@@ -415,10 +440,22 @@ async function getOfflineSong(songId) {
 
 async function getOfflineAlbumCover(albumId) {
     try {
-        const transaction = offlineDB.transaction(['albums'], 'readonly');
-        const store = transaction.objectStore('albums');
-        const result = await store.get(albumId);
-        return result ? URL.createObjectURL(result.coverBlob) : null;
+        if (!offlineDB) return null;
+        
+        return new Promise((resolve) => {
+            const transaction = offlineDB.transaction(['albums'], 'readonly');
+            const store = transaction.objectStore('albums');
+            const request = store.get(albumId);
+            
+            request.onsuccess = () => {
+                const result = request.result;
+                resolve(result ? URL.createObjectURL(result.coverBlob) : null);
+            };
+            
+            request.onerror = () => {
+                resolve(null);
+            };
+        });
     } catch (error) {
         return null;
     }
@@ -426,6 +463,8 @@ async function getOfflineAlbumCover(albumId) {
 
 async function loadOfflineData() {
     try {
+        if (!offlineDB) return;
+        
         const transaction = offlineDB.transaction(['songs'], 'readonly');
         const store = transaction.objectStore('songs');
         const request = store.getAll();
@@ -496,6 +535,8 @@ async function playOfflineSong(offlineSong) {
 }
 
 async function loadOfflineSongs() {
+    if (!offlineDB) return;
+    
     const transaction = offlineDB.transaction(['songs'], 'readonly');
     const store = transaction.objectStore('songs');
     const request = store.getAll();
@@ -618,23 +659,30 @@ async function loadOfflineFavorites(favorites) {
     const validSongs = [];
     
     try {
+        if (!offlineDB) return;
+        
         const transaction = offlineDB.transaction(['songs'], 'readonly');
         const store = transaction.objectStore('songs');
         
         for (const songId of favorites) {
-            const song = await store.get(songId);
-            if (song) {
-                validSongs.push({
-                    data: {
-                        id: song.id,
-                        title: song.title,
-                        albums: { artist: song.albumTitle || 'Desconocido' }
-                    }
-                });
-            }
+            const request = store.get(songId);
+            request.onsuccess = () => {
+                const song = request.result;
+                if (song) {
+                    validSongs.push({
+                        data: {
+                            id: song.id,
+                            title: song.title,
+                            albums: { artist: song.albumTitle || 'Desconocido' }
+                        }
+                    });
+                }
+                
+                if (validSongs.length === favorites.length) {
+                    displayFavorites(validSongs);
+                }
+            };
         }
-        
-        displayFavorites(validSongs);
     } catch (error) {
         document.getElementById('favorites-songs').innerHTML = '<p>Error cargando favoritos offline.</p>';
     }
@@ -806,7 +854,7 @@ window.uploadAlbum = async function(event) {
         return;
     }
     
-    const file = fileInput.files;
+    const file = fileInput.files[0];
     const ext = file.name.split('.').pop();
     const filePath = `covers/${Date.now()}.${ext}`;
     
@@ -843,7 +891,7 @@ window.uploadSong = async function(event) {
         return;
     }
     
-    const file = fileInput.files;
+    const file = fileInput.files[0];
     const ext = file.name.split('.').pop();
     const filePath = `songs/${Date.now()}.${ext}`;
     
@@ -904,7 +952,7 @@ window.updateAlbum = async function(event, albumId) {
     let cover_url = null;
     
     if (fileInput.files[0]) {
-        const file = fileInput.files;
+        const file = fileInput.files[0];
         const ext = file.name.split('.').pop();
         const filePath = `covers/${Date.now()}.${ext}`;
         
@@ -1072,6 +1120,8 @@ window.searchMusic = function() {
 
 async function searchOfflineMusic(query, results) {
     try {
+        if (!offlineDB) return;
+        
         const transaction = offlineDB.transaction(['songs'], 'readonly');
         const store = transaction.objectStore('songs');
         const request = store.getAll();
@@ -1220,10 +1270,12 @@ async function showAlbumDetail(album) {
     currentPlaylist = songs;
     const favorites = getLocalFavorites();
     
-    const songsWithDownloadStatus = await Promise.all(songs.map(async (song) => {
+    // PROCESAMIENTO SECUENCIAL CORREGIDO
+    const songsWithDownloadStatus = [];
+    for (const song of songs) {
         const isDownloaded = await isSongDownloaded(song.id);
-        return { ...song, isDownloaded };
-    }));
+        songsWithDownloadStatus.push({ ...song, isDownloaded });
+    }
     
     listDiv.innerHTML = '<ul>' + songsWithDownloadStatus.map((song, idx) => {
         const isFavorite = favorites.includes(song.id);
