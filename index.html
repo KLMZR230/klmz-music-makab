@@ -466,7 +466,7 @@ function displayOfflineSongs(songs) {
             <div style="color: #b3b3b3; font-size: 0.9rem;">${song.albumTitle || 'Desconocido'}</div>
         `;
         
-        songCard.onclick = () => playOfflineSong(song);
+        songCard.onclick = () => playOfflineSongById(song.id);
         songCard.onmouseover = () => songCard.style.background = '#333';
         songCard.onmouseout = () => songCard.style.background = '#242424';
         
@@ -496,6 +496,16 @@ async function playOfflineSong(offlineSong) {
     updateFullPlayer(currentSong, currentAlbum);
 }
 
+// FUNCIÓN CORREGIDA PARA REPRODUCIR POR ID
+window.playOfflineSongById = async function(songId) {
+    const offlineSong = await getOfflineSong(songId);
+    if (offlineSong) {
+        playOfflineSong(offlineSong);
+    } else {
+        alert('Error: La canción no está disponible offline');
+    }
+}
+
 async function loadOfflineSongs() {
     if (!offlineDB) return;
     
@@ -519,7 +529,7 @@ async function loadOfflineSongs() {
                     <small>${song.albumTitle || 'Desconocido'}</small>
                 </div>
                 <div>
-                    <button onclick="playOfflineSong(${JSON.stringify(song).replace(/"/g, '&quot;')})" style="background: #1DB954; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">▶</button>
+                    <button onclick="playOfflineSongById('${song.id}')" style="background: #1DB954; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">▶</button>
                     <button onclick="deleteSongOffline('${song.id}')" class="btn-danger" style="width: auto; margin: 0; padding: 0.3rem 0.6rem;">Eliminar</button>
                 </div>
             </div>
@@ -913,7 +923,7 @@ window.updateAlbum = async function(event, albumId) {
     let cover_url = null;
     
     if (fileInput.files[0]) {
-        const file = fileInput.files[0];
+        const file = fileInput.files;
         const ext = file.name.split('.').pop();
         const filePath = `covers/${Date.now()}.${ext}`;
         
@@ -1118,7 +1128,7 @@ async function searchOfflineMusic(query, results) {
                 li.style.borderRadius = '4px';
                 li.style.cursor = 'pointer';
                 li.innerHTML = `${song.title} - ${song.albumTitle} <span style="color: #1DB954;">▶</span>`;
-                li.onclick = () => playOfflineSong(song);
+                li.onclick = () => playOfflineSongById(song.id);
                 songList.appendChild(li);
             });
             
