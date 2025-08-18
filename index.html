@@ -105,7 +105,7 @@
         <section class="content-section" id="library-section">
             <div class="section-title">Tu biblioteca</div>
             <div id="library-content">
-                <p>Aquí aparecerán tus álbumes y playlists guardados.</p>
+                <p>Aquí aparecerán tus playlists guardadas.</p>
             </div>
         </section>
         <section class="content-section" id="admin-section">
@@ -219,7 +219,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
 
-// 🔴 CAMBIA ESTE EMAIL POR EL TUYO PARA SER ADMIN
+// Tu email configurado como admin
 const ADMIN_EMAIL = 'klmzr@gmail.com';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -232,40 +232,40 @@ let isPlaying = false;
 let allAlbums = [];
 let allSongs = [];
 let currentUser = null;
-let userFavorites = [];
-let userPlaylists = [];
 
 // Verificar si es admin
 function isAdmin() {
     return currentUser && currentUser.email === ADMIN_EMAIL;
 }
 
-// Cargar favoritos del usuario
-async function loadUserFavorites() {
-    if (!currentUser) return;
-    const { data } = await supabase
-        .from('favorites')
-        .select('song_id')
-        .eq('user_id', currentUser.id);
-    userFavorites = data ? data.map(f => f.song_id) : [];
+// FUNCIONES DE FAVORITOS Y PLAYLISTS CON LOCALSTORAGE (SIN LOGIN)
+function getLocalFavorites() {
+    return JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
 }
 
-// Cargar playlists del usuario
-async function loadUserPlaylists() {
-    if (!currentUser) return;
-    const { data } = await supabase
-        .from('playlists')
-        .select('*')
-        .eq('user_id', currentUser.id);
-    userPlaylists = data || [];
-    updatePlaylistsMenu();
+function saveLocalFavorites(favorites) {
+    localStorage.setItem('klmz_favorites', JSON.stringify(favorites));
+}
+
+function getLocalPlaylists() {
+    return JSON.parse(localStorage.getItem('klmz_playlists') || '[]');
+}
+
+function saveLocalPlaylists(playlists) {
+    localStorage.setItem('klmz_playlists', JSON.stringify(playlists));
+}
+
+// Cargar playlists locales
+function loadLocalPlaylists() {
+    const playlists = getLocalPlaylists();
+    updatePlaylistsMenu(playlists);
 }
 
 // Actualizar menú de playlists
-function updatePlaylistsMenu() {
+function updatePlaylistsMenu(playlists = []) {
     const menu = document.getElementById('playlists-menu');
     menu.innerHTML = '';
-    userPlaylists.forEach(playlist => {
+    playlists.forEach(playlist => {
         const item = document.createElement('a');
         item.href = '#';
         item.innerHTML = `🎵 ${playlist.name}`;
@@ -274,28 +274,18 @@ function updatePlaylistsMenu() {
     });
 }
 
-// Agregar/quitar favoritos
-window.toggleFavorite = async function(songId) {
-    if (!currentUser) {
-        alert('Debes iniciar sesión para usar favoritos');
-        return;
-    }
-    
-    const isFavorite = userFavorites.includes(songId);
+// Agregar/quitar favoritos (LOCAL)
+window.toggleFavorite = function(songId) {
+    let favorites = getLocalFavorites();
+    const isFavorite = favorites.includes(songId);
     
     if (isFavorite) {
-        await supabase
-            .from('favorites')
-            .delete()
-            .eq('user_id', currentUser.id)
-            .eq('song_id', songId);
-        userFavorites = userFavorites.filter(id => id !== songId);
+        favorites = favorites.filter(id => id !== songId);
     } else {
-        await supabase
-            .from('favorites')
-            .insert([{ user_id: currentUser.id, song_id: songId }]);
-        userFavorites.push(songId);
+        favorites.push(songId);
     }
+    
+    saveLocalFavorites(favorites);
     
     // Actualizar UI si estamos en vista de álbum
     if (currentAlbum) {
@@ -303,118 +293,128 @@ window.toggleFavorite = async function(songId) {
     }
 }
 
-// Crear nueva playlist
-window.createPlaylist = async function() {
-    if (!currentUser) {
-        alert('Debes iniciar sesión para crear playlists');
-        return;
-    }
-    
+// Crear nueva playlist (LOCAL)
+window.createPlaylist = function() {
     const name = prompt('Nombre de la playlist:');
-    if (name) {
-        const { data } = await supabase
-            .from('playlists')
-            .insert([{ user_id: currentUser.id, name: name }])
-            .select();
-        
-        if (data && data[0]) {
-            userPlaylists.push(data);
-            updatePlaylistsMenu();
-            alert(`Playlist "${name}" creada correctamente`);
-        }
+    if (name && name.trim()) {
+        const playlists = getLocalPlaylists();
+        const newPlaylist = {
+            id: Date.now().toString(),
+            name: name.trim(),
+            songs: []
+        };
+        playlists.push(newPlaylist);
+        saveLocalPlaylists(playlists);
+        loadLocalPlaylists();
+        alert(`Playlist "${name}" creada correctamente`);
     }
 }
 
-// Mostrar canciones de playlist
-async function showPlaylistSongs(playlist) {
+// Mostrar canciones de playlist (LOCAL)
+function showPlaylistSongs(playlist) {
     showSection('library');
     const content = document.getElementById('library-content');
     content.innerHTML = `
         <h3>🎵 ${playlist.name}</h3>
+        <button class="btn-danger" onclick="deletePlaylist('${playlist.id}')" style="width: auto; margin-bottom: 1rem;">Eliminar Playlist</button>
         <div id="playlist-songs">Cargando...</div>
     `;
     
-    const { data } = await supabase
-        .from('playlist_songs')
-        .select(`
-            songs:song_id (
-                id, title, song_url,
-                albums:album_id (title, artist, cover_url)
-            )
-        `)
-        .eq('playlist_id', playlist.id);
-    
-    const songsDiv = document.getElementById('playlist-songs');
-    if (!data || data.length === 0) {
-        songsDiv.innerHTML = '<p>Esta playlist está vacía.</p>';
+    if (!playlist.songs || playlist.songs.length === 0) {
+        document.getElementById('playlist-songs').innerHTML = '<p>Esta playlist está vacía.</p>';
         return;
     }
     
-    songsDiv.innerHTML = '<ul class="song-list">' + data.map((item, idx) => {
-        const song = item.songs;
-        const album = song.albums;
-        return `
-            <li onclick="playPlaylistSong(${idx}, '${playlist.id}')">
-                ${song.title} - ${album?.artist || 'Desconocido'}
-                <span class="play-icon">▶</span>
-            </li>
-        `;
-    }).join('') + '</ul>';
+    // Buscar información completa de las canciones
+    const songPromises = playlist.songs.map(songId => {
+        return supabase.from('songs').select(`
+            id, title, song_url,
+            albums:album_id (id, title, artist, cover_url)
+        `).eq('id', songId).single();
+    });
+    
+    Promise.all(songPromises).then(results => {
+        const validSongs = results.filter(result => !result.error && result.data);
+        const songsDiv = document.getElementById('playlist-songs');
+        
+        if (validSongs.length === 0) {
+            songsDiv.innerHTML = '<p>No se encontraron canciones válidas en esta playlist.</p>';
+            return;
+        }
+        
+        songsDiv.innerHTML = '<ul class="song-list">' + validSongs.map((result, idx) => {
+            const song = result.data;
+            const album = song.albums;
+            return `
+                <li onclick="playPlaylistSong(${idx}, '${playlist.id}')">
+                    ${song.title} - ${album?.artist || 'Desconocido'}
+                    <span class="play-icon">▶</span>
+                </li>
+            `;
+        }).join('') + '</ul>';
+    });
 }
 
-// Reproducir canción de playlist
-window.playPlaylistSong = async function(index, playlistId) {
-    const { data } = await supabase
-        .from('playlist_songs')
-        .select(`
-            songs:song_id (
-                id, title, song_url,
-                albums:album_id (id, title, artist, cover_url)
-            )
-        `)
-        .eq('playlist_id', playlistId);
+// Eliminar playlist
+window.deletePlaylist = function(playlistId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta playlist?')) return;
     
-    if (data && data[index]) {
-        const song = data[index].songs;
-        const album = song.albums;
-        currentPlaylist = data.map(item => item.songs);
-        currentIndex = index;
-        playSong(song, album, currentPlaylist, index);
-    }
+    let playlists = getLocalPlaylists();
+    playlists = playlists.filter(p => p.id !== playlistId);
+    saveLocalPlaylists(playlists);
+    loadLocalPlaylists();
+    showSection('library');
+    document.getElementById('library-content').innerHTML = '<p>Playlist eliminada correctamente.</p>';
 }
 
-// Agregar canción a playlist
-window.addToPlaylist = async function(songId) {
-    if (!currentUser) {
-        alert('Debes iniciar sesión para usar playlists');
-        return;
-    }
+// Reproducir canción de playlist (LOCAL)
+window.playPlaylistSong = function(index, playlistId) {
+    const playlists = getLocalPlaylists();
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (!playlist || !playlist.songs[index]) return;
     
-    if (userPlaylists.length === 0) {
+    const songId = playlist.songs[index];
+    supabase.from('songs').select(`
+        id, title, song_url,
+        albums:album_id (id, title, artist, cover_url)
+    `).eq('id', songId).single().then(({data: song}) => {
+        if (song) {
+            const album = song.albums;
+            playSong(song, album, [song], 0);
+        }
+    });
+}
+
+// Agregar canción a playlist (LOCAL)
+window.addToPlaylist = function(songId) {
+    const playlists = getLocalPlaylists();
+    
+    if (playlists.length === 0) {
         alert('Primero crea una playlist');
         return;
     }
     
-    const playlistNames = userPlaylists.map(p => p.name);
+    const playlistNames = playlists.map(p => p.name);
     const selectedName = prompt(`Agregar a playlist:\n${playlistNames.map((name, i) => `${i+1}. ${name}`).join('\n')}\n\nEscribe el número:`);
     
     const index = parseInt(selectedName) - 1;
-    if (index >= 0 && index < userPlaylists.length) {
-        const playlist = userPlaylists[index];
-        await supabase
-            .from('playlist_songs')
-            .insert([{ playlist_id: playlist.id, song_id: songId }]);
+    if (index >= 0 && index < playlists.length) {
+        const playlist = playlists[index];
+        
+        // Verificar si ya está en la playlist
+        if (playlist.songs.includes(songId)) {
+            alert('Esta canción ya está en la playlist');
+            return;
+        }
+        
+        playlist.songs.push(songId);
+        saveLocalPlaylists(playlists);
         alert(`Agregado a "${playlist.name}"`);
     }
 }
 
-// Mostrar favoritos
-window.showFavorites = async function() {
-    if (!currentUser) {
-        alert('Debes iniciar sesión para ver favoritos');
-        return;
-    }
-    
+// Mostrar favoritos (LOCAL)
+window.showFavorites = function() {
     showSection('library');
     // Marcar activo en barra inferior
     document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
@@ -423,56 +423,57 @@ window.showFavorites = async function() {
     const content = document.getElementById('library-content');
     content.innerHTML = '<h3>❤️ Mis Favoritos</h3><div id="favorites-songs">Cargando...</div>';
     
-    const { data } = await supabase
-        .from('favorites')
-        .select(`
-            songs:song_id (
-                id, title, song_url,
-                albums:album_id (title, artist, cover_url)
-            )
-        `)
-        .eq('user_id', currentUser.id);
+    const favorites = getLocalFavorites();
     
-    const songsDiv = document.getElementById('favorites-songs');
-    if (!data || data.length === 0) {
-        songsDiv.innerHTML = '<p>No tienes favoritos aún.</p>';
+    if (favorites.length === 0) {
+        document.getElementById('favorites-songs').innerHTML = '<p>No tienes favoritos aún.</p>';
         return;
     }
     
-    songsDiv.innerHTML = '<ul class="song-list">' + data.map((item, idx) => {
-        const song = item.songs;
-        const album = song.albums;
-        return `
-            <li onclick="playFavoriteSong(${idx})">
-                ${song.title} - ${album?.artist || 'Desconocido'}
-                <span class="play-icon">▶</span>
-            </li>
-        `;
-    }).join('') + '</ul>';
-}
-
-// Reproducir canción favorita
-window.playFavoriteSong = async function(index) {
-    const { data } = await supabase
-        .from('favorites')
-        .select(`
-            songs:song_id (
-                id, title, song_url,
-                albums:album_id (id, title, artist, cover_url)
-            )
-        `)
-        .eq('user_id', currentUser.id);
+    // Buscar información de las canciones favoritas
+    const songPromises = favorites.map(songId => {
+        return supabase.from('songs').select(`
+            id, title, song_url,
+            albums:album_id (id, title, artist, cover_url)
+        `).eq('id', songId).single();
+    });
     
-    if (data && data[index]) {
-        const song = data[index].songs;
-        const album = song.albums;
-        currentPlaylist = data.map(item => item.songs);
-        currentIndex = index;
-        playSong(song, album, currentPlaylist, index);
-    }
+    Promise.all(songPromises).then(results => {
+        const validSongs = results.filter(result => !result.error && result.data);
+        const songsDiv = document.getElementById('favorites-songs');
+        
+        if (validSongs.length === 0) {
+            songsDiv.innerHTML = '<p>No se encontraron canciones válidas en favoritos.</p>';
+            return;
+        }
+        
+        songsDiv.innerHTML = '<ul class="song-list">' + validSongs.map((result, idx) => {
+            const song = result.data;
+            const album = song.albums;
+            return `
+                <li onclick="playFavoriteSong('${song.id}')">
+                    ${song.title} - ${album?.artist || 'Desconocido'}
+                    <span class="play-icon">▶</span>
+                </li>
+            `;
+        }).join('') + '</ul>';
+    });
 }
 
-// FUNCIONES DE ADMINISTRACIÓN
+// Reproducir canción favorita (LOCAL)
+window.playFavoriteSong = function(songId) {
+    supabase.from('songs').select(`
+        id, title, song_url,
+        albums:album_id (id, title, artist, cover_url)
+    `).eq('id', songId).single().then(({data: song}) => {
+        if (song) {
+            const album = song.albums;
+            playSong(song, album, [song], 0);
+        }
+    });
+}
+
+// FUNCIONES DE ADMINISTRACIÓN (solo para tu email)
 window.showUploadAlbum = function() {
     if (!isAdmin()) {
         alert('Solo el administrador puede acceder a esta función');
@@ -772,9 +773,21 @@ window.showSection = function(section) {
     document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
     if(section=='home') document.getElementById('nav-home').classList.add('active');
     if(section=='search') document.getElementById('nav-search').classList.add('active');
-    if(section=='library') document.getElementById('nav-library').classList.add('active');
-    if(section=='admin') {
-        // Si está en admin, no marcar ningún botón de la barra como activo
+    if(section=='library') {
+        document.getElementById('nav-library').classList.add('active');
+        // Mostrar playlists al entrar a biblioteca
+        const content = document.getElementById('library-content');
+        const playlists = getLocalPlaylists();
+        if (playlists.length === 0) {
+            content.innerHTML = '<p>No tienes playlists aún. ¡Crea tu primera playlist!</p>';
+        } else {
+            content.innerHTML = '<h3>Tus Playlists</h3>' + playlists.map(playlist => `
+                <div style="background: #242424; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; cursor: pointer;" onclick="showPlaylistSongs({id: '${playlist.id}', name: '${playlist.name}', songs: ${JSON.stringify(playlist.songs).replace(/"/g, '&quot;')}})">
+                    <strong>🎵 ${playlist.name}</strong>
+                    <br><small>${playlist.songs.length} canciones</small>
+                </div>
+            `).join('');
+        }
     }
 }
 
@@ -810,8 +823,6 @@ window.login = async function(event) {
         closeAuth();
         currentUser = data.user;
         updateAuthUI(data.user);
-        loadUserFavorites();
-        loadUserPlaylists();
         
         // Mostrar panel admin si es admin
         if (isAdmin()) {
@@ -949,8 +960,9 @@ function showAlbumDetail(album) {
         }
         
         currentPlaylist = data;
+        const favorites = getLocalFavorites();
         listDiv.innerHTML = '<ul>' + data.map((song, idx) => {
-            const isFavorite = userFavorites.includes(song.id);
+            const isFavorite = favorites.includes(song.id);
             return `
                 <li>
                     <div onclick="playSongFromPlaylist(${idx}, '${album.id}')" style="flex: 1; cursor: pointer;">
@@ -1047,8 +1059,8 @@ document.getElementById('mini-player').onclick = function(e) {
 function updateAuthUI(user) {
     if (user) {
         document.querySelector('.user-actions').innerHTML = `
-            <span>Hola, ${user.email}</span>
-            <button onclick="logout()">Cerrar sesión</button>
+            <span style="font-size: 0.9rem;">Hola, ${user.email.split('@')[0]}</span>
+            <button onclick="logout()" style="background: none; border: 1px solid #666; color: #fff; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Salir</button>
         `;
     }
 }
@@ -1140,14 +1152,13 @@ document.getElementById('audio-player').addEventListener('pause', function() {
 // Initialize app
 fetchAlbums();
 fetchAllSongs();
+loadLocalPlaylists();
 
 // Check auth state
 supabase.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
         currentUser = session.user;
         updateAuthUI(session.user);
-        loadUserFavorites();
-        loadUserPlaylists();
         
         // Mostrar panel admin si es admin
         if (isAdmin()) {
