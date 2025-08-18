@@ -76,7 +76,7 @@
         .offline-indicator { position: fixed; top: 70px; right: 20px; background: #e22134; color: #fff; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.8rem; z-index: 1000; display: none; }
         .download-btn { background: #1DB954; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-left: 0.5rem; }
         .download-btn.downloading { background: #ffa500; cursor: not-allowed; }
-        .download-btn.downloaded { background: #28a745; }
+        .download-btn:disabled { background: #666; cursor: not-allowed; }
         .offline-albums { margin-top: 2rem; }
         .storage-info { background: #333; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
         .offline-only { opacity: 0.5; pointer-events: none; }
@@ -390,6 +390,7 @@ async function downloadAlbum(album) {
     if (downloadBtn) {
         downloadBtn.textContent = 'Descargando...';
         downloadBtn.classList.add('downloading');
+        downloadBtn.disabled = true;
     }
     
     try {
@@ -413,9 +414,9 @@ async function downloadAlbum(album) {
         });
         
         if (downloadBtn) {
-            downloadBtn.textContent = '✓ Descargado';
+            downloadBtn.textContent = '⬇ Descargar';
             downloadBtn.classList.remove('downloading');
-            downloadBtn.classList.add('downloaded');
+            downloadBtn.disabled = true;
         }
         
         updateStorageInfo();
@@ -425,8 +426,9 @@ async function downloadAlbum(album) {
     } catch (error) {
         console.error('Error descargando álbum:', error);
         if (downloadBtn) {
-            downloadBtn.textContent = 'Descargar';
+            downloadBtn.textContent = '⬇ Descargar';
             downloadBtn.classList.remove('downloading');
+            downloadBtn.disabled = false;
         }
         alert('Error al descargar el álbum');
     }
@@ -574,7 +576,8 @@ window.clearOfflineData = async function() {
     }
 }
 
-window.toggleFavorite = function(songId) {
+// FUNCIÓN CORREGIDA DE FAVORITOS
+window.toggleFavorite = function(songId, el) {
     let favorites = getLocalFavorites();
     const isFavorite = favorites.includes(songId);
     
@@ -586,16 +589,26 @@ window.toggleFavorite = function(songId) {
     
     saveLocalFavorites(favorites);
     
-    if (currentAlbum) {
-        showAlbumDetail(currentAlbum);
+    // Actualizar el corazón inmediatamente
+    if (el) {
+        el.style.color = isFavorite ? '#666' : '#1DB954';
+        el.textContent = isFavorite ? '🤍' : '❤️';
+    }
+    
+    // Si estamos viendo favoritos, actualizar la lista
+    const favoritesSection = document.getElementById('favorites-songs');
+    if (favoritesSection) {
+        showFavorites();
     }
 }
 
+// MOSTRAR FAVORITOS (SEPARADO DE BIBLIOTECA)
 window.showFavorites = function() {
     showSection('library');
     document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
     document.getElementById('nav-favs').classList.add('active');
     
+    // Cambiar el contenido de biblioteca para mostrar solo favoritos
     const content = document.getElementById('library-content');
     content.innerHTML = '<h3>❤️ Mis Favoritos</h3><div id="favorites-songs">Cargando...</div>';
     
@@ -881,7 +894,7 @@ window.updateAlbum = async function(event, albumId) {
     let cover_url = null;
     
     if (fileInput.files[0]) {
-        const file = fileInput.files;
+        const file = fileInput.files[0];
         const ext = file.name.split('.').pop();
         const filePath = `covers/${Date.now()}.${ext}`;
         
@@ -944,6 +957,7 @@ window.closeAdminModal = function() {
     document.getElementById('admin-modal').style.display = 'none';
 }
 
+// FUNCIÓN CORREGIDA PARA SEPARAR BIBLIOTECA DE FAVORITOS
 window.showSection = function(section) {
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section + '-section').classList.add('active');
@@ -953,6 +967,19 @@ window.showSection = function(section) {
     if(section=='search') document.getElementById('nav-search').classList.add('active');
     if(section=='library') {
         document.getElementById('nav-library').classList.add('active');
+        // Mostrar solo álbumes descargados en biblioteca
+        const content = document.getElementById('library-content');
+        content.innerHTML = `
+            <div class="storage-info">
+                <h3>📱 Música Offline</h3>
+                <p>Almacenamiento usado: <span id="storage-used">0 MB</span></p>
+                <button class="btn-danger" onclick="clearOfflineData()" style="width: auto; margin-top: 0.5rem;">Limpiar cache offline</button>
+            </div>
+            <div class="offline-albums">
+                <h3>🔄 Álbumes descargados</h3>
+                <div id="offline-albums-list">No hay álbumes descargados</div>
+            </div>
+        `;
         updateStorageInfo();
         loadOfflineAlbumsList();
     }
@@ -1138,10 +1165,10 @@ async function showAlbumDetail(album) {
         if (offlineCover) coverUrl = offlineCover;
     }
 
+    // CORREGIDO: El botón nunca dice "Descargado", solo se deshabilita
     const isDownloaded = await isAlbumDownloaded(album.id);
-    const downloadBtnHtml = isDownloaded ? 
-        '<button class="download-btn downloaded">✓ Descargado</button>' :
-        (isOffline ? '' : `<button class="download-btn" onclick="downloadAlbum(${JSON.stringify(album).replace(/"/g, '&quot;')})" data-album-id="${album.id}">⬇ Descargar</button>`);
+    const downloadBtnHtml = isOffline ? '' : 
+        `<button class="download-btn" onclick="downloadAlbum(${JSON.stringify(album).replace(/"/g, '&quot;')})" data-album-id="${album.id}" ${isDownloaded ? 'disabled' : ''}>⬇ Descargar</button>`;
 
     albumDetail.innerHTML = `
         <button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
@@ -1168,6 +1195,8 @@ async function showAlbumDetail(album) {
     
     currentPlaylist = songs;
     const favorites = getLocalFavorites();
+    
+    // CORREGIDO: event.stopPropagation() en toggleFavorite
     listDiv.innerHTML = '<ul>' + songs.map((song, idx) => {
         const isFavorite = favorites.includes(song.id);
         return `
@@ -1176,7 +1205,7 @@ async function showAlbumDetail(album) {
                     ${song.title || 'Canción sin nombre'}
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <span onclick="toggleFavorite('${song.id}')" style="cursor: pointer; color: ${isFavorite ? '#1DB954' : '#666'};">
+                    <span onclick="event.stopPropagation(); toggleFavorite('${song.id}', this);" style="cursor: pointer; color: ${isFavorite ? '#1DB954' : '#666'};">
                         ${isFavorite ? '❤️' : '🤍'}
                     </span>
                     ${(isAdmin() && !isOffline) ? `<span onclick="deleteSong('${song.id}')" style="cursor: pointer; color: #e22134;">🗑️</span>` : ''}
@@ -1465,7 +1494,6 @@ async function initApp() {
         
     } catch (error) {
         console.error('Error inicializando app:', error);
-        // Mostrar mensaje de error básico
         document.getElementById('albums').innerHTML = '<p>Error al inicializar la aplicación</p>';
     }
 }
