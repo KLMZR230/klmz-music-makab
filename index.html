@@ -86,6 +86,13 @@
         .search-song-info { flex: 1; }
         .search-song-title { font-weight: bold; margin-bottom: 0.2rem; }
         .search-song-artist { font-size: 0.9rem; color: #b3b3b3; }
+        .favorites-list { margin-top: 1rem; }
+        .favorite-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; transition: all 0.3s; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; }
+        .favorite-item:hover { background: #333; transform: translateX(5px); }
+        .favorite-info { flex: 1; }
+        .favorite-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
+        .favorite-artist { font-size: 0.9rem; color: #b3b3b3; }
+        .favorite-actions { display: flex; gap: 0.5rem; align-items: center; }
 
         /* 🎨 TEMA 1: NEON CYBERPUNK */
         body.theme-neon {
@@ -131,6 +138,9 @@
         }
         body.theme-neon .song-list li {
             color: #00ccff;
+        }
+        body.theme-neon .favorite-item {
+            border-left-color: #00ff88;
         }
 
         /* 🎨 TEMA 2: ELEGANCIA MINIMALISTA */
@@ -186,6 +196,9 @@
         body.theme-minimal .search-results-section h3 {
             color: #f5f5f5;
         }
+        body.theme-minimal .favorite-item {
+            border-left-color: #f5f5f5;
+        }
 
         /* 🎨 TEMA 3: SUNSET VIBES */
         body.theme-sunset {
@@ -233,6 +246,9 @@
         }
         body.theme-sunset .song-list li {
             color: #ff8a65;
+        }
+        body.theme-sunset .favorite-item {
+            border-left-color: #ff8a65;
         }
 
         /* 🎨 TEMA 4: PASTEL DREAMS */
@@ -288,6 +304,9 @@
         }
         body.theme-pastel .song-list li {
             color: #b8a9e8;
+        }
+        body.theme-pastel .favorite-item {
+            border-left-color: #b8a9e8;
         }
 
         /* 🎨 TEMA 5: LUXURY JEWELS */
@@ -345,6 +364,9 @@
         body.theme-luxury .song-list li {
             color: #4a9eff;
         }
+        body.theme-luxury .favorite-item {
+            border-left-color: #d4af37;
+        }
 
         @media (min-width:900px) { aside { display:block;} main{margin-left:220px; max-width:none;}}
     </style>
@@ -392,12 +414,13 @@
             <div id="search-results"></div>
         </section>
         
-        <section class="content-section" id="library-section">
-            <div class="section-title">Tu biblioteca</div>
-            <div style="text-align: center; padding: 2rem;">
-                <h2>📱 Solo funciones online</h2>
-                <p>Esta versión funciona únicamente con conexión a internet.</p>
-                <p>Todas tus canciones se reproducen directamente desde el servidor.</p>
+        <section class="content-section" id="favorites-section">
+            <div class="section-title">❤️ Mis Favoritos</div>
+            <div id="favorites-content">
+                <div style="text-align: center; padding: 2rem;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">💕</div>
+                    <div>Cargando favoritos...</div>
+                </div>
             </div>
         </section>
         
@@ -416,8 +439,7 @@
 <nav class="bottom-nav">
     <div class="bottom-nav-item active" onclick="showSection('home')" id="nav-home"><span class="icon">⌂</span><small>Inicio</small></div>
     <div class="bottom-nav-item" onclick="showSection('search')" id="nav-search"><span class="icon">⌕</span><small>Buscar</small></div>
-    <div class="bottom-nav-item" onclick="showSection('library')" id="nav-library"><span class="icon">≡</span><small>Biblioteca</small></div>
-    <div class="bottom-nav-item" onclick="showFavorites()" id="nav-favs"><span class="icon">♡</span><small>Favoritos</small></div>
+    <div class="bottom-nav-item" onclick="showSection('favorites')" id="nav-favs"><span class="icon">♡</span><small>Favoritos</small></div>
     <div class="bottom-nav-item" onclick="showAuth('login')" id="nav-login"><span class="icon">●</span><small>Acceso</small></div>
 </nav>
 
@@ -491,7 +513,6 @@
 <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
 
 <audio id="audio-player"></audio>
-
 <script>
 // ✅ VARIABLES GLOBALES SIMPLIFICADAS
 let supabase = null;
@@ -527,8 +548,10 @@ window.changeTheme = function(theme) {
 function loadSavedTheme() {
     const savedTheme = localStorage.getItem('klmz_theme') || 'default';
     const themeSelector = document.querySelector('.theme-selector select');
-    themeSelector.value = savedTheme;
-    changeTheme(savedTheme);
+    if (themeSelector) {
+        themeSelector.value = savedTheme;
+        changeTheme(savedTheme);
+    }
 }
 
 function showLoadingIndicator(show) {
@@ -829,6 +852,141 @@ window.toggleFavorite = function(songId, el) {
         el.style.color = isFavorite ? '#666' : '#1DB954';
         el.textContent = isFavorite ? '🤍' : '❤️';
     }
+    
+    // Actualizar la vista de favoritos si está activa
+    const favoritesSection = document.getElementById('favorites-section');
+    if (favoritesSection.classList.contains('active')) {
+        loadFavorites();
+    }
+}
+
+// ✅ FUNCIÓN DE FAVORITOS CORREGIDA
+window.showSection = function(section) {
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(section + '-section').classList.add('active');
+    
+    document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
+    if(section=='home') document.getElementById('nav-home').classList.add('active');
+    if(section=='search') document.getElementById('nav-search').classList.add('active');
+    if(section=='favorites') {
+        document.getElementById('nav-favs').classList.add('active');
+        loadFavorites(); // ✅ CARGAR FAVORITOS CUANDO SE ABRE LA SECCIÓN
+    }
+    if(section=='admin') document.getElementById('nav-login').classList.add('active');
+}
+
+// ✅ CARGAR Y MOSTRAR FAVORITOS REALES
+async function loadFavorites() {
+    const content = document.getElementById('favorites-content');
+    const favorites = getLocalFavorites();
+    
+    if (favorites.length === 0) {
+        content.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">💔</div>
+                <h2>No tienes favoritos</h2>
+                <p>Marca canciones con ❤️ desde los álbumes para verlas aquí</p>
+            </div>
+        `;
+        return;
+    }
+    
+    content.innerHTML = '<div style="text-align: center; padding: 2rem;">Cargando favoritos...</div>';
+    
+    try {
+        if (!supabase) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
+                    <h2>Sin conexión</h2>
+                    <p>Conecta a internet para ver los detalles de tus favoritos</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Obtener información detallada de las canciones favoritas
+        const songPromises = favorites.map(songId => {
+            return supabase.from('songs').select(`
+                id, title, song_url,
+                albums:album_id (id, title, artist, cover_url)
+            `).eq('id', songId).single();
+        });
+        
+        const results = await Promise.all(songPromises);
+        const validSongs = results.filter(result => !result.error && result.data).map(result => result.data);
+        
+        if (validSongs.length === 0) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">😕</div>
+                    <h2>Favoritos no disponibles</h2>
+                    <p>Las canciones favoritas no están disponibles actualmente</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Mostrar las canciones favoritas
+        let html = '<div class="favorites-list">';
+        
+        validSongs.forEach(song => {
+            const album = song.albums || {};
+            html += `
+                <div class="favorite-item" onclick="playSongFromFavorites('${song.id}')">
+                    <div class="favorite-info">
+                        <div class="favorite-title">${song.title}</div>
+                        <div class="favorite-artist">${album.artist || 'Desconocido'} • ${album.title || 'Álbum desconocido'}</div>
+                    </div>
+                    <div class="favorite-actions">
+                        <span onclick="event.stopPropagation(); toggleFavorite('${song.id}', this);" style="cursor: pointer; color: #1DB954; font-size: 1.2rem;">
+                            ❤️
+                        </span>
+                        <span class="play-icon" style="margin-left: 0.5rem;">▶</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        
+        content.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error cargando favoritos:', error);
+        content.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                <h2>Error</h2>
+                <p>No se pudieron cargar los favoritos</p>
+            </div>
+        `;
+    }
+}
+
+// ✅ REPRODUCIR DESDE FAVORITOS
+window.playSongFromFavorites = async function(songId) {
+    try {
+        const song = songsWithAlbumInfo.find(s => s.id === songId);
+        if (song) {
+            const album = song.albums || { title: 'Desconocido', artist: 'Desconocido' };
+            playSong(song, album, [song], 0);
+        } else {
+            // Si no está en la lista cargada, buscar directamente
+            const {data: songData} = await supabase.from('songs').select(`
+                id, title, song_url,
+                albums:album_id (id, title, artist, cover_url)
+            `).eq('id', songId).single();
+            
+            if (songData) {
+                const album = songData.albums;
+                playSong(songData, album, [songData], 0);
+            }
+        }
+    } catch (error) {
+        console.error('Error reproduciendo favorito:', error);
+        alert('Error al reproducir la canción');
+    }
 }
 
 // ✅ FUNCIONES DE ADMINISTRACIÓN
@@ -997,26 +1155,6 @@ window.deleteSong = async function(songId) {
 
 window.closeAdminModal = function() {
     document.getElementById('admin-modal').style.display = 'none';
-}
-
-// ✅ FUNCIONES DE UI
-window.showSection = function(section) {
-    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-    document.getElementById(section + '-section').classList.add('active');
-    
-    document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
-    if(section=='home') document.getElementById('nav-home').classList.add('active');
-    if(section=='search') document.getElementById('nav-search').classList.add('active');
-    if(section=='library') document.getElementById('nav-library').classList.add('active');
-    if(section=='admin') document.getElementById('nav-login').classList.add('active');
-}
-
-window.showFavorites = function() {
-    showSection('library');
-    document.getElementById('nav-favs').classList.add('active');
-    document.getElementById('nav-library').classList.remove('active');
-    
-    alert('❤️ Función de favoritos: Marca canciones como favoritas desde los álbumes.');
 }
 
 window.showAuth = function(type) {
