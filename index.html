@@ -6,18 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #181818; color: #fff; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #181818; color: #fff; padding-bottom: 80px; }
         header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
         .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; }
         .nav-mobile { display: none; cursor: pointer; font-size: 1.8rem; color: #fff; }
-        nav { display: flex; }
-        nav a { color: #fff; margin: 0 0.7rem; text-decoration: none; font-size: 0.95rem; padding: 0.5rem; border-radius: 4px; transition: background 0.3s; }
-        nav a:hover, nav a.active { background: rgba(255,255,255,0.1); }
+        nav { display: none; }
         .user-actions { position: relative; display: flex; align-items: center; gap: 0.5rem; }
         .lock-icon { cursor: pointer; font-size: 1.4rem; color: #fff; user-select: none; transition: opacity 0.3s; }
         .lock-icon:hover { opacity: 0.7; }
         .user-actions button { display: none; }
-        .app-container { display: flex; min-height: 100vh; }
+        .app-container { display: flex; min-height: calc(100vh - 80px); }
         aside { width: 220px; background: #121212; padding: 1rem; overflow-y: auto; display: none; }
         .sidebar-section { margin-bottom: 2rem; }
         .sidebar-section h3 { font-size: 1rem; margin-bottom: 1rem; color: #b3b3b3; }
@@ -75,8 +73,8 @@
         .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: background 0.3s; }
         .back-btn:hover { background: #333; }
         
-        /* Barra inferior móvil mejorada */
-        .bottom-nav-mobile {
+        /* Barra de navegación inferior */
+        .bottom-nav {
             position: fixed;
             bottom: 0;
             left: 0;
@@ -91,7 +89,7 @@
             box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
         }
         
-        .bottom-nav-mobile a {
+        .bottom-nav-item {
             color: #b3b3b3;
             text-decoration: none;
             text-align: center;
@@ -100,49 +98,38 @@
             transition: all 0.3s ease;
             border-radius: 12px;
             margin: 0 4px;
+            cursor: pointer;
         }
         
-        .bottom-nav-mobile a .icon {
-            font-size: 1.8rem;
+        .bottom-nav-item .icon {
+            font-size: 1.6rem;
             display: block;
             margin-bottom: 2px;
         }
         
-        .bottom-nav-mobile a small {
+        .bottom-nav-item small {
             font-size: 0.7rem;
             font-weight: 500;
             letter-spacing: 0.02em;
             display: block;
         }
         
-        .bottom-nav-mobile a.active {
+        .bottom-nav-item.active {
             color: #1DB954;
             background: rgba(29, 185, 84, 0.15);
             transform: translateY(-2px);
         }
         
-        .bottom-nav-mobile a:hover {
+        .bottom-nav-item:hover {
             color: #fff;
             background: rgba(255,255,255,0.1);
         }
         
         @media (max-width: 768px) {
-            .nav-mobile { display: block; }
-            nav { display: none; position: fixed; top: 60px; left: 0; right: 0; background: #121212; flex-direction: column; padding: 1rem; z-index: 1000; }
-            nav.active { display: flex; }
-            aside { display: none; }
-            main { padding: 1rem 1rem 100px; max-width: 100%; margin: 0; }
             .album-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.7rem; }
             .full-player-cover { width: 94vw; max-width: 260px; margin-bottom: 1.2rem; }
             .full-progress-container { width: 94vw; }
             .full-player-close { right: 18px; top: 16px; }
-            .player { bottom: 80px; }
-        }
-        
-        @media (min-width: 769px) {
-            .bottom-nav-mobile { display: none !important; }
-            main { padding-bottom: 80px; }
-            .player { bottom: 0; }
         }
         
         @media (max-width: 500px) {
@@ -151,8 +138,10 @@
             .full-player-cover { width: 96vw; max-width: 96vw; }
             .full-progress-container { width: 96vw; }
         }
+        
         @media (min-width: 900px) {
             aside { display: block; }
+            main { margin-left: 220px; max-width: none; }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -161,29 +150,14 @@
     <!-- Header -->
     <header>
         <span class="logo">KLMZ MUSIC</span>
-        <div class="nav-mobile" onclick="toggleMobileNav()">☰</div>
-        <nav id="nav-menu">
-            <a href="#" onclick="showSection('home')" class="active">Inicio</a>
-            <a href="#" onclick="showSection('search')">Buscar</a>
-            <a href="#" onclick="showSection('library')">Tu Biblioteca</a>
-        </nav>
         <div class="user-actions">
             <div class="lock-icon" title="Iniciar sesión / Registrarse" onclick="showAuth('login')">🔒</div>
         </div>
     </header>
 
     <div class="app-container">
-        <!-- Sidebar -->
+        <!-- Sidebar (solo desktop) -->
         <aside id="sidebar">
-            <div class="sidebar-section">
-                <div class="sidebar-menu">
-                    <a href="#" onclick="showSection('home')" class="active">🏠 Inicio</a>
-                    <a href="#" onclick="showSection('search')">🔍 Buscar</a>
-                    <a href="#" onclick="showSection('library')">📚 Tu biblioteca</a>
-                    <a href="#" onclick="showFavorites()" class="fav-link">❤️ Favoritos</a>
-                </div>
-            </div>
-            
             <div class="sidebar-section">
                 <h3>Playlists</h3>
                 <button class="create-playlist" onclick="createPlaylist()">➕ Crear playlist</button>
@@ -223,28 +197,32 @@
         </main>
     </div>
 
-    <!-- Barra inferior móvil mejorada -->
-    <nav class="bottom-nav-mobile">
-        <a href="#" onclick="showSection('home')" id="nav-home" class="active">
+    <!-- Barra de navegación inferior -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-item active" onclick="showSection('home')" id="nav-home">
             <span class="icon">🏠</span>
             <small>Inicio</small>
-        </a>
-        <a href="#" onclick="showSection('search')" id="nav-search">
+        </div>
+        <div class="bottom-nav-item" onclick="showSection('search')" id="nav-search">
             <span class="icon">🔍</span>
             <small>Buscar</small>
-        </a>
-        <a href="#" onclick="showSection('library')" id="nav-library">
+        </div>
+        <div class="bottom-nav-item" onclick="showSection('library')" id="nav-library">
             <span class="icon">📚</span>
             <small>Biblioteca</small>
-        </a>
-        <a href="#" onclick="showFavorites()" id="nav-favs">
+        </div>
+        <div class="bottom-nav-item" onclick="showFavorites()" id="nav-favs">
             <span class="icon">❤️</span>
             <small>Favoritos</small>
-        </a>
-        <a href="#" onclick="showAuth('login')" id="nav-login">
+        </div>
+        <div class="bottom-nav-item" onclick="createPlaylist()" id="nav-playlist">
+            <span class="icon">➕</span>
+            <small>Playlist</small>
+        </div>
+        <div class="bottom-nav-item" onclick="showAuth('login')" id="nav-login">
             <span class="icon">🔒</span>
             <small>Acceso</small>
-        </a>
+        </div>
     </nav>
 
     <!-- Mini Player -->
@@ -431,6 +409,7 @@
                 if (data && data[0]) {
                     userPlaylists.push(data);
                     updatePlaylistsMenu();
+                    alert(`Playlist "${name}" creada correctamente`);
                 }
             }
         }
@@ -526,8 +505,8 @@
             }
             
             showSection('library');
-            // Marcar activo en barra móvil
-            document.querySelectorAll('.bottom-nav-mobile a').forEach(a => a.classList.remove('active'));
+            // Marcar activo en barra inferior
+            document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
             document.getElementById('nav-favs').classList.add('active');
             
             const content = document.getElementById('library-content');
@@ -587,22 +566,11 @@
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.getElementById(section + '-section').classList.add('active');
             
-            document.querySelectorAll('nav a, .sidebar-menu a').forEach(a => a.classList.remove('active'));
-            document.querySelector(`[onclick="showSection('${section}')"]`).classList.add('active');
-            
-            // Marcar activo en barra móvil
-            document.querySelectorAll('.bottom-nav-mobile a').forEach(a => a.classList.remove('active'));
+            // Marcar activo en barra inferior
+            document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
             if(section=='home') document.getElementById('nav-home').classList.add('active');
             if(section=='search') document.getElementById('nav-search').classList.add('active');
             if(section=='library') document.getElementById('nav-library').classList.add('active');
-            
-            if (window.innerWidth <= 768) {
-                document.getElementById('nav-menu').classList.remove('active');
-            }
-        }
-
-        window.toggleMobileNav = function() {
-            document.getElementById('nav-menu').classList.toggle('active');
         }
 
         window.showAuth = function(type) {
