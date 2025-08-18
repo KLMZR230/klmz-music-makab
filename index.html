@@ -206,6 +206,35 @@
     transition:all 0.3s ease;
   }
   
+  /* Botón de regresar */
+  .back-btn{
+    background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.2);
+    color:#fff;
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    font-size:14px;
+    display:grid;
+    place-items:center;
+    cursor:pointer;
+    transition:all 0.3s ease;
+    backdrop-filter:blur(10px);
+  }
+  
+  .back-btn:hover{
+    background:rgba(255,255,255,0.2);
+    transform:scale(1.05);
+    box-shadow:0 3px 12px rgba(255,255,255,0.2);
+  }
+  
+  .backline{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:16px;
+  }
+  
   .container{
     padding:var(--mobile-padding);
     max-width:1200px;
@@ -719,7 +748,7 @@
     <span>🔊</span>
     <input id="vol" type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(this.value)" onclick="event.stopPropagation()" />
   </div>
-  <audio id="audio" preload="none"></audio>
+  <audio id="audio" preload="none" crossorigin="anonymous"></audio>
 </div>
 
 <!-- Now Playing Overlay -->
@@ -797,7 +826,11 @@ function showToast(message, type = 'success') {
   
   setTimeout(() => {
     toast.classList.remove('show');
-    setTimeout(() => document.body.removeChild(toast), 300);
+    setTimeout(() => {
+      if (document.body.contains(toast)) {
+        document.body.removeChild(toast);
+      }
+    }, 300);
   }, 2000);
 }
 
@@ -849,18 +882,20 @@ async function refreshCatalog() {
           .eq("album_id", album.id)
           .order("created_at", {ascending: true});
         
-        if (!e2) {
-          songsByAlbum[album.id] = ss || [];
-          console.log(`🎵 Álbum "${album.title}": ${ss?.length || 0} canciones`);
+        if (!e2 && ss) {
+          songsByAlbum[album.id] = ss;
+          console.log(`🎵 Álbum "${album.title}": ${ss.length} canciones`);
           
-          for (const song of (ss || [])) {
+          for (const song of ss) {
             flatSongs.push({...song, album_title: album.title, cover_url: album.cover_url});
           }
         } else {
+          songsByAlbum[album.id] = [];
           console.error('❌ Error cargando canciones para álbum:', album.title, e2);
         }
       } catch (error) {
         console.error('❌ Error procesando álbum:', album.title, error);
+        songsByAlbum[album.id] = [];
       }
     }
     
@@ -927,7 +962,13 @@ function openAlbum(album) {
   const expansion = document.createElement('div');
   expansion.className = 'album-expansion slide-up';
   
+  // HEADER CON BOTÓN DE REGRESAR
   const headerHTML = `
+    <div class="backline">
+      <button class="back-btn" onclick="closeAlbumExpansion()" title="Volver">←</button>
+      <span class="muted" style="font-size: 11px;">Volver al inicio</span>
+    </div>
+    
     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px;">
       <img src="${album.cover_url || ''}" alt="${album.title}" 
            style="width: 70px; height: 70px; border-radius: 12px; object-fit: cover;"
@@ -937,7 +978,7 @@ function openAlbum(album) {
         <p style="margin: 0 0 8px 0; color: var(--muted); font-size: 12px;">${album.artist || 'Sin artista'} • ${songs.length} canciones</p>
         <div style="display: flex; gap: 8px;">
           <button class="btn small" onclick="playAllFromAlbum('${album.id}')">▶ Todo (${songs.length})</button>
-          <button class="btn small ghost" onclick="closeAlbumExpansion()">✕</button>
+          <button class="btn small ghost" onclick="closeAlbumExpansion()">✕ Cerrar</button>
         </div>
       </div>
     </div>
@@ -982,17 +1023,21 @@ function openAlbum(album) {
 function playAlbumSong(albumId, songIndex) {
   const album = albums.find(a => a.id === albumId);
   if (!album) {
+    console.error('❌ Álbum no encontrado:', albumId);
     showToast('Álbum no encontrado', 'error');
     return;
   }
   
   const songs = songsByAlbum[albumId] || [];
   if (!songs[songIndex]) {
+    console.error('❌ Canción no encontrada:', songIndex, 'en álbum:', albumId);
     showToast('Canción no encontrada', 'error');
     return;
   }
   
-  console.log(`🎵 Reproduciendo canción ${songIndex + 1}/${songs.length}: "${songs[songIndex].title}"`);
+  const song = songs[songIndex];
+  console.log(`🎵 Reproduciendo canción ${songIndex + 1}/${songs.length}: "${song.title}"`);
+  console.log('🔗 URL de audio:', song.song_url);
   
   // CONFIGURAR COLA COMPLETA DEL ÁLBUM
   queue = songs.map(s => ({
@@ -1009,12 +1054,14 @@ function playAlbumSong(albumId, songIndex) {
 function playAllFromAlbum(albumId) {
   const album = albums.find(a => a.id === albumId);
   if (!album) {
+    console.error('❌ Álbum no encontrado:', albumId);
     showToast('Álbum no encontrado', 'error');
     return;
   }
   
   const songs = songsByAlbum[albumId] || [];
   if (!songs.length) {
+    console.error('❌ Álbum sin canciones:', albumId);
     showToast('Este álbum no tiene canciones', 'error');
     return;
   }
@@ -1030,7 +1077,9 @@ function playAllFromAlbum(albumId) {
   qIndex = 0;
   
   console.log(`🔢 Cola completa configurada: ${queue.length} canciones`);
-  playTrack(queue[0]);
+  console.log('🔗 Primera canción URL:', queue[0].song_url);
+  
+  playTrack(queue);
   showToast(`▶ Reproduciendo "${album.title}" completo (${songs.length} canciones)`, 'success');
 }
 
@@ -1041,15 +1090,24 @@ function closeAlbumExpansion() {
     setTimeout(() => expansion.remove(), 300);
   }
   currentAlbum = null;
+  console.log('📱 Álbum cerrado, volviendo al grid principal');
 }
 
 function playTrack(song) {
-  if (!song || !song.song_url) {
-    showToast(`Error: No hay URL para "${song?.title || 'canción desconocida'}"`, 'error');
+  if (!song) {
+    console.error('❌ Canción es null o undefined');
+    showToast('Error: Canción no válida', 'error');
+    return;
+  }
+  
+  if (!song.song_url) {
+    console.error('❌ No hay URL de audio para:', song.title);
+    showToast(`Error: No hay URL para "${song.title}"`, 'error');
     return;
   }
   
   console.log(`🎵 Reproduciendo: "${song.title}" (${qIndex + 1}/${queue.length})`);
+  console.log('🔗 URL:', song.song_url);
   
   const audioEl = document.getElementById("audio");
   const npTitle = document.getElementById("npTitle");
@@ -1062,10 +1120,14 @@ function playTrack(song) {
   const playBtn = document.getElementById("playBtn");
   const playBtnBig = document.getElementById("playBtnBig");
   
+  // Parar audio actual
   audioEl.pause();
   audioEl.currentTime = 0;
+  
+  // Configurar nueva canción
   audioEl.src = song.song_url;
   
+  // Actualizar UI
   if (npTitle) npTitle.textContent = song.title;
   if (npAlbum) npAlbum.textContent = song.album_title || "—";
   if (npCover) npCover.src = song.cover_url || "";
@@ -1073,15 +1135,17 @@ function playTrack(song) {
   if (npBigAlbum) npBigAlbum.textContent = song.album_title || "—";
   if (npBigCover) npBigCover.src = song.cover_url || "";
   
+  // Mostrar player
   if (playerElement) {
     playerElement.classList.add('show');
     document.body.style.paddingBottom = '80px';
   }
   
+  // Intentar reproducir
   audioEl.play().then(() => {
+    console.log(`✅ Reproducción exitosa: "${song.title}"`);
     if (playBtn) playBtn.textContent = "⏸";
     if (playBtnBig) playBtnBig.textContent = "⏸";
-    console.log(`✅ Reproducción exitosa: "${song.title}"`);
   }).catch(error => {
     console.error('❌ Error reproduciendo:', error);
     showToast(`Error reproduciendo "${song.title}"`, 'error');
@@ -1095,11 +1159,16 @@ function togglePlay() {
   
   if (audioEl.paused) { 
     audioEl.play().then(() => {
+      console.log('▶ Audio reanudado');
       if (playBtn) playBtn.textContent = "⏸";
       if (playBtnBig) playBtnBig.textContent = "⏸";
+    }).catch(error => {
+      console.error('❌ Error reanudando:', error);
+      showToast('Error reanudando reproducción', 'error');
     });
   } else { 
     audioEl.pause(); 
+    console.log('⏸ Audio pausado');
     if (playBtn) playBtn.textContent = "▶";
     if (playBtnBig) playBtnBig.textContent = "▶";
   }
@@ -1107,6 +1176,7 @@ function togglePlay() {
 
 function nextTrack() { 
   if (!queue.length) {
+    console.log('❌ No hay canciones en cola');
     showToast('No hay canciones en cola', 'error');
     return;
   }
@@ -1118,6 +1188,7 @@ function nextTrack() {
 
 function prevTrack() { 
   if (!queue.length) {
+    console.log('❌ No hay canciones en cola');
     showToast('No hay canciones en cola', 'error');
     return;
   }
@@ -1328,6 +1399,17 @@ document.getElementById("audio").addEventListener("timeupdate", () => {
 document.getElementById("audio").addEventListener("ended", () => {
   console.log('🔄 Canción terminada, avanzando automáticamente...');
   nextTrack();
+});
+
+// Error handling for audio
+document.getElementById("audio").addEventListener("error", (e) => {
+  console.error('❌ Error de audio:', e);
+  showToast('Error reproduciendo audio', 'error');
+});
+
+// Audio loaded successfully
+document.getElementById("audio").addEventListener("canplay", () => {
+  console.log('✅ Audio listo para reproducir');
 });
 
 // Hide loading screen
