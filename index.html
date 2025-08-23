@@ -28,7 +28,7 @@ main { flex:1; padding:1rem; max-width:900px; margin:0 auto;}
 .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease;}
 .album-title { font-size:.98rem; font-weight: bold; margin-bottom: 0.4rem; transition: all 0.3s ease;}
 .album-artist { font-size: .9rem; color: #b3b3b3; transition: all 0.3s ease; }
-.song-list { width:100%; margin-top:1rem;}
+.song-list { width:100%; margin-top:1rem; padding-bottom: 120px; }
 .song-list ul { list-style:none; padding:0; margin:0;}
 .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; transition:all .3s; display:flex; justify-content:space-between; align-items:center;}
 .song-list li:hover { color:#fff; background: rgba(255,255,255,.05);}
@@ -132,6 +132,7 @@ main { flex:1; padding:1rem; max-width:900px; margin:0 auto;}
 .download-actions { display: flex; gap: 0.5rem; align-items: center; }
 .song-actions { display: flex; gap: 0.5rem; align-items: center; }
 .offline-indicator { color: #27ae60; font-size: 0.8rem; margin-left: 0.5rem; }
+#album-detail { padding-bottom: 120px; }
 
 /* TUS 6 TEMAS VISUALES ORIGINALES */
 body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%) !important; color: #00ff88 !important; }
@@ -390,12 +391,26 @@ body.theme-luxury .user-dropdown { background: linear-gradient(135deg, #1e3a5f, 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
 
+        // ✅ FUNCIÓN HELPER PARA CONVERTIR BLOB A BASE64
         function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result);
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
+            });
+        }
+
+        // ✅ DEBUG PARA VERIFICAR DESCARGAS
+        function verifyDownloads() {
+            console.log('📱 Verificando descargas:');
+            downloadedSongs.forEach((song, id) => {
+                console.log(`Canción ${id}:`, {
+                    title: song.title,
+                    hasValidBase64: song.blob_url && song.blob_url.startsWith('data:audio/'),
+                    size: song.size,
+                    urlPreview: song.blob_url ? song.blob_url.substring(0, 50) + '...' : 'No URL'
+                });
             });
         }
 
@@ -723,6 +738,7 @@ body.theme-luxury .user-dropdown { background: linear-gradient(135deg, #1e3a5f, 
         function savePlaybackSettings() { localStorage.setItem('klmz_playback_settings', JSON.stringify({ repeatMode, shuffleMode })); }
         function loadPlaybackSettings() { try { const settings = JSON.parse(localStorage.getItem('klmz_playback_settings') || '{}'); repeatMode = settings.repeatMode || 'off'; shuffleMode = settings.shuffleMode || false; updateModeButtonsUI(); } catch (e) { console.error('Error loading playback settings:', e); } }
 
+        // ✅ FUNCIÓN PLAYSONG CORREGIDA - PREVIENE CORTES Y MEJORA DESCARGAS
         window.playSong = function(song, album, playlist = [], index = 0) {
             currentSong = song; currentAlbum = album; currentPlaylist = playlist; currentIndex = index;
             if (shuffleMode && originalPlaylist.length === 0 && playlist.length > 0) originalPlaylist = [...playlist];
@@ -730,22 +746,51 @@ body.theme-luxury .user-dropdown { background: linear-gradient(135deg, #1e3a5f, 
             const audio = document.getElementById('audio-player');
             const downloadedVersion = downloadedSongs.get(song.id.toString());
             
+            console.log('🎵 Iniciando reproducción:', {
+                songId: song.id,
+                hasDownloaded: !!downloadedVersion,
+                isOnline: isOnlineMode,
+                blobUrlValid: downloadedVersion?.blob_url?.startsWith('data:audio/')
+            });
+            
+            // ✅ VERIFICAR Y USAR CANCIÓN DESCARGADA
             if (downloadedVersion && downloadedVersion.blob_url) {
-                audio.src = downloadedVersion.blob_url;
-                console.log('🎵 Reproduciendo versión offline (Base64)');
+                if (downloadedVersion.blob_url.startsWith('data:audio/')) {
+                    audio.src = downloadedVersion.blob_url;
+                    console.log('📱 Usando versión descargada');
+                } else {
+                    console.log('❌ Formato offline inválido');
+                    alert('Archivo offline corrupto. Descarga la canción de nuevo.');
+                    return;
+                }
             } else if (isOnlineMode && song.song_url) {
+                console.log('🌐 Usando versión online');
                 audio.src = song.song_url;
-                console.log('🌐 Reproduciendo versión online');
             } else {
-                console.log('❌ Canción no disponible offline');
+                console.log('❌ No hay fuente disponible');
                 alert('Esta canción no está disponible sin conexión. Descárgala primero.');
                 return;
             }
             
-            audio.play().then(() => { isPlaying = true; updateAllPlayers(); }).catch(error => {
-                isPlaying = false; console.error("Error al reproducir:", error);
-                if (downloadedVersion) { audio.src = song.song_url; audio.play().then(() => { isPlaying = true; updateAllPlayers(); }).catch(e => console.error("Error con URL original:", e)); }
-            });
+            // ✅ REPRODUCIR CON TIMEOUT PARA ANDROID
+            setTimeout(() => {
+                audio.play().then(() => {
+                    isPlaying = true;
+                    updateAllPlayers();
+                    console.log('✅ Reproduciendo correctamente');
+                }).catch(error => {
+                    console.error("Error al reproducir:", error);
+                    // Fallback a versión online si falla offline
+                    if (downloadedVersion && isOnlineMode && song.song_url) {
+                        console.log('🔄 Intentando fallback online');
+                        audio.src = song.song_url;
+                        audio.play().then(() => {
+                            isPlaying = true;
+                            updateAllPlayers();
+                        }).catch(e => console.error("Fallback falló:", e));
+                    }
+                });
+            }, 100);
         }
 
         function handleSongEnded() { if (repeatMode === 'one') { const audio = document.getElementById('audio-player'); audio.currentTime = 0; audio.play(); } else if (repeatMode === 'all' || currentIndex < currentPlaylist.length - 1) nextSong(); else { isPlaying = false; updatePlayButtons(); } }
@@ -806,6 +851,9 @@ body.theme-luxury .user-dropdown { background: linear-gradient(135deg, #1e3a5f, 
             updateDownloadStats();
             checkConnectionStatus();
             loadSupabase();
+            
+            // ✅ EJECUTAR DEBUG DE DESCARGAS DESPUÉS DE 2 SEGUNDOS
+            setTimeout(verifyDownloads, 2000);
         });
     </script>
 </body>
