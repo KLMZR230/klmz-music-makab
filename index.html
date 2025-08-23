@@ -406,6 +406,7 @@
         let isOnline = navigator.onLine;
         let downloadCache = null;
         let currentDownload = null;
+        let downloadedSongsCache = new Set(); // ✅ CACHE PARA VERIFICACIONES RÁPIDAS
 
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
@@ -413,23 +414,19 @@
         const DB_NAME = 'KLMZ_MUSIC_DB';
         const DB_VERSION = 1;
 
-        // ========== INDEXEDDB PARA DESCARGAS ==========
+        // ========== INDEXEDDB ==========
         function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
-                
                 request.onerror = () => reject(request.error);
                 request.onsuccess = () => resolve(request.result);
-                
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
-                    
                     if (!db.objectStoreNames.contains('downloadedSongs')) {
                         const store = db.createObjectStore('downloadedSongs', { keyPath: 'id' });
                         store.createIndex('title', 'title', { unique: false });
                         store.createIndex('artist', 'artist', { unique: false });
                     }
-                    
                     if (!db.objectStoreNames.contains('audioFiles')) {
                         db.createObjectStore('audioFiles', { keyPath: 'songId' });
                     }
@@ -437,11 +434,25 @@
             });
         }
 
+        // ✅ INICIALIZAR CACHE DE DESCARGAS
+        async function initDownloadCache() {
+            try {
+                const downloadedSongs = await getDownloadedSongs();
+                downloadedSongsCache.clear();
+                downloadedSongs.forEach(song => {
+                    downloadedSongsCache.add(song.id);
+                });
+                console.log('✅ Cache de descargas inicializado:', downloadedSongsCache.size, 'canciones');
+            } catch (error) {
+                console.error('❌ Error inicializando cache:', error);
+                downloadedSongsCache.clear();
+            }
+        }
+
         // ========== GESTIÓN DE CONEXIÓN ==========
         function updateConnectionStatus() {
             const status = document.getElementById('connection-status');
             const text = document.getElementById('connection-text');
-            
             if (navigator.onLine) {
                 isOnline = true;
                 status.classList.remove('offline');
@@ -453,31 +464,23 @@
             }
         }
 
-        // ========== SISTEMA DE DESCARGAS ==========
+        // ========== SISTEMA DE DESCARGAS CORREGIDO ==========
         async function downloadSong(songId, songData = null) {
             try {
                 if (!songData) {
                     songData = songsWithAlbumInfo.find(s => s.id === songId);
-                    if (!songData) {
-                        throw new Error('Canción no encontrada');
-                    }
+                    if (!songData) throw new Error('Canción no encontrada');
                 }
-
-                if (await isSongDownloaded(songId)) {
+                if (downloadedSongsCache.has(songId)) {
                     showNotification('✅ Esta canción ya está descargada', 'success');
                     return;
                 }
-
                 showDownloadModal(songData);
-                
                 const response = await fetch(songData.song_url);
                 if (!response.ok) throw new Error('Error descargando archivo');
-
                 const blob = await response.blob();
-                
                 const db = await initDB();
                 const transaction = db.transaction(['downloadedSongs', 'audioFiles'], 'readwrite');
-                
                 const songStore = transaction.objectStore('downloadedSongs');
                 await songStore.add({
                     id: songData.id,
@@ -488,22 +491,19 @@
                     downloadDate: new Date().toISOString(),
                     size: blob.size
                 });
-                
                 const audioStore = transaction.objectStore('audioFiles');
                 await audioStore.add({
                     songId: songData.id,
                     audioData: blob
                 });
-                
+                downloadedSongsCache.add(songId);
                 updateDownloadProgress(100);
-                
                 setTimeout(() => {
                     hideDownloadModal();
                     showNotification('✅ Canción descargada exitosamente', 'success');
                     updateDownloadsSection();
                     updateDownloadButtons();
                 }, 500);
-
             } catch (error) {
                 console.error('Error descargando canción:', error);
                 hideDownloadModal();
@@ -515,18 +515,10 @@
             const modal = document.getElementById('download-modal');
             const info = document.getElementById('download-song-info');
             const status = document.getElementById('download-status');
-            
-            info.innerHTML = `
-                <div style="text-align: center; margin-bottom: 1rem;">
-                    <strong>${song.title}</strong><br>
-                    <span style="color: #b3b3b3;">${song.albums?.artist || 'Desconocido'}</span>
-                </div>
-            `;
-            
+            info.innerHTML = `<div style="text-align: center; margin-bottom: 1rem;"><strong>${song.title}</strong><br><span style="color: #b3b3b3;">${song.albums?.artist || 'Desconocido'}</span></div>`;
             status.textContent = 'Descargando...';
             updateDownloadProgress(0);
             modal.style.display = 'flex';
-            
             let progress = 0;
             const progressInterval = setInterval(() => {
                 progress += Math.random() * 15;
@@ -541,15 +533,11 @@
         function updateDownloadProgress(percentage) {
             const progressFill = document.getElementById('download-progress');
             const status = document.getElementById('download-status');
-            
             progressFill.style.width = percentage + '%';
             status.textContent = `Descargando... ${Math.round(percentage)}%`;
         }
 
-        function hideDownloadModal() {
-            document.getElementById('download-modal').style.display = 'none';
-        }
-
+        function hideDownloadModal() { document.getElementById('download-modal').style.display = 'none'; }
         function cancelDownload() {
             if (currentDownload) {
                 currentDownload.abort();
@@ -559,13 +547,10 @@
             showNotification('❌ Descarga cancelada', 'error');
         }
 
+        // ✅ VERIFICACIÓN CORREGIDA
         async function isSongDownloaded(songId) {
             try {
-                const db = await initDB();
-                const transaction = db.transaction(['downloadedSongs'], 'readonly');
-                const store = transaction.objectStore('downloadedSongs');
-                const result = await store.get(songId);
-                return !!result;
+                return downloadedSongsCache.has(songId);
             } catch (error) {
                 console.error('Error verificando descarga:', error);
                 return false;
@@ -578,7 +563,6 @@
                 const transaction = db.transaction(['downloadedSongs'], 'readonly');
                 const store = transaction.objectStore('downloadedSongs');
                 const request = store.getAll();
-                
                 return new Promise((resolve, reject) => {
                     request.onsuccess = () => resolve(request.result);
                     request.onerror = () => reject(request.error);
@@ -605,37 +589,31 @@
         async function updateDownloadsSection() {
             const content = document.getElementById('downloads-content');
             const countElement = document.getElementById('downloads-count');
-            
             try {
                 const downloadedSongs = await getDownloadedSongs();
                 countElement.textContent = `(${downloadedSongs.length})`;
-                
                 if (downloadedSongs.length === 0) {
                     content.innerHTML = '<div style="text-align: center; padding: 2rem;">No tienes canciones descargadas</div>';
                     return;
                 }
-                
                 let html = '<div class="downloads-list">';
                 downloadedSongs.forEach(song => {
                     const sizeInMB = (song.size / (1024 * 1024)).toFixed(2);
-                    html += `
-                        <div class="download-item offline-available" onclick="playDownloadedSong('${song.id}')">
-                            <div class="download-info">
-                                <div class="download-title">${song.title}</div>
-                                <div class="download-artist">${song.artist} • ${song.album_title}</div>
-                                <div class="download-size">📁 ${sizeInMB} MB • Descargado el ${new Date(song.downloadDate).toLocaleDateString()}</div>
-                            </div>
-                            <div class="download-actions">
-                                <span class="offline-indicator" title="Disponible offline"></span>
-                                <button class="delete-download-btn" onclick="event.stopPropagation(); deleteDownload('${song.id}')" title="Eliminar descarga">🗑️</button>
-                                <span style="font-size: 1.1rem;">▶</span>
-                            </div>
+                    html += `<div class="download-item offline-available" onclick="playDownloadedSong('${song.id}')">
+                        <div class="download-info">
+                            <div class="download-title">${song.title}</div>
+                            <div class="download-artist">${song.artist} • ${song.album_title}</div>
+                            <div class="download-size">📁 ${sizeInMB} MB • Descargado el ${new Date(song.downloadDate).toLocaleDateString()}</div>
                         </div>
-                    `;
+                        <div class="download-actions">
+                            <span class="offline-indicator" title="Disponible offline"></span>
+                            <button class="delete-download-btn" onclick="event.stopPropagation(); deleteDownload('${song.id}')" title="Eliminar descarga">🗑️</button>
+                            <span style="font-size: 1.1rem;">▶</span>
+                        </div>
+                    </div>`;
                 });
                 html += '</div>';
                 content.innerHTML = html;
-                
             } catch (error) {
                 console.error('Error actualizando descargas:', error);
                 content.innerHTML = '<div style="text-align: center; padding: 2rem;">Error cargando descargas</div>';
@@ -646,35 +624,20 @@
             try {
                 const downloadedSongs = await getDownloadedSongs();
                 const song = downloadedSongs.find(s => s.id === songId);
-                
                 if (!song) {
                     showNotification('❌ Canción no encontrada en descargas', 'error');
                     return;
                 }
-                
                 const audioBlob = await getDownloadedAudio(songId);
                 if (!audioBlob) {
                     showNotification('❌ Archivo de audio no encontrado', 'error');
                     return;
                 }
-                
                 const audioUrl = URL.createObjectURL(audioBlob);
-                
-                const songToPlay = {
-                    id: song.id,
-                    title: song.title,
-                    song_url: audioUrl
-                };
-                
-                const albumToPlay = {
-                    title: song.album_title,
-                    artist: song.artist,
-                    cover_url: song.cover_url
-                };
-                
+                const songToPlay = { id: song.id, title: song.title, song_url: audioUrl };
+                const albumToPlay = { title: song.album_title, artist: song.artist, cover_url: song.cover_url };
                 playSong(songToPlay, albumToPlay, [songToPlay], 0);
                 showNotification('🎵 Reproduciendo desde descarga', 'success');
-                
             } catch (error) {
                 console.error('Error reproduciendo canción descargada:', error);
                 showNotification('❌ Error reproduciendo canción', 'error');
@@ -683,23 +646,16 @@
 
         async function deleteDownload(songId) {
             if (!confirm('¿Estás seguro de eliminar esta descarga?')) return;
-            
             try {
                 const db = await initDB();
                 const transaction = db.transaction(['downloadedSongs', 'audioFiles'], 'readwrite');
-                
                 const songStore = transaction.objectStore('downloadedSongs');
                 const audioStore = transaction.objectStore('audioFiles');
-                
-                await Promise.all([
-                    songStore.delete(songId),
-                    audioStore.delete(songId)
-                ]);
-                
+                await Promise.all([songStore.delete(songId), audioStore.delete(songId)]);
+                downloadedSongsCache.delete(songId);
                 updateDownloadsSection();
                 updateDownloadButtons();
                 showNotification('✅ Descarga eliminada', 'success');
-                
             } catch (error) {
                 console.error('Error eliminando descarga:', error);
                 showNotification('❌ Error eliminando descarga', 'error');
@@ -708,38 +664,35 @@
 
         async function clearAllDownloads() {
             if (!confirm('¿Estás seguro de eliminar TODAS las descargas?')) return;
-            
             try {
                 const db = await initDB();
                 const transaction = db.transaction(['downloadedSongs', 'audioFiles'], 'readwrite');
-                
                 const songStore = transaction.objectStore('downloadedSongs');
                 const audioStore = transaction.objectStore('audioFiles');
-                
-                await Promise.all([
-                    songStore.clear(),
-                    audioStore.clear()
-                ]);
-                
+                await Promise.all([songStore.clear(), audioStore.clear()]);
+                downloadedSongsCache.clear();
                 updateDownloadsSection();
                 updateDownloadButtons();
                 showNotification('✅ Todas las descargas eliminadas', 'success');
-                
             } catch (error) {
                 console.error('Error limpiando descargas:', error);
                 showNotification('❌ Error limpiando descargas', 'error');
             }
         }
 
+        // ✅ FUNCIÓN DE BOTONES CORREGIDA
         async function updateDownloadButtons() {
             const downloadButtons = document.querySelectorAll('.download-btn');
-            
             for (const button of downloadButtons) {
                 const songId = button.getAttribute('data-song-id');
-                if (songId && await isSongDownloaded(songId)) {
+                if (songId && downloadedSongsCache.has(songId)) {
                     button.textContent = '✅ Descargado';
                     button.classList.add('downloaded');
                     button.onclick = () => showNotification('✅ Ya descargado', 'info');
+                } else if (songId) {
+                    button.textContent = '⬇️ Descargar';
+                    button.classList.remove('downloaded');
+                    button.onclick = () => downloadSong(songId);
                 }
             }
         }
@@ -749,10 +702,9 @@
                 showNotification('❌ No hay conexión a internet', 'error');
                 return;
             }
-            
             showNotification('🔄 Sincronizando descargas...', 'info');
-            
             try {
+                await initDownloadCache();
                 await updateDownloadsSection();
                 showNotification('✅ Descargas sincronizadas', 'success');
             } catch (error) {
@@ -766,50 +718,22 @@
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.textContent = message;
-            
             Object.assign(notification.style, {
-                position: 'fixed',
-                top: '50px',
-                right: '20px',
-                padding: '1rem 1.5rem',
-                borderRadius: '8px',
-                zIndex: '9999',
-                minWidth: '200px',
-                fontSize: '0.9rem',
-                fontWeight: 'bold',
-                transform: 'translateX(100%)',
-                transition: 'transform 0.3s ease'
+                position: 'fixed', top: '50px', right: '20px', padding: '1rem 1.5rem', borderRadius: '8px',
+                zIndex: '9999', minWidth: '200px', fontSize: '0.9rem', fontWeight: 'bold',
+                transform: 'translateX(100%)', transition: 'transform 0.3s ease'
             });
-            
             switch (type) {
-                case 'success':
-                    notification.style.background = '#28a745';
-                    notification.style.color = '#fff';
-                    break;
-                case 'error':
-                    notification.style.background = '#ff4757';
-                    notification.style.color = '#fff';
-                    break;
-                case 'info':
-                    notification.style.background = '#1DB954';
-                    notification.style.color = '#fff';
-                    break;
-                default:
-                    notification.style.background = '#333';
-                    notification.style.color = '#fff';
+                case 'success': notification.style.background = '#28a745'; notification.style.color = '#fff'; break;
+                case 'error': notification.style.background = '#ff4757'; notification.style.color = '#fff'; break;
+                case 'info': notification.style.background = '#1DB954'; notification.style.color = '#fff'; break;
+                default: notification.style.background = '#333'; notification.style.color = '#fff';
             }
-            
             document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 100);
-            
+            setTimeout(() => { notification.style.transform = 'translateX(0)'; }, 100);
             setTimeout(() => {
                 notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
+                setTimeout(() => { if (document.body.contains(notification)) { document.body.removeChild(notification); } }, 300);
             }, 3000);
         }
 
@@ -817,34 +741,23 @@
         window.changeTheme = function(theme) {
             console.log('🎨 Cambiando tema a:', theme);
             const body = document.body;
-            
             body.classList.remove('theme-neon', 'theme-minimal', 'theme-sunset', 'theme-pastel', 'theme-luxury');
-            
             if (theme && theme !== 'default') {
                 body.classList.add('theme-' + theme);
                 console.log('✅ Tema aplicado:', 'theme-' + theme);
             } else {
                 console.log('✅ Tema default aplicado');
             }
-            
             localStorage.setItem('klmz_theme', theme);
-            
-            setTimeout(() => {
-                const event = new Event('themeChanged');
-                document.dispatchEvent(event);
-            }, 100);
+            setTimeout(() => { const event = new Event('themeChanged'); document.dispatchEvent(event); }, 100);
         }
 
         function loadSavedTheme() {
             try {
                 const savedTheme = localStorage.getItem('klmz_theme') || 'default';
                 console.log('🎨 Cargando tema guardado:', savedTheme);
-                
                 const themeSelector = document.querySelector('.theme-selector select');
-                if (themeSelector) {
-                    themeSelector.value = savedTheme;
-                }
-                
+                if (themeSelector) { themeSelector.value = savedTheme; }
                 changeTheme(savedTheme);
             } catch (error) {
                 console.error('❌ Error cargando tema:', error);
@@ -858,26 +771,17 @@
             try {
                 const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
                 supabase = createClient(supabaseUrl, supabaseKey);
-                
                 supabase.auth.onAuthStateChange((event, session) => {
                     currentUser = session?.user || null;
                     updateAuthUI();
                 });
-
                 const { data: { session } } = await supabase.auth.getSession();
                 currentUser = session?.user || null;
                 updateAuthUI();
-                
-                if (isOnline) {
-                    await loadAllData();
-                } else {
-                    await loadOfflineData();
-                }
+                if (isOnline) { await loadAllData(); } else { await loadOfflineData(); }
             } catch (error) {
                 console.error('Error conectando a Supabase:', error);
-                if (isOnline) {
-                    showErrorMessage('Error de conexión - Intentando modo offline');
-                }
+                if (isOnline) { showErrorMessage('Error de conexión - Intentando modo offline'); }
                 await loadOfflineData();
             } finally {
                 showLoadingIndicator(false);
@@ -888,7 +792,6 @@
             try {
                 const cachedAlbums = localStorage.getItem('klmz_cached_albums');
                 const cachedSongs = localStorage.getItem('klmz_cached_songs');
-                
                 if (cachedAlbums && cachedSongs) {
                     allAlbums = JSON.parse(cachedAlbums);
                     allSongs = JSON.parse(cachedSongs);
@@ -910,16 +813,12 @@
                     supabase.from('albums').select('*'),
                     supabase.from('songs').select('*, albums:album_id(*)')
                 ]);
-                
                 allAlbums = albums || [];
                 allSongs = songs || [];
                 songsWithAlbumInfo = songs || [];
-                
                 localStorage.setItem('klmz_cached_albums', JSON.stringify(allAlbums));
                 localStorage.setItem('klmz_cached_songs', JSON.stringify(songsWithAlbumInfo));
-                
                 displayAlbums(allAlbums);
-                updateDownloadButtons();
             } catch (error) {
                 console.error('Error cargando datos:', error);
                 showErrorMessage('No se pudieron cargar los álbumes');
@@ -942,46 +841,40 @@
             `).join('');
         }
 
+        // ✅ FUNCIÓN showAlbumDetail CORREGIDA
         async function showAlbumDetail(album) {
             currentAlbum = album;
             document.getElementById('albums').style.display = 'none';
             const detailView = document.getElementById('album-detail');
             detailView.style.display = 'block';
-            detailView.innerHTML = `
-                <button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
+            detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
                 <div style="text-align: center; margin-bottom: 2rem;">
                     <img class="album-img" src="${album.cover_url}" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzMzMyIvPjx0ZXh0IHg9IjEwMCIgeT0iMTA1IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkFsYnVtPC90ZXh0Pjwvc3ZnPg=='">
                     <div class="album-title" style="font-size: 1.5rem;">${album.title}</div>
                     <div class="album-artist" style="font-size: 1.1rem; color: #b3b3b3;">${album.artist}</div>
                 </div>
-                <div class="song-list" id="detail-song-list">Cargando...</div>
-            `;
+                <div class="song-list" id="detail-song-list">Cargando...</div>`;
             
             try {
                 let songs = [];
-                
                 if (isOnline && supabase) {
                     const { data } = await supabase.from('songs').select('*').eq('album_id', album.id);
                     songs = data || [];
                 } else {
                     songs = allSongs.filter(s => s.album_id === album.id);
                 }
-                
                 const listDiv = document.getElementById('detail-song-list');
                 if (!songs || songs.length === 0) { 
                     listDiv.innerHTML = 'No hay canciones en este álbum.'; 
                     return; 
                 }
-                
                 currentPlaylist = songs;
                 originalPlaylist = [...songs];
                 const favorites = getLocalFavorites();
-                
                 let listHtml = '<ul>';
-                for (const [idx, song] of songs.entries()) {
-                    const isDownloaded = await isSongDownloaded(song.id);
-                    listHtml += `
-                        <li>
+                songs.forEach((song, idx) => {
+                    const isDownloaded = downloadedSongsCache.has(song.id);
+                    listHtml += `<li>
                             <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
                             <div class="song-actions">
                                 <span onclick="toggleFavorite('${song.id}', this)" style="cursor: pointer; color: ${favorites.includes(song.id) ? '#1DB954' : '#666'};">${favorites.includes(song.id) ? '❤️' : '🤍'}</span>
@@ -989,16 +882,14 @@
                                         data-song-id="${song.id}"
                                         onclick="event.stopPropagation(); ${isDownloaded ? 'showNotification(\'✅ Ya descargado\', \'info\')' : `downloadSong('${song.id}')`}"
                                         title="${isDownloaded ? 'Ya descargado' : 'Descargar canción'}">
-                                    ${isDownloaded ? '✅' : '⬇️'} ${isDownloaded ? 'Descargado' : 'Descargar'}
+                                    ${isDownloaded ? '✅ Descargado' : '⬇️ Descargar'}
                                 </button>
                                 <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
                             </div>
-                        </li>
-                    `;
-                }
+                        </li>`;
+                });
                 listHtml += '</ul>';
                 listDiv.innerHTML = listHtml;
-                
             } catch (error) {
                 console.error('Error cargando canciones del álbum:', error);
                 document.getElementById('detail-song-list').innerHTML = 'Error cargando canciones';
@@ -1007,13 +898,8 @@
 
         // ========== REPRODUCTOR DE MÚSICA ==========
         window.playSong = async function(song, album, playlist = [], index = 0) {
-            currentSong = song;
-            currentAlbum = album;
-            currentPlaylist = playlist;
-            currentIndex = index;
-            
+            currentSong = song; currentAlbum = album; currentPlaylist = playlist; currentIndex = index;
             const audio = document.getElementById('audio-player');
-            
             try {
                 if (!isOnline) {
                     const audioBlob = await getDownloadedAudio(song.id);
@@ -1028,36 +914,27 @@
                 } else {
                     audio.src = song.song_url;
                 }
-                
                 await audio.play();
                 isPlaying = true;
                 updateAllPlayers();
-                
             } catch (error) {
                 console.error("Error al reproducir:", error);
                 showNotification('❌ Error reproduciendo la canción', 'error');
             }
         }
 
-        function updateAllPlayers() {
-            updateMiniPlayer();
-            updateFullPlayer();
-            updatePlayButtons();
-        }
-
+        function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
         function updateMiniPlayer() {
             document.getElementById('mini-player').style.display = 'flex';
             document.getElementById('mini-player-img').src = currentAlbum?.cover_url || '';
             document.getElementById('mini-player-title').textContent = currentSong?.title || 'Sin título';
             document.getElementById('mini-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
         }
-
         function updateFullPlayer() {
             document.getElementById('full-player-cover').src = currentAlbum?.cover_url || '';
             document.getElementById('full-player-title').textContent = currentSong?.title || 'Sin título';
             document.getElementById('full-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
         }
-
         function updatePlayButtons() {
             const playText = isPlaying ? '⏸' : '▶';
             ['mini-play-btn', 'full-play-btn'].forEach(id => {
@@ -1099,9 +976,7 @@
             }
         }
 
-        window.setVolume = (value) => { 
-            document.getElementById('audio-player').volume = value / 100; 
-        }
+        window.setVolume = (value) => { document.getElementById('audio-player').volume = value / 100; }
 
         function updateProgressBar() {
             const audio = document.getElementById('audio-player');
@@ -1124,24 +999,16 @@
             audio.currentTime = ((event.clientX - rect.left) / rect.width) * audio.duration;
         }
 
-        function openFullPlayer() { 
-            document.getElementById('full-player').classList.add('active'); 
-        }
-
-        window.closeFullPlayer = function() { 
-            document.getElementById('full-player').classList.remove('active'); 
-        }
-
+        function openFullPlayer() { document.getElementById('full-player').classList.add('active'); }
+        window.closeFullPlayer = function() { document.getElementById('full-player').classList.remove('active'); }
         window.toggleRepeatMode = function() {
             repeatMode = (repeatMode === 'all') ? 'off' : 'all';
             updateModeButtonsUI();
         }
-
         window.toggleShuffleMode = function() {
             shuffleMode = !shuffleMode;
             updateModeButtonsUI();
         }
-
         function updateModeButtonsUI() {
             document.getElementById('repeat-btn').classList.toggle('active', repeatMode === 'all');
             document.getElementById('shuffle-btn').classList.toggle('active', shuffleMode);
@@ -1152,9 +1019,7 @@
             const dropdown = document.getElementById('user-dropdown');
             dropdown.classList.toggle('show');
             if (dropdown.classList.contains('show')) {
-                setTimeout(() => { 
-                    document.addEventListener('click', closeUserMenuOutside); 
-                }, 100);
+                setTimeout(() => { document.addEventListener('click', closeUserMenuOutside); }, 100);
             }
         }
 
@@ -1167,11 +1032,7 @@
             }
         }
 
-        function goToAdmin() {
-            document.getElementById('user-dropdown').classList.remove('show');
-            showSection('admin');
-        }
-
+        function goToAdmin() { document.getElementById('user-dropdown').classList.remove('show'); showSection('admin'); }
         function confirmLogout() {
             document.getElementById('user-dropdown').classList.remove('show');
             if (confirm('¿Estás seguro de que quieres cerrar sesión?')) logout();
@@ -1225,24 +1086,19 @@
             }
         }
 
-        function isAdmin() { 
-            return currentUser && currentUser.email === ADMIN_EMAIL; 
-        }
+        function isAdmin() { return currentUser && currentUser.email === ADMIN_EMAIL; }
 
         window.login = async function(event) {
             event.preventDefault();
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            
             try {
                 if (!isOnline) {
                     showNotification('❌ No hay conexión para iniciar sesión', 'error');
                     return;
                 }
-                
                 const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                
                 showNotification('✅ ¡Bienvenido!', 'success');
                 closeAuth();
             } catch (error) {
@@ -1255,21 +1111,17 @@
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
             const confirm = document.getElementById('register-confirm').value;
-            
             if (password !== confirm) {
                 showNotification('❌ Las contraseñas no coinciden', 'error');
                 return;
             }
-            
             try {
                 if (!isOnline) {
                     showNotification('❌ No hay conexión para registrarse', 'error');
                     return;
                 }
-                
                 const { data, error } = await supabase.auth.signUp({ email, password });
                 if (error) throw error;
-                
                 showNotification('✅ Registro exitoso. Revisa tu correo.', 'success');
                 closeAuth();
             } catch (error) {
@@ -1285,9 +1137,7 @@
             modal.style.display = 'flex';
         }
 
-        window.closeAuth = function() { 
-            document.getElementById('auth-modal').style.display = 'none'; 
-        }
+        window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
 
         // ========== FAVORITOS ==========
         const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
@@ -1296,20 +1146,16 @@
         window.toggleFavorite = function(songId, el) {
             let favorites = getLocalFavorites();
             const isFavorite = favorites.includes(songId);
-            
             if (isFavorite) {
                 favorites = favorites.filter(id => id !== songId);
             } else {
                 favorites.push(songId);
             }
-            
             saveLocalFavorites(favorites);
-            
             if (el) {
                 el.style.color = isFavorite ? '#666' : '#1DB954';
                 el.innerHTML = isFavorite ? '🤍' : '❤️';
             }
-            
             if (document.getElementById('favorites-section').classList.contains('active')) {
                 loadFavorites();
             }
@@ -1318,30 +1164,25 @@
         async function loadFavorites() {
             const content = document.getElementById('favorites-content');
             const favorites = getLocalFavorites();
-            
             if (favorites.length === 0) {
                 content.innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>No tienes favoritos</h2></div>`;
                 return;
             }
-            
             try {
                 let songs = [];
-                
                 if (isOnline && supabase) {
                     const { data, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites);
                     songs = data || [];
                 } else {
                     songs = songsWithAlbumInfo.filter(s => favorites.includes(s.id));
                 }
-                
                 if (songs.length === 0) {
                     content.innerHTML = `<div style="text-align: center; padding: 3rem;">No se pudieron cargar los favoritos</div>`;
                     return;
                 }
-                
                 let html = '<div class="favorites-list">';
                 for (const song of songs) {
-                    const isDownloaded = await isSongDownloaded(song.id);
+                    const isDownloaded = downloadedSongsCache.has(song.id);
                     html += `<div class="favorite-item" onclick="playSongFromFavorites('${song.id}')">
                         <div class="favorite-info">
                             <div class="favorite-title">${song.title} ${isDownloaded ? '📱' : ''}</div>
@@ -1360,7 +1201,6 @@
                 }
                 html += '</div>';
                 content.innerHTML = html;
-                
             } catch (error) {
                 console.error('Error cargando favoritos:', error);
                 content.innerHTML = `Error cargando favoritos.`;
@@ -1369,13 +1209,11 @@
 
         window.playSongFromFavorites = async function(songId) {
             let song;
-            
             if (isOnline) {
                 song = songsWithAlbumInfo.find(s => s.id === songId);
             } else {
                 const downloadedSongs = await getDownloadedSongs();
                 const downloadedSong = downloadedSongs.find(s => s.id === songId);
-                
                 if (downloadedSong) {
                     playDownloadedSong(songId);
                     return;
@@ -1384,7 +1222,6 @@
                     return;
                 }
             }
-            
             if (song) {
                 playSong(song, song.albums, [song], 0);
             }
@@ -1395,10 +1232,8 @@
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.getElementById(`${section}-section`).classList.add('active');
             document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
-            
             const navItem = document.getElementById(`nav-${section === 'home' ? 'home' : section === 'search' ? 'search' : section === 'downloads' ? 'downloads' : 'favs'}`);
             if(navItem) navItem.classList.add('active');
-            
             if (section === 'favorites') {
                 loadFavorites();
             } else if (section === 'downloads') {
@@ -1419,23 +1254,18 @@
         window.searchMusic = function() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             const results = document.getElementById('search-results');
-            
             if (!query) {
                 results.innerHTML = '';
                 return;
             }
-            
             const foundAlbums = allAlbums.filter(a => 
                 a.title.toLowerCase().includes(query) || a.artist.toLowerCase().includes(query)
             );
-            
             const foundSongs = songsWithAlbumInfo.filter(s => 
                 s.title.toLowerCase().includes(query) || 
                 (s.albums?.artist && s.albums.artist.toLowerCase().includes(query))
             );
-            
             let html = '';
-            
             if (foundAlbums.length) {
                 html += '<h3>📀 Álbumes</h3><div class="album-grid">' + 
                 foundAlbums.map(album => `
@@ -1446,11 +1276,10 @@
                     </div>
                 `).join('') + '</div>';
             }
-            
             if (foundSongs.length) {
                 html += '<h3>🎵 Canciones</h3>';
                 foundSongs.forEach(async (song) => {
-                    const isDownloaded = await isSongDownloaded(song.id);
+                    const isDownloaded = downloadedSongsCache.has(song.id);
                     html += `
                         <div class="search-song-item" onclick="playSongFromSearch('${song.id}')">
                             <div class="search-song-info">
@@ -1469,7 +1298,6 @@
                     `;
                 });
             }
-            
             results.innerHTML = (html || '<h3>No se encontraron resultados</h3>');
         }
 
@@ -1521,7 +1349,8 @@
             
             try {
                 await initDB();
-                console.log('✅ IndexedDB inicializado');
+                await initDownloadCache(); // ✅ INICIALIZAR CACHE
+                console.log('✅ IndexedDB y Cache inicializados');
             } catch (error) {
                 console.error('❌ Error inicializando IndexedDB:', error);
             }
@@ -1557,7 +1386,7 @@
             showNotification('🎵 KLMZ Music cargado', 'success');
         });
 
-        console.log('📱 KLMZ Music v2.0 - Funcionamiento híbrido online/offline');
+        console.log('📱 KLMZ Music v2.0 - Sistema de descargas corregido');
     </script>
 </body>
 </html>
