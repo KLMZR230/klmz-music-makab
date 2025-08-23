@@ -377,6 +377,7 @@
 
         async function getSongFromDB(songId) {
             return new Promise((resolve, reject) => {
+                if (!db) return resolve(null);
                 const transaction = db.transaction(['songs'], 'readonly');
                 const store = transaction.objectStore('songs');
                 const request = store.get(songId);
@@ -387,6 +388,7 @@
 
         async function getAllDownloadedSongs() {
             return new Promise((resolve, reject) => {
+                if (!db) return resolve([]);
                 const transaction = db.transaction(['songs'], 'readonly');
                 const store = transaction.objectStore('songs');
                 const request = store.getAll();
@@ -473,7 +475,7 @@
         };
 
 
-        // --- Funcionalidad del Reproductor (Modificada para Offline) ---
+        // --- ⭐ CORRECCIÓN: Lógica de reproducción de audio más robusta ---
         window.playSong = async function(song, album, playlist = [song], index = 0) {
             currentSong = song;
             currentAlbum = album;
@@ -481,29 +483,45 @@
             currentIndex = index;
             
             const audio = document.getElementById('audio-player');
-            
+            audio.pause(); // Detener cualquier reproducción anterior
+
+            let audioURL = null;
+
             try {
                 const downloadedSong = await getSongFromDB(song.id);
                 if (downloadedSong && downloadedSong.audio) {
                     console.log(`Reproduciendo "${song.title}" desde descargas.`);
-                    const audioURL = URL.createObjectURL(downloadedSong.audio);
-                    audio.src = audioURL;
+                    audioURL = URL.createObjectURL(downloadedSong.audio);
                 } else {
                     console.log(`Reproduciendo "${song.title}" desde la red.`);
-                    audio.src = song.song_url;
+                    audioURL = song.song_url;
                 }
             } catch (error) {
-                console.error("Error al buscar canción en DB, reproduciendo desde red:", error);
-                audio.src = song.song_url;
+                console.error("Error al buscar canción en DB, se usará la URL de red:", error);
+                audioURL = song.song_url;
             }
             
-            audio.play().then(() => {
-                isPlaying = true;
-                updateAllPlayers();
-            }).catch(error => {
-                console.error("Error al reproducir:", error);
-                alert('Error reproduciendo la canción');
-            });
+            if (!audioURL) {
+                alert('Error: La URL de la canción no es válida.');
+                return;
+            }
+
+            audio.src = audioURL;
+            audio.load(); // Carga el nuevo audio
+            
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    isPlaying = true;
+                    updateAllPlayers();
+                }).catch(error => {
+                    console.error("Error al reproducir:", error);
+                    alert('Error al reproducir la canción. El navegador bloqueó la reproducción automática.');
+                    isPlaying = false;
+                    updateAllPlayers();
+                });
+            }
         }
         
         // --- Resto del código ---
@@ -529,7 +547,7 @@
                 const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
                 supabase = createClient(supabaseUrl, supabaseKey);
                 
-                supabase.auth.onAuthStateChange((event, session) => {
+                supabase.auth.onAuthStateChange((_event, session) => {
                     currentUser = session?.user || null;
                     updateAuthUI();
                 });
@@ -752,8 +770,6 @@
             }
         }
 
-        // --- ⭐ LÓGICA DE USUARIO Y ADMIN CORREGIDA Y MEJORADA ---
-
         function updateAuthUI() {
             const [headerLockIcon, userInfo, userEmail, adminMenu, loginMenu, registerMenu, logoutMenu, adminContent] = [
                 'header-lock-icon', 'user-info-section', 'user-email-display', 'admin-menu-item',
@@ -828,8 +844,6 @@
 
         window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
         
-        // --- ⭐ NUEVA LÓGICA PARA EL PANEL DE ADMINISTRADOR ---
-        
         function renderAdminPanel() {
             const adminContent = document.getElementById('admin-content');
             adminContent.innerHTML = `
@@ -875,12 +889,13 @@
         }
 
         async function populateAlbumSelect() {
+            const select = document.getElementById('song-album');
+            if (!select) return; // Si el panel no está visible, no hacer nada
             const { data: albums, error } = await supabase.from('albums').select('id, title, artist');
             if (error) {
                 console.error('Error cargando álbumes para el select:', error);
                 return;
             }
-            const select = document.getElementById('song-album');
             select.innerHTML = '<option value="">-- Elige un álbum --</option>';
             albums.forEach(album => {
                 select.innerHTML += `<option value="${album.id}">${album.title} - ${album.artist}</option>`;
@@ -917,9 +932,9 @@
                 if (insertError) throw insertError;
 
                 alert('¡Álbum creado con éxito!');
-                event.target.reset(); // Limpiar el formulario
-                await loadAllData(); // Recargar todos los datos para ver el nuevo álbum
-                populateAlbumSelect(); // Actualizar el select de canciones
+                event.target.reset(); 
+                await loadAllData(); 
+                populateAlbumSelect();
 
             } catch (error) {
                 console.error('Error al subir el álbum:', error);
@@ -971,7 +986,6 @@
             }
         }
 
-        // --- Favoritos y Navegación ---
         const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
         const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
 
@@ -1018,6 +1032,7 @@
             if (song) playSong(song, song.albums, [song], 0);
         }
 
+        // --- ⭐ CORRECCIÓN: Asegurar que el panel de admin se muestre siempre ---
         window.showSection = function(section) {
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.getElementById(`${section}-section`).classList.add('active');
@@ -1028,6 +1043,12 @@
             
             if (section === 'favorites') loadFavorites();
             if (section === 'downloads') loadDownloads();
+            if (section === 'admin') {
+                // Esta verificación asegura que el panel se dibuje cada vez que se visita la sección
+                if (isAdmin()) {
+                    renderAdminPanel();
+                }
+            }
         }
 
         window.showAlbumsGrid = function() {
