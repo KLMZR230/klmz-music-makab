@@ -110,6 +110,16 @@
         .download-icon.downloaded { color: #1DB954; }
         #album-detail { padding-bottom: 120px; }
 
+        /* --- Admin Panel Styles --- */
+        .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; }
+        .admin-section h4 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 0.8rem; margin-bottom: 1.5rem; }
+        .admin-form { margin-bottom: 2rem; }
+        .admin-list .admin-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-radius: 4px; margin-bottom: 0.5rem; background: #2c2c2c; }
+        .admin-item-info { flex: 1; }
+        .admin-item-actions button { margin-left: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+        .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; }
+        .btn-secondary:hover { background: #666; }
+
         /* ✅ TEMAS VISUALES COMPLETOS Y ARREGLADOS */
         /* 🌈 TEMA NEON CYBERPUNK */
         body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
@@ -249,7 +259,9 @@
             </section>
             <section class="content-section" id="admin-section">
                 <div class="section-title">Panel de Administración</div>
-                <div id="admin-content">Función en desarrollo</div>
+                <div id="admin-content">
+                    <!-- Admin content will be rendered here by JavaScript -->
+                </div>
             </section>
         </main>
     </div>
@@ -398,7 +410,7 @@
         // --- Descarga de canciones ---
         window.downloadSong = async function(songId, element) {
             if (element.classList.contains('downloaded')) {
-                alert('Esta canción ya está descargada.');
+                showInfoModal('Esta canción ya está descargada.');
                 return;
             }
 
@@ -422,13 +434,13 @@
                 };
                 
                 await saveSongToDB(songData);
-                alert(`${song.title} descargada con éxito.`);
+                showInfoModal(`${song.title} descargada con éxito.`);
                 element.textContent = '↓';
                 element.classList.add('downloaded');
 
             } catch (error) {
                 console.error('Error al descargar:', error);
-                alert('No se pudo descargar la canción.');
+                showInfoModal('No se pudo descargar la canción.');
                 element.textContent = '↓';
             }
         };
@@ -482,15 +494,33 @@
             
             const audio = document.getElementById('audio-player');
             
+            // Stop any existing playback and update UI to loading state
+            audio.pause();
+            updateAllPlayers(); // This updates song info
+            
+            // The 'play' and 'pause' event listeners will handle the isPlaying state and button updates.
+
+            // Define a one-time listener for when the audio is ready to play
+            const onCanPlay = () => {
+                audio.play().catch(error => {
+                    console.error("Error al reproducir:", error);
+                    // Avoid alerting for the common AbortError, which is the error we are fixing.
+                    if (error.name !== 'AbortError') {
+                        showInfoModal('No se pudo reproducir la canción.');
+                    }
+                });
+                // Remove listener so it doesn't fire again for the same track
+                audio.removeEventListener('canplay', onCanPlay);
+            };
+            audio.addEventListener('canplay', onCanPlay);
+            
             try {
-                // Intenta obtener la canción de la base de datos local primero
                 const downloadedSong = await getSongFromDB(song.id);
                 if (downloadedSong && downloadedSong.audio) {
                     console.log(`Reproduciendo "${song.title}" desde descargas.`);
                     const audioURL = URL.createObjectURL(downloadedSong.audio);
                     audio.src = audioURL;
                 } else {
-                    // Si no está descargada, la reproduce desde la URL
                     console.log(`Reproduciendo "${song.title}" desde la red.`);
                     audio.src = song.song_url;
                 }
@@ -499,13 +529,8 @@
                 audio.src = song.song_url;
             }
             
-            audio.play().then(() => {
-                isPlaying = true;
-                updateAllPlayers();
-            }).catch(error => {
-                console.error("Error al reproducir:", error);
-                alert('Error reproduciendo la canción');
-            });
+            // Explicitly load the new source. The 'canplay' event will trigger playback.
+            audio.load();
         }
         
         // --- Resto del código (sin cambios mayores) ---
@@ -738,8 +763,7 @@
         }
 
         function confirmLogout() {
-            document.getElementById('user-dropdown').classList.remove('show');
-            if (confirm('¿Estás seguro de que quieres cerrar sesión?')) logout();
+            showConfirmationModal('¿Estás seguro de que quieres cerrar sesión?', logout);
         }
 
         async function logout() {
@@ -748,10 +772,10 @@
                 if (error) throw error;
                 currentUser = null;
                 updateAuthUI();
-                alert('Sesión cerrada correctamente');
+                showInfoModal('Sesión cerrada correctamente');
             } catch (error) {
                 console.error('Error logout:', error);
-                alert('Error cerrando sesión');
+                showInfoModal('Error cerrando sesión');
             }
         }
 
@@ -794,22 +818,22 @@
             try {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                alert('¡Bienvenido!');
+                showInfoModal('¡Bienvenido!');
                 closeAuth();
-            } catch (error) { alert('Error de login: ' + error.message); }
+            } catch (error) { showInfoModal('Error de login: ' + error.message); }
         }
 
         window.register = async function(event) {
             event.preventDefault();
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
-            if (password !== document.getElementById('register-confirm').value) return alert('Las contraseñas no coinciden');
+            if (password !== document.getElementById('register-confirm').value) return showInfoModal('Las contraseñas no coinciden');
             try {
                 const { error } = await supabase.auth.signUp({ email, password });
                 if (error) throw error;
-                alert('Registro exitoso. Revisa tu correo.');
+                showInfoModal('Registro exitoso. Revisa tu correo.');
                 closeAuth();
-            } catch (error) { alert('Error de registro: ' + error.message); }
+            } catch (error) { showInfoModal('Error de registro: ' + error.message); }
         }
 
         window.showAuth = function(type) {
@@ -877,6 +901,14 @@
             
             if (section === 'favorites') loadFavorites();
             if (section === 'downloads') loadDownloads();
+            if (section === 'admin') {
+                if (!isAdmin()) {
+                    showInfoModal('Acceso denegado. Solo para administradores.');
+                    showSection('home');
+                    return;
+                }
+                renderAdminPanel();
+            }
         }
 
         window.showAlbumsGrid = function() {
@@ -927,7 +959,285 @@
                     <button onclick="showSection('downloads')" style="background: #1DB954; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-top: 1rem;">Ir a Descargas</button>
                 </div>`;
         }
+
+        // --- CUSTOM MODAL FUNCTIONS ---
+        function showInfoModal(message) {
+            const existingModal = document.getElementById('info-modal-backdrop');
+            if (existingModal) return;
+
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.id = 'info-modal-backdrop';
+            modalBackdrop.className = 'modal';
+            modalBackdrop.style.display = 'flex';
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+
+            const messageP = document.createElement('p');
+            messageP.textContent = message;
+            messageP.style.marginBottom = '1.5rem';
+            messageP.style.textAlign = 'center';
+            messageP.style.fontSize = '1.1rem';
+            
+            const okBtn = document.createElement('button');
+            okBtn.textContent = 'OK';
+            okBtn.className = 'btn-primary';
+            okBtn.onclick = () => {
+                document.body.removeChild(modalBackdrop);
+            };
+
+            modalContent.appendChild(messageP);
+            modalContent.appendChild(okBtn);
+            modalBackdrop.appendChild(modalContent);
+            document.body.appendChild(modalBackdrop);
+        }
+
+        function showConfirmationModal(message, onConfirm) {
+            const existingModal = document.getElementById('confirm-modal-backdrop');
+            if (existingModal) return;
+
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.id = 'confirm-modal-backdrop';
+            modalBackdrop.className = 'modal';
+            modalBackdrop.style.display = 'flex';
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+
+            const messageP = document.createElement('p');
+            messageP.textContent = message;
+            messageP.style.marginBottom = '1.5rem';
+            messageP.style.textAlign = 'center';
+            messageP.style.fontSize = '1.1rem';
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.gap = '1rem';
+            buttonContainer.style.justifyContent = 'center';
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.textContent = 'Confirmar';
+            confirmBtn.className = 'btn-danger';
+            confirmBtn.style.width = 'auto';
+            confirmBtn.onclick = () => {
+                onConfirm();
+                document.body.removeChild(modalBackdrop);
+            };
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancelar';
+            cancelBtn.className = 'btn-secondary';
+            cancelBtn.style.width = 'auto';
+            cancelBtn.onclick = () => {
+                document.body.removeChild(modalBackdrop);
+            };
+
+            buttonContainer.appendChild(cancelBtn);
+            buttonContainer.appendChild(confirmBtn);
+            modalContent.appendChild(messageP);
+            modalContent.appendChild(buttonContainer);
+            modalBackdrop.appendChild(modalContent);
+            document.body.appendChild(modalBackdrop);
+        }
         
+        // --- ADMIN PANEL FUNCTIONS ---
+        async function renderAdminPanel() {
+            const adminContent = document.getElementById('admin-content');
+            adminContent.innerHTML = `
+                <div class="admin-section">
+                    <h4>Gestión de Álbumes</h4>
+                    <form id="album-form" class="admin-form">
+                        <input type="hidden" id="album-id">
+                        <div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div>
+                        <div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div>
+                        <div class="form-group"><input type="url" id="album-cover" placeholder="URL de la Portada" required></div>
+                        <button type="submit" class="btn-primary">Guardar Álbum</button>
+                        <button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button>
+                    </form>
+                    <div id="admin-album-list" class="admin-list">Cargando álbumes...</div>
+                </div>
+                <div class="admin-section">
+                    <h4>Gestión de Canciones</h4>
+                    <form id="song-form" class="admin-form">
+                        <input type="hidden" id="song-id">
+                        <div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div>
+                        <div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div>
+                        <div class="form-group"><input type="url" id="song-url" placeholder="URL de la Canción" required></div>
+                        <button type="submit" class="btn-primary">Guardar Canción</button>
+                        <button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button>
+                    </form>
+                    <div id="admin-song-list" class="admin-list">Cargando canciones...</div>
+                </div>
+            `;
+            
+            await renderAdminLists();
+            setupAdminForms();
+        }
+
+        async function renderAdminLists() {
+            const { data: albums } = await supabase.from('albums').select('*');
+            const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)');
+
+            // Render Album List
+            const albumList = document.getElementById('admin-album-list');
+            albumList.innerHTML = albums.map(album => `
+                <div class="admin-item">
+                    <div class="admin-item-info"><strong>${album.title}</strong><br><small>${album.artist}</small></div>
+                    <div class="admin-item-actions">
+                        <button class="btn-secondary" onclick="editAlbum('${album.id}', '${album.title}', '${album.artist}', '${album.cover_url}')">Editar</button>
+                        <button class="btn-danger" onclick="deleteAlbum('${album.id}')">Borrar</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Render Song List
+            const songList = document.getElementById('admin-song-list');
+            songList.innerHTML = songs.map(song => `
+                <div class="admin-item">
+                    <div class="admin-item-info"><strong>${song.title}</strong><br><small>${song.albums.title}</small></div>
+                    <div class="admin-item-actions">
+                        <button class="btn-secondary" onclick="editSong('${song.id}', '${song.title}', '${song.album_id}', '${song.song_url}')">Editar</button>
+                        <button class="btn-danger" onclick="deleteSong('${song.id}')">Borrar</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Populate album select in song form
+            const albumSelect = document.getElementById('song-album-select');
+            albumSelect.innerHTML = `<option value="">-- Seleccionar Álbum --</option>` + albums.map(album => `<option value="${album.id}">${album.title}</option>`).join('');
+        }
+
+        function setupAdminForms() {
+            // Album form
+            const albumForm = document.getElementById('album-form');
+            albumForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('album-id').value;
+                const title = document.getElementById('album-title').value;
+                const artist = document.getElementById('album-artist').value;
+                const cover_url = document.getElementById('album-cover').value;
+                
+                showLoadingIndicator(true);
+                const { error } = id
+                    ? await supabase.from('albums').update({ title, artist, cover_url }).eq('id', id)
+                    : await supabase.from('albums').insert([{ title, artist, cover_url }]);
+                
+                showLoadingIndicator(false);
+                if (error) {
+                    showInfoModal('Error guardando álbum: ' + error.message);
+                } else {
+                    showInfoModal('Álbum guardado con éxito.');
+                    albumForm.reset();
+                    document.getElementById('album-id').value = '';
+                    document.getElementById('cancel-album-edit').style.display = 'none';
+                    await loadAllData();
+                    await renderAdminLists();
+                }
+            });
+            document.getElementById('cancel-album-edit').addEventListener('click', () => {
+                albumForm.reset();
+                document.getElementById('album-id').value = '';
+                document.getElementById('cancel-album-edit').style.display = 'none';
+            });
+
+            // Song form
+            const songForm = document.getElementById('song-form');
+            songForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('song-id').value;
+                const title = document.getElementById('song-title').value;
+                const album_id = document.getElementById('song-album-select').value;
+                const song_url = document.getElementById('song-url').value;
+
+                showLoadingIndicator(true);
+                const { error } = id
+                    ? await supabase.from('songs').update({ title, album_id, song_url }).eq('id', id)
+                    : await supabase.from('songs').insert([{ title, album_id, song_url }]);
+                
+                showLoadingIndicator(false);
+                if (error) {
+                    showInfoModal('Error guardando canción: ' + error.message);
+                } else {
+                    showInfoModal('Canción guardada con éxito.');
+                    songForm.reset();
+                    document.getElementById('song-id').value = '';
+                    document.getElementById('cancel-song-edit').style.display = 'none';
+                    await loadAllData();
+                    await renderAdminLists();
+                }
+            });
+            document.getElementById('cancel-song-edit').addEventListener('click', () => {
+                songForm.reset();
+                document.getElementById('song-id').value = '';
+                document.getElementById('cancel-song-edit').style.display = 'none';
+            });
+        }
+
+        window.editAlbum = (id, title, artist, cover_url) => {
+            document.getElementById('album-id').value = id;
+            document.getElementById('album-title').value = title;
+            document.getElementById('album-artist').value = artist;
+            document.getElementById('album-cover').value = cover_url;
+            document.getElementById('cancel-album-edit').style.display = 'inline-block';
+            document.getElementById('album-form').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.deleteAlbum = (id) => {
+            showConfirmationModal(
+                '¿Seguro que quieres borrar este álbum? Esto también borrará todas sus canciones.',
+                async () => {
+                    showLoadingIndicator(true);
+                    // First delete songs of the album
+                    const { error: songsError } = await supabase.from('songs').delete().eq('album_id', id);
+                    if (songsError) {
+                        showLoadingIndicator(false);
+                        showInfoModal('Error borrando las canciones del álbum: ' + songsError.message);
+                        return;
+                    }
+                    
+                    // Then delete the album
+                    const { error } = await supabase.from('albums').delete().eq('id', id);
+                    showLoadingIndicator(false);
+                    if (error) {
+                        showInfoModal('Error borrando álbum: ' + error.message);
+                    } else {
+                        showInfoModal('Álbum borrado con éxito.');
+                        await loadAllData();
+                        await renderAdminLists();
+                    }
+                }
+            );
+        };
+
+        window.editSong = (id, title, album_id, song_url) => {
+            document.getElementById('song-id').value = id;
+            document.getElementById('song-title').value = title;
+            document.getElementById('song-album-select').value = album_id;
+            document.getElementById('song-url').value = song_url;
+            document.getElementById('cancel-song-edit').style.display = 'inline-block';
+            document.getElementById('song-form').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.deleteSong = (id) => {
+            showConfirmationModal(
+                '¿Seguro que quieres borrar esta canción?',
+                async () => {
+                    showLoadingIndicator(true);
+                    const { error } = await supabase.from('songs').delete().eq('id', id);
+                    showLoadingIndicator(false);
+                    if (error) {
+                        showInfoModal('Error borrando canción: ' + error.message);
+                    } else {
+                        showInfoModal('Canción borrada con éxito.');
+                        await loadAllData();
+                        await renderAdminLists();
+                    }
+                }
+            );
+        };
+
+
+        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 KLMZ MUSIC iniciando...');
             const audio = document.getElementById('audio-player');
@@ -946,7 +1256,7 @@
                 loadSupabase();
             }).catch(err => {
                 console.error("❌ Error fatal de DB:", err);
-                alert("La aplicación no puede funcionar sin la base de datos local.");
+                showInfoModal("La aplicación no puede funcionar sin la base de datos local.");
             });
             
             console.log('✅ KLMZ MUSIC inicializado.');
