@@ -286,7 +286,7 @@
       return adminEmails.includes(user.email.toLowerCase());
     }
 
-    // Cliente Appwrite extendido (TODAS LAS CORRECCIONES APLICADAS)
+    // Cliente Appwrite extendido (CON CORRECCIÓN PARA RESPUESTAS VACÍAS)
     class SimpleAppwriteClient {
       constructor(endpoint, projectId) {
         this.endpoint = endpoint;
@@ -297,6 +297,7 @@
         };
       }
 
+      // FUNCIÓN CORREGIDA - MANEJA RESPUESTAS VACÍAS DE DELETE
       async request(method, path, params = {}) {
         let url = `${this.endpoint}${path}`;
         const options = {
@@ -313,7 +314,41 @@
         }
 
         const response = await fetch(url, options);
-        const data = await response.json();
+
+        // CORRECCIÓN: Manejar respuestas vacías (común en DELETE)
+        if (response.status === 204 || response.headers.get('content-length') === '0') {
+          // Respuesta exitosa sin contenido (típica en DELETE)
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return { success: true, status: response.status };
+        }
+
+        // Verificar si hay contenido antes de parsear JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return { success: true, status: response.status };
+        }
+
+        // Verificar que la respuesta no esté vacía
+        const text = await response.text();
+        if (!text.trim()) {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: Empty response`);
+          }
+          return { success: true, status: response.status };
+        }
+
+        // Parsear JSON solo si hay contenido
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          throw new Error(`Invalid JSON response: ${error.message}`);
+        }
 
         if (!response.ok) {
           throw new Error(data.message || `HTTP ${response.status}`);
@@ -668,7 +703,6 @@
       setStatus('Cargando álbumes...');
       
       try {
-        // LLAMADA CORREGIDA - SIN PARÁMETROS PROBLEMÁTICOS
         const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
         currentAlbums = response.documents;
         
@@ -765,6 +799,7 @@
       $(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
     }
 
+    // FUNCIÓN CORREGIDA - MANEJA RESPUESTAS VACÍAS DE DELETE
     async function deleteAlbum(albumId, albumName) {
       if (!isAdmin) return;
       
@@ -773,11 +808,14 @@
       setStatus('Eliminando álbum...');
 
       try {
-        await client.deleteDocument(CONFIG.databaseId, CONFIG.albumsCollectionId, albumId);
-        setStatus(`👑 Álbum "${albumName}" eliminado`, 'admin');
+        const result = await client.deleteDocument(CONFIG.databaseId, CONFIG.albumsCollectionId, albumId);
+        
+        // La eliminación fue exitosa (respuesta vacía es normal en DELETE)
+        setStatus(`👑 Álbum "${albumName}" eliminado exitosamente`, 'admin');
         setTimeout(loadAlbums, 500);
+        
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error eliminando álbum:', error);
         setStatus(`❌ Error eliminando álbum: ${error.message}`, 'error');
       }
     }
@@ -786,7 +824,6 @@
       if (!isAdmin) return;
 
       try {
-        // LLAMADAS CORREGIDAS - SIN PARÁMETROS PROBLEMÁTICOS
         const albums = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
         const songs = await client.listDocuments(CONFIG.databaseId, CONFIG.songsCollectionId);
         const files = await client.listFiles(CONFIG.bucketId);
