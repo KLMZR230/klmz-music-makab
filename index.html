@@ -5,35 +5,40 @@
   <title>KLMZ MUSIC</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   
-  <!-- SDK con múltiples fallbacks -->
-  <script src="https://unpkg.com/appwrite@15.0.0/dist/appwrite.umd.js"></script>
-  
   <style>
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding:2rem}
   header{background:#121212;padding:1rem;display:flex;align-items:center;justify-content:space-between;border-radius:12px;margin-bottom:2rem}
   .logo{font-weight:700;font-size:1.4rem;color:#1DB954}
-  .lock-icon{cursor:pointer;font-size:1.4rem;padding:0.5rem;border-radius:8px;background:#333}
-  .section-title{font-size:1.8rem;font-weight:700;margin:1.5rem 0}
-  .status{padding:1.5rem;border-radius:12px;font-family:monospace;font-size:1rem;margin:2rem 0;border-left:4px solid #1DB954}
-  .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
+  .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
   .status.success{background:#1a2e1a;color:#51cf66;border-left-color:#51cf66}
+  .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
   .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
   .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2rem;margin-top:2rem}
-  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px;transition:transform 0.3s}
-  .album-card:hover{transform:scale(1.05)}
+  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px}
+  .test-buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
+  .btn{padding:0.75rem 1.5rem;background:#1DB954;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem}
+  .btn:hover{background:#1ed760}
+  .btn.secondary{background:#333;color:#fff}
   </style>
 </head>
 
 <body>
   <header>
     <span class="logo">🎵 KLMZ MUSIC</span>
-    <div class="lock-icon">🔒</div>
+    <div>🔒</div>
   </header>
 
   <main>
-    <h1 class="section-title">Álbumes</h1>
-    <div id="status" class="status info">⏳ Inicializando...</div>
+    <h1>Álbumes</h1>
+    <div id="status" class="status info">🔄 Inicializando conexión directa...</div>
+    
+    <div class="test-buttons">
+      <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
+      <button class="btn secondary" onclick="addTestAlbum()">➕ Agregar Álbum de Prueba</button>
+      <button class="btn secondary" onclick="loadAlbums()">📀 Cargar Álbumes</button>
+    </div>
+    
     <div id="albums" class="album-grid"></div>
   </main>
 
@@ -56,67 +61,87 @@
       $('status').className = `status ${type}`;
     }
 
-    // Función principal
-    async function startApp() {
-      setStatus('Verificando SDK...');
-      
-      // Verificación simple y directa
-      if (typeof Appwrite === 'undefined') {
-        setStatus('SDK no disponible - Reintentando con CDN alternativo...', 'error');
-        
-        // Cargar SDK alternativo
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/appwrite@15.0.0/dist/appwrite.umd.js';
-        script.onload = () => {
-          setTimeout(startApp, 500);
+    // Cliente Appwrite básico sin SDK
+    class SimpleAppwriteClient {
+      constructor(endpoint, projectId) {
+        this.endpoint = endpoint;
+        this.projectId = projectId;
+        this.headers = {
+          'X-Appwrite-Project': projectId,
+          'Content-Type': 'application/json'
         };
-        script.onerror = () => {
-          setStatus('Error: No se pudo cargar el SDK. Verifica tu conexión a internet.', 'error');
-        };
-        document.head.appendChild(script);
-        return;
       }
 
-      setStatus('SDK cargado - Configurando cliente...');
+      async request(method, path, params = {}) {
+        const url = `${this.endpoint}${path}`;
+        const options = {
+          method,
+          headers: { ...this.headers }
+        };
 
-      try {
-        // Configurar Appwrite
-        const { Client, Databases, Account } = Appwrite;
-        
-        const client = new Client()
-          .setEndpoint(CONFIG.endpoint)
-          .setProject(CONFIG.projectId);
-        
-        const databases = new Databases(client);
-        const account = new Account(client);
-
-        setStatus('Probando conexión con Appwrite...');
-
-        // Test de conexión
-        try {
-          await account.get();
-          setStatus('✅ Conectado con sesión activa', 'success');
-        } catch (error) {
-          if (error.code === 401) {
-            setStatus('✅ Conectado como visitante - CORS funcionando', 'success');
-          } else {
-            throw error;
-          }
+        if (method === 'GET' && Object.keys(params).length > 0) {
+          const queryString = new URLSearchParams(params).toString();
+          url = `${url}?${queryString}`;
+        } else if (method !== 'GET') {
+          options.body = JSON.stringify(params);
         }
 
-        // Cargar datos
-        setStatus('Cargando álbumes...');
-        
-        const response = await databases.listDocuments(
-          CONFIG.databaseId, 
-          CONFIG.albumsCollectionId
-        );
+        const response = await fetch(url, options);
+        const data = await response.json();
 
+        if (!response.ok) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        return data;
+      }
+
+      async getAccount() {
+        return this.request('GET', '/account');
+      }
+
+      async listDocuments(databaseId, collectionId) {
+        return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`);
+      }
+
+      async createDocument(databaseId, collectionId, documentId, data) {
+        return this.request('POST', `/databases/${databaseId}/collections/${collectionId}/documents`, {
+          documentId,
+          data
+        });
+      }
+    }
+
+    // Cliente inicializado
+    const client = new SimpleAppwriteClient(CONFIG.endpoint, CONFIG.projectId);
+
+    // Funciones de prueba
+    async function testConnection() {
+      setStatus('Probando conexión...');
+      
+      try {
+        await client.getAccount();
+        setStatus('✅ Conectado con sesión activa', 'success');
+      } catch (error) {
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          setStatus('✅ Conectado como visitante - CORS OK', 'success');
+        } else {
+          setStatus(`❌ Error: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function loadAlbums() {
+      setStatus('Cargando álbumes...');
+      
+      try {
+        const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        
         if (response.documents.length === 0) {
           $('albums').innerHTML = `
             <div style="text-align:center;padding:3rem;color:#666;grid-column:1/-1">
-              <h2>🎵 Todo listo</h2>
-              <p>La conexión funciona correctamente.<br>Agrega álbumes desde el panel admin.</p>
+              <h2>🎵 Conexión exitosa</h2>
+              <p>No hay álbumes en la base de datos.<br>Usa el botón "Agregar Álbum de Prueba".</p>
             </div>
           `;
           setStatus('✅ Conexión exitosa - Base de datos vacía', 'success');
@@ -124,18 +149,35 @@
           displayAlbums(response.documents);
           setStatus(`✅ ${response.documents.length} álbum(es) cargados`, 'success');
         }
-
+        
       } catch (error) {
         console.error('Error:', error);
-        let errorMsg = error.message || 'Error desconocido';
+        setStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function addTestAlbum() {
+      setStatus('Agregando álbum de prueba...');
+      
+      try {
+        const albumData = {
+          name: 'Álbum de Prueba',
+          artistName: 'Artista Demo',
+          coverStorageId: 'test-cover-id'
+        };
+
+        await client.createDocument(
+          CONFIG.databaseId,
+          CONFIG.albumsCollectionId,
+          'test-album-' + Date.now(),
+          albumData
+        );
+
+        setStatus('✅ Álbum de prueba agregado', 'success');
+        setTimeout(loadAlbums, 1000);
         
-        if (error.code === 401) {
-          errorMsg = 'Sin permisos. Configura permisos públicos de lectura.';
-        } else if (error.code === 404) {
-          errorMsg = 'Base de datos no encontrada. Verifica los IDs.';
-        }
-        
-        setStatus(`❌ ${errorMsg}`, 'error');
+      } catch (error) {
+        setStatus(`❌ Error agregando álbum: ${error.message}`, 'error');
       }
     }
 
@@ -149,12 +191,10 @@
       `).join('');
     }
 
-    // Iniciar cuando la página esté lista
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', startApp);
-    } else {
-      startApp();
-    }
+    // Auto-test al cargar
+    document.addEventListener('DOMContentLoaded', () => {
+      testConnection();
+    });
   </script>
 </body>
 </html>
