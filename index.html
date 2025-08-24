@@ -286,7 +286,7 @@
       return adminEmails.includes(user.email.toLowerCase());
     }
 
-    // Cliente Appwrite extendido (CON CORRECCIÓN DE QUERIES)
+    // Cliente Appwrite extendido (CON CORRECCIÓN DE QUERIES Y PERMISOS)
     class SimpleAppwriteClient {
       constructor(endpoint, projectId) {
         this.endpoint = endpoint;
@@ -351,11 +351,19 @@
         return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`);
       }
 
-      async createDocument(databaseId, collectionId, documentId, data) {
-        return this.request('POST', `/databases/${databaseId}/collections/${collectionId}/documents`, {
+      // FUNCIÓN CORREGIDA - CON SOPORTE PARA PERMISOS
+      async createDocument(databaseId, collectionId, documentId, data, permissions = []) {
+        const payload = {
           documentId,
           data
-        });
+        };
+        
+        // Solo agregar permisos si se proporcionan
+        if (permissions && permissions.length > 0) {
+          payload.permissions = permissions;
+        }
+        
+        return this.request('POST', `/databases/${databaseId}/collections/${collectionId}/documents`, payload);
       }
 
       async deleteDocument(databaseId, collectionId, documentId) {
@@ -437,7 +445,7 @@
       setStatus(`✅ Portada seleccionada: ${file.name}`, 'success');
     }
 
-    // Crear álbum con portada (SIN descripción)
+    // Crear álbum con portada (CON PERMISOS DE PROPIETARIO)
     async function createAlbumWithCover(event) {
       event.preventDefault();
       
@@ -464,7 +472,7 @@
         const coverId = 'cover-' + Date.now();
         const coverFile = await client.createFile(CONFIG.bucketId, coverId, selectedCoverFile);
         
-        // 2. Crear el álbum con la ID de la portada (SIN description)
+        // 2. Crear el álbum con permisos de propietario
         setStatus('💽 Creando álbum en la base de datos...', 'admin');
         const albumData = {
           name,
@@ -472,11 +480,19 @@
           coverStorageId: coverFile.$id
         };
 
+        // AGREGAR PERMISOS DE PROPIETARIO
+        const permissions = [
+          `read("role:all")`,                    // Todos pueden ver
+          `write("user:${currentUser.$id}")`,    // Solo tú puedes editar
+          `delete("user:${currentUser.$id}")`    // Solo tú puedes eliminar
+        ];
+
         await client.createDocument(
           CONFIG.databaseId,
           CONFIG.albumsCollectionId,
           'album-' + Date.now(),
-          albumData
+          albumData,
+          permissions  // PERMISOS INCLUIDOS
         );
 
         setStatus(`👑 ¡Álbum "${name}" creado exitosamente!`, 'admin');
@@ -699,11 +715,19 @@
           coverStorageId: 'test-cover-' + Date.now()
         };
 
+        // AGREGAR PERMISOS TAMBIÉN PARA ÁLBUMES DE PRUEBA
+        const permissions = [
+          `read("role:all")`,
+          `write("user:${currentUser.$id}")`,
+          `delete("user:${currentUser.$id}")`
+        ];
+
         await client.createDocument(
           CONFIG.databaseId,
           CONFIG.albumsCollectionId,
           'album-' + Date.now(),
-          albumData
+          albumData,
+          permissions
         );
 
         if (isAdmin) {
