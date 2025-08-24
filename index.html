@@ -286,7 +286,7 @@
       return adminEmails.includes(user.email.toLowerCase());
     }
 
-    // Cliente Appwrite extendido
+    // Cliente Appwrite extendido (CON CORRECCIÓN DE QUERIES)
     class SimpleAppwriteClient {
       constructor(endpoint, projectId) {
         this.endpoint = endpoint;
@@ -346,8 +346,9 @@
         return this.request('DELETE', '/account/sessions/current');
       }
 
-      async listDocuments(databaseId, collectionId, queries = []) {
-        return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`, { queries });
+      // FUNCIÓN CORREGIDA - SIN PARÁMETRO QUERIES PROBLEMÁTICO
+      async listDocuments(databaseId, collectionId) {
+        return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`);
       }
 
       async createDocument(databaseId, collectionId, documentId, data) {
@@ -651,6 +652,7 @@
       setStatus('Cargando álbumes...');
       
       try {
+        // LLAMADA CORREGIDA - SIN PARÁMETROS PROBLEMÁTICOS
         const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
         currentAlbums = response.documents;
         
@@ -760,6 +762,7 @@
       if (!isAdmin) return;
 
       try {
+        // LLAMADAS CORREGIDAS - SIN PARÁMETROS PROBLEMÁTICOS
         const albums = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
         const songs = await client.listDocuments(CONFIG.databaseId, CONFIG.songsCollectionId);
         const files = await client.listFiles(CONFIG.bucketId);
