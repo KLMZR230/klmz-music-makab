@@ -4,85 +4,221 @@
   <meta charset="utf-8" />
   <title>KLMZ MUSIC</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-
-  <!-- SDK Appwrite (debe ir antes de tu código) -->
+  
+  <!-- SDK Appwrite -->
   <script src="https://cdn.jsdelivr.net/npm/appwrite@13/dist/appwrite.umd.js"></script>
-
+  
   <style>
-  /* —— estilos básicos —— */
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding-bottom:84px}
-  header{background:#121212;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-  .logo{font-weight:700;font-size:1.4rem}
-  .lock-icon{font-size:1.4rem;cursor:pointer}
-  .section-title{font-size:1.8rem;font-weight:700;margin:1.5rem 0}
-  .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1.5rem}
-  .album-card{text-align:center;cursor:pointer}
-  .album-img{border-radius:50%;width:100px;height:100px;object-fit:cover;margin-bottom:.7rem;background:#333}
-  .loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);color:#fff;padding:1.5rem 2.5rem;border-radius:12px;border:2px solid #1DB954}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding-bottom:2rem}
+  header{background:#121212;padding:1rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid #333}
+  .logo{font-weight:700;font-size:1.4rem;color:#1DB954}
+  .lock-icon{cursor:pointer;font-size:1.4rem;padding:0.5rem;border-radius:8px;transition:background 0.2s}
+  .lock-icon:hover{background:#333}
+  main{padding:1rem;max-width:1200px;margin:0 auto}
+  .section-title{font-size:1.8rem;font-weight:700;margin:1.5rem 0;color:#fff}
+  .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1.5rem;margin-top:2rem}
+  .album-card{text-align:center;cursor:pointer;padding:1.5rem;border-radius:12px;background:#282828;transition:all 0.3s ease;border:1px solid transparent}
+  .album-card:hover{transform:translateY(-4px);background:#333;border-color:#1DB954;box-shadow:0 8px 25px rgba(29,185,84,0.3)}
+  .album-img{width:140px;height:140px;border-radius:8px;object-fit:cover;margin-bottom:1rem;background:#444;border:2px solid #555}
+  .album-title{font-weight:600;margin-bottom:0.5rem;font-size:1rem;color:#fff}
+  .album-artist{color:#b3b3b3;font-size:0.9rem}
+  .loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.95);color:#fff;padding:2rem 3rem;border-radius:12px;border:2px solid #1DB954;font-size:1.1rem;z-index:1000}
+  .status{margin:2rem 0;padding:1.5rem;border-radius:12px;font-family:monospace;font-size:0.95rem;border-left:4px solid #1DB954}
+  .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
+  .status.success{background:#1a2e1a;color:#51cf66;border-left-color:#51cf66}
+  .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
+  .empty-state{text-align:center;padding:4rem 2rem;color:#666}
+  .empty-state h2{color:#999;margin-bottom:1rem}
   </style>
 </head>
 
 <body>
   <header>
-    <span class="logo">KLMZ MUSIC</span>
-    <div id="header-lock-icon" class="lock-icon">🔒</div>
+    <span class="logo">🎵 KLMZ MUSIC</span>
+    <div class="lock-icon" id="lockIcon">🔒</div>
   </header>
 
   <main>
-    <h2 class="section-title">Álbumes</h2>
-    <div id="albums" class="album-grid">Cargando…</div>
+    <h1 class="section-title">Álbumes</h1>
+    
+    <div id="status" class="status info">
+      🔄 Inicializando conexión con Appwrite...
+    </div>
+    
+    <div id="albums" class="album-grid"></div>
   </main>
 
-  <div id="loader" class="loading" hidden>Cargando…</div>
-  <audio id="audio"></audio>
+  <div id="loading" class="loading" hidden>
+    <div>🎵 Cargando...</div>
+  </div>
 
-  <!-- —— Lógica JS —— -->
   <script>
-    /* ==== utilidades DOM ==== */
-    const $    = id => document.getElementById(id);
+    // 🔧 CONFIGURACIÓN KLMZ MUSIC
+    const CONFIG = {
+      endpoint: 'https://nyc.cloud.appwrite.io/v1',
+      projectId: '68ab0cf2000365979a71',
+      databaseId: '68ab0d9b00124af501a5',
+      albumsCollectionId: '68ab0dd00024ddeb51fd',
+      songsCollectionId: '68ab0f0e002d9f334b0d',
+      bucketId: '68ab1101001cff947e6b'
+    };
+
+    // 🛠️ Utilidades
+    const $ = id => document.getElementById(id);
     const show = el => el.hidden = false;
     const hide = el => el.hidden = true;
 
-    /* ==== configuración Appwrite ==== */
-    const { Client, Databases, Account, Storage } = Appwrite;
-
-    const client = new Client()
-      .setEndpoint('https://nyc.cloud.appwrite.io/v1')     // endpoint del proyecto
-      .setProject('68aa8307001f723f5518');                 // Project-ID
-
-    const account = new Account(client);
-    const db      = new Databases(client);
-    const bucket  = new Storage(client);
-
-    const DB_ID   = '68aa8566002832b4c093';
-    const COL_ALB = '68aa85730036dd283cc9';
-    const BUCKET  = '68aa8cc5003a2c336a1f';
-
-    /* ==== carga de álbumes ==== */
-    async function loadAlbums () {
-      show($('loader'));
-      try {
-        const { documents } = await db.listDocuments(DB_ID, COL_ALB);
-        $('albums').innerHTML = documents.map(a => `
-          <div class="album-card">
-            <img class="album-img" src="\${bucket.getFilePreview(BUCKET, a.coverStorageId)}" alt="\${a.name}">
-            <div>\${a.name}</div>
-          </div>`).join('');
-      } catch {
-        $('albums').textContent = 'Error al cargar álbumes';
-      }
-      hide($('loader'));
+    function setStatus(message, type = 'info') {
+      const status = $('status');
+      const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : '🔄';
+      status.innerHTML = `${emoji} ${message}`;
+      status.className = `status ${type}`;
     }
 
-    /* ==== inicio ==== */
-    document.addEventListener('DOMContentLoaded', () => {
-      // comprobación rápida de CORS: debe devolver 401 sin bloqueo
-      account.get()
-        .then(u => console.log('Sesión activa de', u.email))
-        .catch(() => console.log('Visitante sin sesión — CORS OK'));
-
-      loadAlbums();
+    // 🚀 Inicialización
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('🎵 KLMZ MUSIC iniciando...');
+      
+      // Verificar SDK
+      if (typeof Appwrite === 'undefined') {
+        setStatus('Error: SDK de Appwrite no se pudo cargar desde el CDN', 'error');
+        return;
+      }
+      
+      console.log('✅ SDK de Appwrite cargado correctamente');
+      
+      // Configurar cliente Appwrite
+      const { Client, Databases, Storage, Account } = Appwrite;
+      
+      const client = new Client()
+        .setEndpoint(CONFIG.endpoint)
+        .setProject(CONFIG.projectId);
+      
+      const databases = new Databases(client);
+      const storage = new Storage(client);
+      const account = new Account(client);
+      
+      // Probar conexión con Appwrite
+      setStatus('Verificando conexión con Appwrite...');
+      
+      try {
+        await account.get();
+        setStatus('Conectado con sesión de usuario activa', 'success');
+        $('lockIcon').textContent = '👤';
+      } catch (error) {
+        if (error.code === 401) {
+          setStatus('Conectado como visitante (CORS configurado correctamente)', 'success');
+          console.log('✅ CORS funcionando - visitante sin sesión');
+        } else {
+          setStatus(`Error de conexión: ${error.message}`, 'error');
+          console.error('❌ Error de conexión:', error);
+          return;
+        }
+      }
+      
+      // Cargar álbumes
+      await loadAlbums();
+      
+      // 📀 Función para cargar álbumes
+      async function loadAlbums() {
+        setStatus('Cargando álbumes desde la base de datos...');
+        show($('loading'));
+        
+        try {
+          console.log('📡 Consultando colección de álbumes...');
+          
+          const response = await databases.listDocuments(
+            CONFIG.databaseId, 
+            CONFIG.albumsCollectionId
+          );
+          
+          console.log(`📀 Respuesta obtenida: ${response.documents.length} álbum(es)`);
+          
+          if (response.documents.length === 0) {
+            $('albums').innerHTML = `
+              <div class="empty-state">
+                <h2>🎵 No hay álbumes disponibles</h2>
+                <p>Agrega algunos álbumes desde el panel de administración</p>
+              </div>
+            `;
+            setStatus('Base de datos lista pero sin álbumes todavía', 'info');
+          } else {
+            displayAlbums(response.documents);
+            setStatus(`${response.documents.length} álbum(es) cargado(s) correctamente`, 'success');
+          }
+          
+        } catch (error) {
+          console.error('❌ Error cargando álbumes:', error);
+          
+          if (error.code === 404) {
+            setStatus('Collection de álbumes no encontrada - verifica los IDs', 'error');
+          } else if (error.code === 401) {
+            setStatus('Sin permisos para leer álbumes - configura permisos públicos', 'error');
+          } else {
+            setStatus(`Error cargando álbumes: ${error.message}`, 'error');
+          }
+          
+          $('albums').innerHTML = `
+            <div class="empty-state">
+              <h2>❌ Error al cargar álbumes</h2>
+              <p>Revisa la configuración de Appwrite y los permisos</p>
+            </div>
+          `;
+        }
+        
+        hide($('loading'));
+      }
+      
+      // 🎨 Mostrar álbumes en la interfaz
+      function displayAlbums(albums) {
+        console.log('🎨 Renderizando álbumes en la interfaz...');
+        
+        $('albums').innerHTML = albums.map(album => {
+          try {
+            const coverUrl = storage.getFilePreview(
+              CONFIG.bucketId, 
+              album.coverStorageId, 
+              300, 300,
+              'center', 85
+            );
+            
+            return `
+              <div class="album-card" onclick="selectAlbum('${album.$id}', '${album.name}')">
+                <img class="album-img" 
+                     src="${coverUrl}" 
+                     alt="Portada de ${album.name}" 
+                     loading="lazy"
+                     onerror="this.style.background='#444'; this.src='data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"140\" height=\"140\" fill=\"%23666\"><text x=\"50%\" y=\"50%\" text-anchor=\"middle\" dy=\".3em\" font-size=\"40\">🎵</text></svg>'" />
+                <div class="album-title">${album.name}</div>
+                <div class="album-artist">${album.artistName}</div>
+              </div>
+            `;
+          } catch (error) {
+            console.warn('⚠️ Error procesando álbum:', album, error);
+            return '';
+          }
+        }).join('');
+        
+        console.log('✅ Álbumes renderizados correctamente');
+      }
+      
+      // 🎵 Función para seleccionar un álbum (placeholder)
+      window.selectAlbum = function(albumId, albumName) {
+        console.log(`🎵 Álbum seleccionado: ${albumName} (ID: ${albumId})`);
+        setStatus(`Álbum seleccionado: "${albumName}"`, 'info');
+        
+        // Aquí puedes agregar la lógica para:
+        // - Mostrar las canciones del álbum
+        // - Crear un reproductor
+        // - Navegar a una vista detallada
+      };
+      
+      // 🔐 Manejar clic en icono de login (placeholder)
+      $('lockIcon').addEventListener('click', () => {
+        console.log('🔐 Login/register clicked');
+        setStatus('Funcionalidad de login en desarrollo', 'info');
+      });
     });
   </script>
 </body>
