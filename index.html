@@ -54,6 +54,14 @@
   .form-group input, .form-group textarea{width:100%;padding:0.75rem;background:#333;border:1px solid #555;border-radius:8px;color:#fff;font-size:1rem;font-family:inherit}
   .form-group input:focus, .form-group textarea:focus{outline:none;border-color:#1DB954;box-shadow:0 0 0 2px rgba(29,185,84,0.2)}
   .form-group textarea{resize:vertical;min-height:100px}
+  
+  /* Subida de portada */
+  .cover-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:all 0.2s;cursor:pointer;position:relative;overflow:hidden}
+  .cover-upload:hover{border-color:#1DB954}
+  .cover-upload.has-image{border-color:#1DB954;background-size:cover;background-position:center;background-repeat:no-repeat}
+  .cover-upload-overlay{background:rgba(0,0,0,0.7);padding:1rem;border-radius:4px;position:relative;z-index:2}
+  .cover-preview{width:100px;height:100px;border-radius:8px;object-fit:cover;margin:0 auto 1rem;display:none}
+  
   .file-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:border-color 0.2s}
   .file-upload:hover{border-color:#1DB954}
   .file-upload.dragover{border-color:#1DB954;background:#1a2e1a}
@@ -102,41 +110,57 @@
     <!-- Panel de administración -->
     <div id="adminPanel" class="admin-panel">
       <div class="admin-tabs">
-        <button class="admin-tab active" onclick="switchAdminTab('albums')">📀 Gestión de Álbumes</button>
-        <button class="admin-tab" onclick="switchAdminTab('upload')">📤 Subir Contenido</button>
+        <button class="admin-tab active" onclick="switchAdminTab('albums')">📀 Crear Álbum</button>
+        <button class="admin-tab" onclick="switchAdminTab('upload')">📤 Subir Archivos</button>
         <button class="admin-tab" onclick="switchAdminTab('stats')">📊 Estadísticas</button>
         <button class="admin-tab" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
       </div>
       
-      <!-- Tab: Gestión de Álbumes -->
+      <!-- Tab: Crear Álbum -->
       <div id="adminTabAlbums" class="admin-content active">
-        <h3>🎵 Gestión de Álbumes</h3>
-        <form onsubmit="createAlbum(event)">
+        <h3>🎵 Crear Nuevo Álbum</h3>
+        <form id="albumForm" onsubmit="createAlbumWithCover(event)">
           <div class="form-row">
             <div class="form-group">
-              <label for="albumName">Nombre del Álbum:</label>
-              <input type="text" id="albumName" required>
+              <label for="albumName">Nombre del Álbum: *</label>
+              <input type="text" id="albumName" required placeholder="Ej: My Beautiful Dark Twisted Fantasy">
             </div>
             <div class="form-group">
-              <label for="artistName">Artista:</label>
-              <input type="text" id="artistName" required>
+              <label for="artistName">Artista: *</label>
+              <input type="text" id="artistName" required placeholder="Ej: Kanye West">
             </div>
           </div>
+          
+          <div class="form-group">
+            <label>Portada del Álbum: *</label>
+            <div id="coverUpload" class="cover-upload" onclick="$('coverInput').click()">
+              <div class="cover-upload-overlay">
+                <img id="coverPreview" class="cover-preview" alt="Preview">
+                <div id="coverUploadText">
+                  <p>📸 Haz clic para subir portada</p>
+                  <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
+                </div>
+              </div>
+            </div>
+            <input type="file" id="coverInput" accept=".jpg,.jpeg,.png" style="display:none" onchange="handleCoverUpload(event)">
+          </div>
+          
           <div class="form-group">
             <label for="albumDescription">Descripción (opcional):</label>
             <textarea id="albumDescription" placeholder="Descripción del álbum..."></textarea>
           </div>
-          <button type="submit" class="btn admin">➕ Crear Álbum</button>
+          
+          <button type="submit" class="btn admin" id="createAlbumBtn">➕ Crear Álbum Completo</button>
         </form>
       </div>
       
-      <!-- Tab: Subir Contenido -->
+      <!-- Tab: Subir Archivos -->
       <div id="adminTabUpload" class="admin-content">
-        <h3>📤 Subir Archivos</h3>
+        <h3>📤 Subir Archivos de Audio</h3>
         <div class="file-upload" id="fileUpload">
-          <p>📁 Arrastra archivos aquí o haz clic para seleccionar</p>
-          <p style="color:#999;font-size:0.9rem;">Soporta: MP3, WAV, FLAC, JPG, PNG</p>
-          <input type="file" id="fileInput" multiple accept=".mp3,.wav,.flac,.jpg,.jpeg,.png" style="display:none">
+          <p>🎵 Arrastra archivos de música aquí o haz clic para seleccionar</p>
+          <p style="color:#999;font-size:0.9rem;">Soporta: MP3, WAV, FLAC</p>
+          <input type="file" id="fileInput" multiple accept=".mp3,.wav,.flac" style="display:none">
         </div>
         <div id="uploadProgress" style="display:none;margin-top:1rem;">
           <div style="background:#333;border-radius:8px;overflow:hidden;">
@@ -246,6 +270,7 @@
     let currentUser = null;
     let isAdmin = false;
     let currentAlbums = [];
+    let selectedCoverFile = null;
 
     function setStatus(message, type = 'info') {
       const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'admin' ? '👑' : '🔄';
@@ -368,11 +393,124 @@
       async listFiles(bucketId) {
         return this.request('GET', `/storage/buckets/${bucketId}/files`);
       }
+
+      getFilePreview(bucketId, fileId, width = 300, height = 300) {
+        return `${this.endpoint}/storage/buckets/${bucketId}/files/${fileId}/preview?width=${width}&height=${height}&project=${this.projectId}`;
+      }
     }
 
     const client = new SimpleAppwriteClient(CONFIG.endpoint, CONFIG.projectId);
 
-    // Funciones de autenticación (existentes)
+    // Manejar subida de portada
+    function handleCoverUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Validar tamaño
+      if (file.size > 5 * 1024 * 1024) {
+        setStatus('❌ La imagen debe ser menor a 5MB', 'error');
+        return;
+      }
+
+      // Validar tipo
+      if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+        setStatus('❌ Solo se permiten imágenes JPG y PNG', 'error');
+        return;
+      }
+
+      selectedCoverFile = file;
+
+      // Mostrar preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const coverUpload = $('coverUpload');
+        const coverPreview = $('coverPreview');
+        const coverUploadText = $('coverUploadText');
+
+        coverPreview.src = e.target.result;
+        coverPreview.style.display = 'block';
+        coverUploadText.innerHTML = `
+          <p>✅ ${file.name}</p>
+          <p style="color:#1DB954;font-size:0.9rem;">Haz clic para cambiar</p>
+        `;
+        coverUpload.classList.add('has-image');
+        coverUpload.style.backgroundImage = `url(${e.target.result})`;
+      };
+      reader.readAsDataURL(file);
+
+      setStatus(`✅ Portada seleccionada: ${file.name}`, 'success');
+    }
+
+    // Crear álbum con portada
+    async function createAlbumWithCover(event) {
+      event.preventDefault();
+      
+      if (!isAdmin) {
+        setStatus('Solo los administradores pueden crear álbumes', 'error');
+        return;
+      }
+
+      const name = $('albumName').value;
+      const artist = $('artistName').value;
+      const description = $('albumDescription').value;
+
+      if (!selectedCoverFile) {
+        setStatus('❌ Debes subir una portada para el álbum', 'error');
+        return;
+      }
+
+      setStatus('👑 Creando álbum...', 'admin');
+      $('createAlbumBtn').disabled = true;
+      $('createAlbumBtn').textContent = 'Creando...';
+
+      try {
+        // 1. Subir la portada primero
+        setStatus('📸 Subiendo portada...', 'admin');
+        const coverId = 'cover-' + Date.now();
+        const coverFile = await client.createFile(CONFIG.bucketId, coverId, selectedCoverFile);
+        
+        // 2. Crear el álbum con la ID de la portada
+        setStatus('💽 Creando álbum en la base de datos...', 'admin');
+        const albumData = {
+          name,
+          artistName: artist,
+          coverStorageId: coverFile.$id,
+          description: description || ''
+        };
+
+        await client.createDocument(
+          CONFIG.databaseId,
+          CONFIG.albumsCollectionId,
+          'album-' + Date.now(),
+          albumData
+        );
+
+        setStatus(`👑 ¡Álbum "${name}" creado exitosamente con portada!`, 'admin');
+        
+        // Limpiar formulario
+        $('albumForm').reset();
+        selectedCoverFile = null;
+        $('coverPreview').style.display = 'none';
+        $('coverUpload').classList.remove('has-image');
+        $('coverUpload').style.backgroundImage = '';
+        $('coverUploadText').innerHTML = `
+          <p>📸 Haz clic para subir portada</p>
+          <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
+        `;
+        
+        // Recargar álbumes
+        setTimeout(loadAlbums, 1000);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus(`❌ Error creando álbum: ${error.message}`, 'error');
+      }
+
+      $('createAlbumBtn').disabled = false;
+      $('createAlbumBtn').textContent = '➕ Crear Álbum Completo';
+    }
+
+    // Funciones de autenticación (mantengo las existentes)
     function openAuthModal() {
       $('authModal').classList.add('show');
     }
@@ -527,7 +665,7 @@
           $('albums').innerHTML = `
             <div class="empty-state">
               <h2>🎵 Conexión exitosa</h2>
-              <p>No hay álbumes en la base de datos.<br>Usa el panel admin para agregar contenido.</p>
+              <p>No hay álbumes en la base de datos.<br>Usa el panel admin para crear álbumes con portadas.</p>
             </div>
           `;
           setStatus('✅ Conexión exitosa - Base de datos vacía', 'success');
@@ -601,58 +739,11 @@
     }
 
     function switchAdminTab(tabName) {
-      // Desactiva todas las tabs
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.admin-content').forEach(content => content.classList.remove('active'));
       
-      // Activa la tab seleccionada
       document.querySelector(`[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
       $(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
-    }
-
-    async function createAlbum(event) {
-      event.preventDefault();
-      
-      if (!isAdmin) {
-        setStatus('Solo los administradores pueden crear álbumes', 'error');
-        return;
-      }
-
-      const name = $('albumName').value;
-      const artist = $('artistName').value;
-      const description = $('albumDescription').value;
-
-      setStatus('Creando álbum...');
-
-      try {
-        const albumData = {
-          name,
-          artistName: artist,
-          coverStorageId: 'admin-album-' + Date.now(),
-          description: description || ''
-        };
-
-        await client.createDocument(
-          CONFIG.databaseId,
-          CONFIG.albumsCollectionId,
-          'admin-' + Date.now(),
-          albumData
-        );
-
-        setStatus(`👑 Álbum "${name}" creado exitosamente`, 'admin');
-        
-        // Limpiar formulario
-        $('albumName').value = '';
-        $('artistName').value = '';
-        $('albumDescription').value = '';
-        
-        // Recargar álbumes
-        setTimeout(loadAlbums, 500);
-        
-      } catch (error) {
-        console.error('Error:', error);
-        setStatus(`❌ Error creando álbum: ${error.message}`, 'error');
-      }
     }
 
     async function deleteAlbum(albumId, albumName) {
@@ -676,7 +767,6 @@
       if (!isAdmin) return;
 
       try {
-        // Obtener estadísticas
         const albums = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
         const songs = await client.listDocuments(CONFIG.databaseId, CONFIG.songsCollectionId);
         const files = await client.listFiles(CONFIG.bucketId);
@@ -699,15 +789,12 @@
       setStatus('👑 Probando todos los servicios...', 'admin');
       
       try {
-        // Test account
         await client.getAccount();
         console.log('✅ Account service OK');
         
-        // Test database
         await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
         console.log('✅ Database service OK');
         
-        // Test storage
         await client.listFiles(CONFIG.bucketId);
         console.log('✅ Storage service OK');
         
@@ -744,7 +831,7 @@
       }
     }
 
-    // Setup file upload
+    // Setup file upload para archivos de audio
     document.addEventListener('DOMContentLoaded', () => {
       const fileUpload = $('fileUpload');
       const fileInput = $('fileInput');
@@ -809,19 +896,33 @@
     }
 
     function displayAlbums(albums) {
-      $('albums').innerHTML = albums.map((album, index) => `
-        <div class="album-card">
-          ${isAdmin ? `
-            <div class="album-actions">
-              <button class="btn danger small" onclick="deleteAlbum('${album.$id}', '${album.name}')" title="Eliminar">🗑️</button>
+      $('albums').innerHTML = albums.map((album, index) => {
+        let coverUrl;
+        try {
+          coverUrl = client.getFilePreview(CONFIG.bucketId, album.coverStorageId);
+        } catch (error) {
+          coverUrl = '';
+        }
+
+        return `
+          <div class="album-card">
+            ${isAdmin ? `
+              <div class="album-actions">
+                <button class="btn danger small" onclick="deleteAlbum('${album.$id}', '${album.name}')" title="Eliminar">🗑️</button>
+              </div>
+            ` : ''}
+            <div style="width:140px;height:140px;border-radius:12px;margin:0 auto 1rem;overflow:hidden;">
+              ${coverUrl ? 
+                `<img src="${coverUrl}" alt="${album.name}" style="width:100%;height:100%;object-fit:cover;">` :
+                `<div style="width:100%;height:100%;background:linear-gradient(135deg, #1DB954, #1ed760);display:flex;align-items:center;justify-content:center;font-size:3rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>`
+              }
             </div>
-          ` : ''}
-          <div style="width:140px;height:140px;background:linear-gradient(135deg, #1DB954, #1ed760);border-radius:12px;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:3rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>
-          <h3 style="margin:0.5rem 0;font-size:1.1rem;">${album.name}</h3>
-          <p style="color:#999;margin:0;font-size:0.9rem;">${album.artistName}</p>
-          <p style="color:#666;font-size:0.8rem;margin-top:0.5rem;">ID: ${album.$id.slice(-8)}</p>
-        </div>
-      `).join('');
+            <h3 style="margin:0.5rem 0;font-size:1.1rem;">${album.name}</h3>
+            <p style="color:#999;margin:0;font-size:0.9rem;">${album.artistName}</p>
+            <p style="color:#666;font-size:0.8rem;margin-top:0.5rem;">ID: ${album.$id.slice(-8)}</p>
+          </div>
+        `;
+      }).join('');
     }
 
     // Auto-test al cargar
