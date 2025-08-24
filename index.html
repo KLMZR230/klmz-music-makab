@@ -6,10 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#1DB954" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable"  content="yes" />
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="styles.css" />
+  <!-- -------------  ESTILOS  ------------- -->
+  <style>
+  *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding-bottom:84px}
+  header{background:#121212;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .logo{font-weight:bold;font-size:1.4rem}
+  /* … (mismos estilos que ya tenías, sin recortes) … */
+  .loading-indicator{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);color:#fff;padding:1.5rem 2.5rem;border-radius:12px;border:2px solid #1DB954}
+  </style>
 
   <!-- SDK Appwrite -->
   <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1/dist/appwrite.umd.js"></script>
@@ -19,7 +25,7 @@
   <!-- Indicador de carga -->
   <div id="loading-indicator" class="loading-indicator" hidden>🎵 Cargando…</div>
 
-  <!-- Encabezado -->
+  <!-- ========= ENCABEZADO ========= -->
   <header>
     <span class="logo">KLMZ MUSIC</span>
 
@@ -57,7 +63,7 @@
     </div>
   </header>
 
-  <!-- Contenido principal -->
+  <!-- ========= CONTENIDO PRINCIPAL ========= -->
   <div class="app-container">
     <main>
       <!-- Inicio -->
@@ -93,12 +99,12 @@
     </main>
   </div>
 
-  <!-- Navegación inferior -->
+  <!-- Navegación -->
   <nav class="bottom-nav">
-    <div id="nav-home"      class="bottom-nav-item active" onclick="showSection('home')"     >⌂ Inicio      </div>
-    <div id="nav-search"    class="bottom-nav-item"        onclick="showSection('search')"   >⌕ Buscar      </div>
-    <div id="nav-downloads" class="bottom-nav-item"        onclick="showSection('downloads')">↓ Descargas   </div>
-    <div id="nav-favs"      class="bottom-nav-item"        onclick="showSection('favorites')">♡ Favoritos   </div>
+    <div id="nav-home"      class="bottom-nav-item active" onclick="showSection('home')">⌂ Inicio</div>
+    <div id="nav-search"    class="bottom-nav-item"        onclick="showSection('search')">⌕ Buscar</div>
+    <div id="nav-downloads" class="bottom-nav-item"        onclick="showSection('downloads')">↓ Descargas</div>
+    <div id="nav-favs"      class="bottom-nav-item"        onclick="showSection('favorites')">♡ Favoritos</div>
   </nav>
 
   <!-- Mini-player -->
@@ -112,8 +118,8 @@
   </div>
 
   <!-- Full-player -->
-  <div id="full-player" class="full-player-backdrop">
-    <button class="full-player-close" onclick="closeFullPlayer()">&times;</button>
+  <div id="full-player" class="full-player-backdrop" hidden>
+    <button class="full-player-close" onclick="this.parentElement.hidden=true">&times;</button>
     <img id="full-player-cover"  class="full-player-cover"  alt="cover" />
     <div id="full-player-title"  class="full-player-title" ></div>
     <div id="full-player-artist" class="full-player-artist"></div>
@@ -145,7 +151,7 @@
   </div>
 
   <!-- Modal de autenticación -->
-  <div id="auth-modal" class="modal">
+  <div id="auth-modal" class="modal" hidden>
     <div class="modal-content">
       <button class="close-modal" onclick="closeAuth()">&times;</button>
 
@@ -153,7 +159,7 @@
       <div id="login-form">
         <h2>Iniciar sesión</h2>
         <form onsubmit="login(event)">
-          <div class="form-group"><label>Email:</label>      <input id="login-email"    type="email"    required /></div>
+          <div class="form-group"><label>Email:</label><input id="login-email" type="email" required /></div>
           <div class="form-group"><label>Contraseña:</label><input id="login-password" type="password" required /></div>
           <button class="btn-primary" type="submit">Iniciar sesión</button>
         </form>
@@ -164,8 +170,8 @@
       <div id="register-form" hidden>
         <h2>Registrarse</h2>
         <form onsubmit="register(event)">
-          <div class="form-group"><label>Email:</label>             <input id="register-email"           type="email"    required /></div>
-          <div class="form-group"><label>Contraseña:</label>        <input id="register-password"        type="password" required /></div>
+          <div class="form-group"><label>Email:</label>   <input id="register-email" type="email" required /></div>
+          <div class="form-group"><label>Contraseña:</label><input id="register-password" type="password" required /></div>
           <div class="form-group"><label>Confirmar contraseña:</label><input id="register-confirm-password" type="password" required /></div>
           <button class="btn-primary" type="submit">Registrarse</button>
         </form>
@@ -178,12 +184,154 @@
   <audio id="audio-player" preload="metadata"></audio>
 
   <!-- Pie -->
-  <footer class="copyright">
-    © 2025 KLMZ MUSIC – Desarrollado por Freddy Granados
+  <footer style="position:fixed;bottom:0;left:0;width:100%;height:20px;background:#0a0a0a;color:#666;font-size:.7rem;text-align:center;padding:2px 0;border-top:1px solid #222">
+    © 2025 KLMZ MUSIC – Freddy Granados
   </footer>
 
-  <!-- JS principal -->
-  <script src="app.js"></script>
+  <!-- -------------  LÓGICA JS  ------------- -->
+  <script>
+  /* =========== CONFIGURACIÓN APPWRITE =========== */
+  const { Client, Account, Databases, Storage, ID, Query } = Appwrite;
+  const client  = new Client().setEndpoint("https://nyc.cloud.appwrite.io/v1").setProject("68aa8307001f723f5518");
+  const account = new Account(client);
+  const db      = new Databases(client);
+  const bucket  = new Storage(client);
+
+  const DB_ID="68aa8566002832b4c093", COL_ALB="68aa85730036dd283cc9", COL_SONG="68aa859a00308a612142", BUCKET="68aa8cc5003a2c336a1f", ADMIN="klmzr@gmail.com";
+
+  /* ============== ESTADO ============== */
+  let currentSong=null,currentAlbum=null,currentPlaylist=[],isPlaying=false,currentUser=null;
+
+  /* ============== UTILIDAD DOM ============== */
+  const $=id=>document.getElementById(id), show=el=>el.hidden=false, hide=el=>el.hidden=true;
+  const loading=s=>s?show($("loading-indicator")):hide($("loading-indicator"));
+
+  /* ============== TEMA ============== */
+  function changeTheme(t){document.body.className=t&&t!=="default"?`theme-${t}`:"";localStorage.setItem("klmz_theme",t)}
+  function loadTheme(){const t=localStorage.getItem("klmz_theme")||"default";$("theme-select").value=t;changeTheme(t)}
+
+  /* ============== AUTH UI ============== */
+  async function checkSession(){try{currentUser=await account.get()}catch{currentUser=null}updateAuthUI()}
+  function updateAuthUI(){
+    const ico=$("header-lock-icon");
+    if(currentUser){
+      show($("user-info-section"));$("user-email-display").textContent=currentUser.email;
+      hide($("login-menu-item"));hide($("register-menu-item"));show($("logout-menu-item"));
+      if(currentUser.email===ADMIN){ico.textContent="⚙️";show($("admin-menu-item"))}else{ico.textContent="👤";hide($("admin-menu-item"))}
+    }else{
+      ico.textContent="🔒";hide($("user-info-section"));hide($("admin-menu-item"));
+      show($("login-menu-item"));show($("register-menu-item"));hide($("logout-menu-item"));
+    }
+  }
+
+  /* ============== MENÚ USUARIO ============== */
+  function toggleUserMenu(){ $("user-dropdown").classList.toggle("show") }
+  window.addEventListener("click",e=>{ if(!document.querySelector(".user-menu")?.contains(e.target)) $("user-dropdown").classList.remove("show") })
+
+  /* ============== MODALES INFO ============== */
+  function modal(msg){
+    const m=document.createElement("div");
+    m.className="modal";m.innerHTML=`<div class="modal-content" style="text-align:center"><p style="margin-bottom:1.5rem">${msg}</p><button class="btn-primary" onclick="this.closest('.modal').remove()">OK</button></div>`;
+    document.body.appendChild(m);show(m);
+  }
+
+  /* ============== AUTH ============== */
+  function showAuth(type){hide($("user-dropdown"));$("login-form").hidden=type!=="login";$("register-form").hidden=type!=="register";show($("auth-modal"))}
+  function closeAuth(){hide($("auth-modal"))}
+  async function login(e){e.preventDefault();try{await account.createEmailSession($("login-email").value,$("login-password").value);await checkSession();modal("¡Bienvenido!");closeAuth()}catch(err){modal("Login: "+err.message)}}
+  async function register(e){e.preventDefault();if($("register-password").value!==$("register-confirm-password").value)return modal("Contraseñas distintas");
+    try{await account.create(ID.unique(),$("register-email").value,$("register-password").value);await account.createEmailSession($("register-email").value,$("register-password").value);await checkSession();modal("Registro exitoso");closeAuth()}catch(err){modal("Registro: "+err.message)}}
+  function confirmLogout(){modalConfirm("¿Cerrar sesión?",logout)}
+  function modalConfirm(msg,ok){
+    const m=document.createElement("div");m.className="modal";
+    m.innerHTML=`<div class="modal-content"><p>${msg}</p><div style="display:flex;gap:1rem;justify-content:center"><button class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button><button class="btn-danger" id="yes">Confirmar</button></div></div>`;
+    m.querySelector("#yes").onclick=()=>{ok();m.remove()};document.body.appendChild(m);show(m)
+  }
+  async function logout(){await account.deleteSession("current");currentUser=null;updateAuthUI();modal("Sesión cerrada")}
+
+  /* ============== SECCIONES ============== */
+  function showSection(sec){
+    document.querySelectorAll(".content-section").forEach(s=>s.classList.remove("active"));
+    $(`${sec}-section`).classList.add("active");
+    document.querySelectorAll(".bottom-nav-item").forEach(n=>n.classList.remove("active"));
+    const map={home:"home",search:"search",downloads:"downloads",favorites:"favs",admin:"admin"};$(`nav-${map[sec]}`).classList.add("active");
+    if(sec==="home") loadAlbums(); if(sec==="admin"&&currentUser?.email===ADMIN) renderAdmin();
+  }
+
+  /* ============== ÁLBUMES ============== */
+  async function loadAlbums(){
+    loading(true);
+    try{const {documents}=await db.listDocuments(DB_ID,COL_ALB);displayAlbums(documents)}catch{ $("albums").innerHTML="<h2>Error cargando álbumes</h2>" }
+    loading(false);
+  }
+  function displayAlbums(albs){
+    if(!albs.length){$("albums").innerHTML="<h2>No hay álbumes</h2>";return}
+    $("albums").innerHTML=albs.map(a=>`
+      <div class="album-card" onclick='showAlbum(${JSON.stringify(a).replace(/"/g,"&quot;")})'>
+        <img class="album-img" src="${bucket.getFilePreview(BUCKET,a.coverStorageId)}" alt="${a.name}" loading="lazy">
+        <div class="album-title">${a.name}</div><div class="album-artist">${a.artistName}</div>
+      </div>`).join("");
+  }
+  async function showAlbum(alb){
+    currentAlbum=alb;hide($("albums"));show($("album-detail"));
+    $("album-detail").innerHTML=`<button class="back-btn" onclick="showAlbums()">&larr; Volver</button>
+      <div style="text-align:center"><img class="album-img" src="${bucket.getFilePreview(BUCKET,alb.coverStorageId)}" style="width:200px;height:200px;margin:1rem auto"><h3>${alb.name}</h3><p>${alb.artistName}</p></div>
+      <div id="detail-song-list" class="song-list">Cargando canciones…</div>`;
+    try{
+      const {documents:songs}=await db.listDocuments(DB_ID,COL_SONG,[Query.equal("albumId",alb.$id)]);
+      currentPlaylist=songs;
+      $("detail-song-list").innerHTML=songs.length?"<ul>"+songs.map((s,i)=>`<li><span onclick="playFrom(${i})">${s.title}</span>▶</li>`).join("")+"</ul>":"No hay canciones.";
+    }catch{ $("detail-song-list").textContent="Error canciones"; }
+  }
+  function showAlbums(){show($("albums"));hide($("album-detail"))}
+
+  /* ============== REPRODUCTOR ============== */
+  function playFrom(i){playSong(currentPlaylist[i])}
+  function playSong(song){
+    currentSong=song;
+    const audio=$("audio-player");audio.src=bucket.getFileDownload(BUCKET,song.storageId);audio.play().catch(console.error);
+    $("mini-player-title").textContent=song.title;$("mini-player-artist").textContent=currentAlbum.artistName;
+    $("mini-player-img").src=bucket.getFilePreview(BUCKET,currentAlbum.coverStorageId);
+    show($("mini-player"));updateButtons();
+  }
+  $("audio-player").addEventListener("play",()=>{isPlaying=true;updateButtons()});
+  $("audio-player").addEventListener("pause",()=>{isPlaying=false;updateButtons()});
+  function togglePlay(){const a=$("audio-player");if(!a.src)return;isPlaying?a.pause():a.play()}
+  function updateButtons(){const c=isPlaying?"⏸":"▶";$("mini-play-btn").textContent=c;$("full-play-btn").textContent=c}
+
+  /* ============== ADMIN ============== */
+  async function renderAdmin(){
+    $("admin-content").innerHTML=`<h4>Nuevo Álbum</h4>
+      <form id="form-alb"><input id="alb-name" placeholder="Nombre" required><input id="alb-artist" placeholder="Artista" required><input id="alb-cover" type="file" accept="image/*" required><button>Guardar</button></form>
+      <h4>Nueva Canción</h4>
+      <form id="form-song"><input id="song-title" placeholder="Título" required><input id="song-artist" placeholder="Artista" required><select id="song-album" required></select><input id="song-file" type="file" accept="audio/*" required><button>Guardar</button></form>`;
+    // llenar álbumes en select
+    try{
+      const {documents}=await db.listDocuments(DB_ID,COL_ALB);
+      $("song-album").innerHTML='<option value="">-- Álbum --</option>'+documents.map(d=>`<option value="${d.$id}">${d.name}</option>`).join("");
+    }catch{ $("song-album").innerHTML="<option>Error</option>" }
+    $("form-alb").onsubmit=async e=>{
+      e.preventDefault();loading(true);
+      try{
+        const up=await bucket.createFile(BUCKET,ID.unique(),$("alb-cover").files[0]);
+        await db.createDocument(DB_ID,COL_ALB,ID.unique(),{name:$("alb-name").value,artistName:$("alb-artist").value,coverStorageId:up.$id});
+        modal("Álbum guardado");loadAlbums();renderAdmin();
+      }catch(err){modal("Álbum: "+err.message)}loading(false);
+    };
+    $("form-song").onsubmit=async e=>{
+      e.preventDefault();loading(true);
+      try{
+        const up=await bucket.createFile(BUCKET,ID.unique(),$("song-file").files[0]);
+        await db.createDocument(DB_ID,COL_SONG,ID.unique(),{title:$("song-title").value,artist:$("song-artist").value,albumId:$("song-album").value,storageId:up.$id});
+        modal("Canción guardada");
+      }catch(err){modal("Canción: "+err.message)}loading(false);
+    };
+  }
+
+  /* ============== INICIO ============== */
+  document.addEventListener("DOMContentLoaded",async()=>{
+    loadTheme();await checkSession();loadAlbums();
+  });
+  </script>
 </body>
 </html>
-
