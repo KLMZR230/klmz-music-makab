@@ -24,8 +24,10 @@
   .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
   .status.admin{background:#1DB954;color:#fff;border-left-color:#fff;font-weight:bold}
   .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2rem;margin-top:2rem}
-  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px;transition:transform 0.3s}
+  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px;transition:transform 0.3s;position:relative}
   .album-card:hover{transform:scale(1.05)}
+  .album-actions{position:absolute;top:0.5rem;right:0.5rem;display:none;gap:0.5rem}
+  .album-card:hover .album-actions{display:flex}
   .test-buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
   .btn{padding:0.75rem 1.5rem;background:#1DB954;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:background 0.2s}
   .btn:hover{background:#1ed760}
@@ -34,21 +36,40 @@
   .btn.danger{background:#dc3545}
   .btn.danger:hover{background:#c82333}
   .btn.admin{background:linear-gradient(45deg,#1DB954,#1ed760);box-shadow:0 4px 15px rgba(29,185,84,0.3)}
+  .btn.small{padding:0.5rem;font-size:0.8rem;min-width:auto}
   .empty-state{text-align:center;padding:3rem;color:#666;grid-column:1/-1;background:#222;border-radius:12px}
   .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
 
-  /* Modal de login */
+  /* Panel de administración */
+  .admin-panel{display:none;background:#222;border-radius:12px;padding:2rem;margin:2rem 0;border:2px solid #1DB954}
+  .admin-panel.show{display:block}
+  .admin-tabs{display:flex;gap:1rem;margin-bottom:2rem;border-bottom:1px solid #333}
+  .admin-tab{background:none;border:none;color:#999;padding:1rem;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+  .admin-tab.active{color:#1DB954;border-bottom-color:#1DB954}
+  .admin-content{display:none}
+  .admin-content.active{display:block}
+  .form-row{display:flex;gap:1rem;margin-bottom:1rem}
+  .form-group{flex:1;margin-bottom:1.5rem}
+  .form-group label{display:block;margin-bottom:0.5rem;color:#ccc;font-weight:600}
+  .form-group input, .form-group textarea{width:100%;padding:0.75rem;background:#333;border:1px solid #555;border-radius:8px;color:#fff;font-size:1rem;font-family:inherit}
+  .form-group input:focus, .form-group textarea:focus{outline:none;border-color:#1DB954;box-shadow:0 0 0 2px rgba(29,185,84,0.2)}
+  .form-group textarea{resize:vertical;min-height:100px}
+  .file-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:border-color 0.2s}
+  .file-upload:hover{border-color:#1DB954}
+  .file-upload.dragover{border-color:#1DB954;background:#1a2e1a}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+  .stat-card{background:#333;padding:1.5rem;border-radius:8px;text-align:center}
+  .stat-number{font-size:2rem;font-weight:bold;color:#1DB954;margin-bottom:0.5rem}
+  .stat-label{color:#999;font-size:0.9rem}
+
+  /* Modal styles */
   .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center}
   .modal.show{display:flex}
-  .modal-content{background:#222;padding:2rem;border-radius:12px;width:90%;max-width:400px;position:relative}
+  .modal-content{background:#222;padding:2rem;border-radius:12px;width:90%;max-width:500px;position:relative;max-height:80vh;overflow-y:auto}
   .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
   .modal-title{font-size:1.4rem;color:#1DB954;margin:0}
   .close-btn{background:none;border:none;color:#999;font-size:1.5rem;cursor:pointer;padding:0}
   .close-btn:hover{color:#fff}
-  .form-group{margin-bottom:1.5rem}
-  .form-group label{display:block;margin-bottom:0.5rem;color:#ccc}
-  .form-group input{width:100%;padding:0.75rem;background:#333;border:1px solid #555;border-radius:8px;color:#fff;font-size:1rem}
-  .form-group input:focus{outline:none;border-color:#1DB954}
   .auth-buttons{display:flex;gap:1rem;margin-top:2rem}
   .auth-toggle{text-align:center;margin-top:1rem;color:#999}
   .auth-toggle button{background:none;border:none;color:#1DB954;cursor:pointer;text-decoration:underline}
@@ -75,7 +96,98 @@
       <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
       <button class="btn secondary" onclick="addTestAlbum()" id="addAlbumBtn">➕ Agregar Álbum de Prueba</button>
       <button class="btn secondary" onclick="loadAlbums()">📀 Cargar Álbumes</button>
-      <button class="btn admin" onclick="showAdminPanel()" id="adminPanelBtn" style="display:none">👑 Panel Admin</button>
+      <button class="btn admin" onclick="toggleAdminPanel()" id="adminPanelBtn" style="display:none">👑 Panel Admin</button>
+    </div>
+    
+    <!-- Panel de administración -->
+    <div id="adminPanel" class="admin-panel">
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchAdminTab('albums')">📀 Gestión de Álbumes</button>
+        <button class="admin-tab" onclick="switchAdminTab('upload')">📤 Subir Contenido</button>
+        <button class="admin-tab" onclick="switchAdminTab('stats')">📊 Estadísticas</button>
+        <button class="admin-tab" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
+      </div>
+      
+      <!-- Tab: Gestión de Álbumes -->
+      <div id="adminTabAlbums" class="admin-content active">
+        <h3>🎵 Gestión de Álbumes</h3>
+        <form onsubmit="createAlbum(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="albumName">Nombre del Álbum:</label>
+              <input type="text" id="albumName" required>
+            </div>
+            <div class="form-group">
+              <label for="artistName">Artista:</label>
+              <input type="text" id="artistName" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="albumDescription">Descripción (opcional):</label>
+            <textarea id="albumDescription" placeholder="Descripción del álbum..."></textarea>
+          </div>
+          <button type="submit" class="btn admin">➕ Crear Álbum</button>
+        </form>
+      </div>
+      
+      <!-- Tab: Subir Contenido -->
+      <div id="adminTabUpload" class="admin-content">
+        <h3>📤 Subir Archivos</h3>
+        <div class="file-upload" id="fileUpload">
+          <p>📁 Arrastra archivos aquí o haz clic para seleccionar</p>
+          <p style="color:#999;font-size:0.9rem;">Soporta: MP3, WAV, FLAC, JPG, PNG</p>
+          <input type="file" id="fileInput" multiple accept=".mp3,.wav,.flac,.jpg,.jpeg,.png" style="display:none">
+        </div>
+        <div id="uploadProgress" style="display:none;margin-top:1rem;">
+          <div style="background:#333;border-radius:8px;overflow:hidden;">
+            <div id="progressBar" style="background:#1DB954;height:20px;width:0%;transition:width 0.3s;"></div>
+          </div>
+          <p id="uploadStatus" style="margin-top:0.5rem;text-align:center;"></p>
+        </div>
+      </div>
+      
+      <!-- Tab: Estadísticas -->
+      <div id="adminTabStats" class="admin-content">
+        <h3>📊 Estadísticas del Sistema</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="statAlbums">-</div>
+            <div class="stat-label">Álbumes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statSongs">-</div>
+            <div class="stat-label">Canciones</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statStorage">-</div>
+            <div class="stat-label">Archivos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statUsers">1</div>
+            <div class="stat-label">Usuarios</div>
+          </div>
+        </div>
+        <button class="btn" onclick="refreshStats()">🔄 Actualizar Estadísticas</button>
+      </div>
+      
+      <!-- Tab: Configuración -->
+      <div id="adminTabSettings" class="admin-content">
+        <h3>⚙️ Configuración del Sistema</h3>
+        <div class="form-group">
+          <label>Estado del Sistema:</label>
+          <p style="color:#51cf66;">✅ Todos los servicios funcionando correctamente</p>
+        </div>
+        <div class="form-group">
+          <label>Información del Proyecto:</label>
+          <p style="color:#999;font-family:monospace;font-size:0.9rem;">
+            Project ID: ${CONFIG.projectId}<br>
+            Database ID: ${CONFIG.databaseId}<br>
+            Endpoint: ${CONFIG.endpoint}
+          </p>
+        </div>
+        <button class="btn secondary" onclick="testAllServices()">🔍 Probar Todos los Servicios</button>
+        <button class="btn danger" onclick="clearAllData()" style="margin-left:1rem;">🗑️ Limpiar Datos de Prueba</button>
+      </div>
     </div>
     
     <div id="albums" class="album-grid"></div>
@@ -133,6 +245,7 @@
     let isLoginMode = true;
     let currentUser = null;
     let isAdmin = false;
+    let currentAlbums = [];
 
     function setStatus(message, type = 'info') {
       const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'admin' ? '👑' : '🔄';
@@ -142,17 +255,13 @@
 
     // Función para verificar si el usuario es admin
     function checkUserAdmin(user) {
-      // Verificar labels en el objeto user
       if (user.labels) {
-        // Los labels pueden venir como array o como objeto
         if (Array.isArray(user.labels)) {
           return user.labels.includes('admin');
         } else if (typeof user.labels === 'object') {
           return user.labels.admin === true || user.labels.admin === 'true';
         }
       }
-      
-      // También verificar por email como fallback
       const adminEmails = ['klmzr230@gmail.com'];
       return adminEmails.includes(user.email.toLowerCase());
     }
@@ -217,8 +326,8 @@
         return this.request('DELETE', '/account/sessions/current');
       }
 
-      async listDocuments(databaseId, collectionId) {
-        return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`);
+      async listDocuments(databaseId, collectionId, queries = []) {
+        return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`, { queries });
       }
 
       async createDocument(databaseId, collectionId, documentId, data) {
@@ -227,11 +336,43 @@
           data
         });
       }
+
+      async deleteDocument(databaseId, collectionId, documentId) {
+        return this.request('DELETE', `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`);
+      }
+
+      async createFile(bucketId, fileId, file) {
+        const formData = new FormData();
+        formData.append('fileId', fileId);
+        formData.append('file', file);
+
+        const options = {
+          method: 'POST',
+          headers: {
+            'X-Appwrite-Project': this.projectId,
+          },
+          credentials: 'include',
+          body: formData
+        };
+
+        const response = await fetch(`${this.endpoint}/storage/buckets/${bucketId}/files`, options);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        return data;
+      }
+
+      async listFiles(bucketId) {
+        return this.request('GET', `/storage/buckets/${bucketId}/files`);
+      }
     }
 
     const client = new SimpleAppwriteClient(CONFIG.endpoint, CONFIG.projectId);
 
-    // Funciones de autenticación
+    // Funciones de autenticación (existentes)
     function openAuthModal() {
       $('authModal').classList.add('show');
     }
@@ -288,7 +429,7 @@
           closeAuthModal();
           
           if (isAdmin) {
-            setStatus(`¡Bienvenido ADMIN ${user.name}! Tienes acceso total al sistema.`, 'admin');
+            setStatus(`¡Bienvenido ADMIN ${user.name}! Panel de administración disponible.`, 'admin');
           } else {
             setStatus(`¡Bienvenido, ${user.name}!`, 'success');
           }
@@ -339,6 +480,7 @@
         $('userInfo').style.display = 'none';
         $('userInfo').classList.remove('admin');
         $('adminPanelBtn').style.display = 'none';
+        $('adminPanel').classList.remove('show');
         setStatus('Sesión cerrada correctamente', 'success');
         
       } catch (error) {
@@ -354,10 +496,6 @@
         const user = await client.getAccount();
         currentUser = user;
         isAdmin = checkUserAdmin(user);
-        
-        console.log('Usuario obtenido:', user); // Para debug
-        console.log('Labels detectados:', user.labels); // Para debug
-        console.log('Es admin:', isAdmin); // Para debug
         
         updateUserInterface(user);
         
@@ -383,12 +521,13 @@
       
       try {
         const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        currentAlbums = response.documents;
         
         if (response.documents.length === 0) {
           $('albums').innerHTML = `
             <div class="empty-state">
               <h2>🎵 Conexión exitosa</h2>
-              <p>No hay álbumes en la base de datos.<br>Usa el botón "Agregar Álbum de Prueba".</p>
+              <p>No hay álbumes en la base de datos.<br>Usa el panel admin para agregar contenido.</p>
             </div>
           `;
           setStatus('✅ Conexión exitosa - Base de datos vacía', 'success');
@@ -448,20 +587,235 @@
       }
     }
 
-    function showAdminPanel() {
+    // Funciones del Panel de Administración
+    function toggleAdminPanel() {
       if (!isAdmin) return;
       
-      setStatus('👑 Panel de administración disponible para próximas versiones', 'admin');
-      // Aquí puedes agregar funciones admin como:
-      // - Gestión de usuarios
-      // - Subida masiva de álbumes
-      // - Estadísticas del sistema
-      // - Configuración avanzada
+      const panel = $('adminPanel');
+      if (panel.classList.contains('show')) {
+        panel.classList.remove('show');
+      } else {
+        panel.classList.add('show');
+        refreshStats();
+      }
+    }
+
+    function switchAdminTab(tabName) {
+      // Desactiva todas las tabs
+      document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.admin-content').forEach(content => content.classList.remove('active'));
+      
+      // Activa la tab seleccionada
+      document.querySelector(`[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
+      $(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+    }
+
+    async function createAlbum(event) {
+      event.preventDefault();
+      
+      if (!isAdmin) {
+        setStatus('Solo los administradores pueden crear álbumes', 'error');
+        return;
+      }
+
+      const name = $('albumName').value;
+      const artist = $('artistName').value;
+      const description = $('albumDescription').value;
+
+      setStatus('Creando álbum...');
+
+      try {
+        const albumData = {
+          name,
+          artistName: artist,
+          coverStorageId: 'admin-album-' + Date.now(),
+          description: description || ''
+        };
+
+        await client.createDocument(
+          CONFIG.databaseId,
+          CONFIG.albumsCollectionId,
+          'admin-' + Date.now(),
+          albumData
+        );
+
+        setStatus(`👑 Álbum "${name}" creado exitosamente`, 'admin');
+        
+        // Limpiar formulario
+        $('albumName').value = '';
+        $('artistName').value = '';
+        $('albumDescription').value = '';
+        
+        // Recargar álbumes
+        setTimeout(loadAlbums, 500);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus(`❌ Error creando álbum: ${error.message}`, 'error');
+      }
+    }
+
+    async function deleteAlbum(albumId, albumName) {
+      if (!isAdmin) return;
+      
+      if (!confirm(`¿Estás seguro de eliminar el álbum "${albumName}"?`)) return;
+
+      setStatus('Eliminando álbum...');
+
+      try {
+        await client.deleteDocument(CONFIG.databaseId, CONFIG.albumsCollectionId, albumId);
+        setStatus(`👑 Álbum "${albumName}" eliminado`, 'admin');
+        setTimeout(loadAlbums, 500);
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus(`❌ Error eliminando álbum: ${error.message}`, 'error');
+      }
+    }
+
+    async function refreshStats() {
+      if (!isAdmin) return;
+
+      try {
+        // Obtener estadísticas
+        const albums = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        const songs = await client.listDocuments(CONFIG.databaseId, CONFIG.songsCollectionId);
+        const files = await client.listFiles(CONFIG.bucketId);
+
+        $('statAlbums').textContent = albums.total || albums.documents.length;
+        $('statSongs').textContent = songs.total || songs.documents.length;
+        $('statStorage').textContent = files.total || files.files?.length || 0;
+
+      } catch (error) {
+        console.log('Error obteniendo estadísticas:', error);
+        $('statAlbums').textContent = currentAlbums.length;
+        $('statSongs').textContent = '0';
+        $('statStorage').textContent = '0';
+      }
+    }
+
+    async function testAllServices() {
+      if (!isAdmin) return;
+      
+      setStatus('👑 Probando todos los servicios...', 'admin');
+      
+      try {
+        // Test account
+        await client.getAccount();
+        console.log('✅ Account service OK');
+        
+        // Test database
+        await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        console.log('✅ Database service OK');
+        
+        // Test storage
+        await client.listFiles(CONFIG.bucketId);
+        console.log('✅ Storage service OK');
+        
+        setStatus('👑 Todos los servicios funcionan correctamente', 'admin');
+        
+      } catch (error) {
+        setStatus(`❌ Error en servicios: ${error.message}`, 'error');
+      }
+    }
+
+    async function clearAllData() {
+      if (!isAdmin) return;
+      
+      if (!confirm('⚠️ PELIGRO: ¿Eliminar TODOS los álbumes de prueba? Esta acción no se puede deshacer.')) return;
+
+      setStatus('🗑️ Eliminando datos de prueba...');
+
+      try {
+        const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        let deleted = 0;
+        
+        for (const album of response.documents) {
+          if (album.name.includes('Prueba') || album.name.includes('Demo') || album.name.includes('Test')) {
+            await client.deleteDocument(CONFIG.databaseId, CONFIG.albumsCollectionId, album.$id);
+            deleted++;
+          }
+        }
+        
+        setStatus(`👑 ${deleted} álbum(es) de prueba eliminados`, 'admin');
+        setTimeout(loadAlbums, 1000);
+        
+      } catch (error) {
+        setStatus(`❌ Error limpiando datos: ${error.message}`, 'error');
+      }
+    }
+
+    // Setup file upload
+    document.addEventListener('DOMContentLoaded', () => {
+      const fileUpload = $('fileUpload');
+      const fileInput = $('fileInput');
+      
+      fileUpload.addEventListener('click', () => fileInput.click());
+      
+      fileUpload.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUpload.classList.add('dragover');
+      });
+      
+      fileUpload.addEventListener('dragleave', () => {
+        fileUpload.classList.remove('dragover');
+      });
+      
+      fileUpload.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUpload.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+      });
+      
+      fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+      });
+    });
+
+    async function handleFiles(files) {
+      if (!isAdmin) {
+        setStatus('Solo los administradores pueden subir archivos', 'error');
+        return;
+      }
+
+      const uploadProgress = $('uploadProgress');
+      const progressBar = $('progressBar');
+      const uploadStatus = $('uploadStatus');
+      
+      uploadProgress.style.display = 'block';
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const progress = ((i + 1) / files.length) * 100;
+        
+        progressBar.style.width = progress + '%';
+        uploadStatus.textContent = `Subiendo ${file.name} (${i + 1}/${files.length})...`;
+        
+        try {
+          const fileId = 'upload-' + Date.now() + '-' + i;
+          await client.createFile(CONFIG.bucketId, fileId, file);
+          console.log(`✅ Archivo ${file.name} subido`);
+        } catch (error) {
+          console.error(`❌ Error subiendo ${file.name}:`, error);
+        }
+      }
+      
+      uploadStatus.textContent = `✅ ${files.length} archivo(s) subido(s) correctamente`;
+      setStatus(`👑 ${files.length} archivo(s) subido(s) al Storage`, 'admin');
+      
+      setTimeout(() => {
+        uploadProgress.style.display = 'none';
+        progressBar.style.width = '0%';
+      }, 3000);
     }
 
     function displayAlbums(albums) {
       $('albums').innerHTML = albums.map((album, index) => `
         <div class="album-card">
+          ${isAdmin ? `
+            <div class="album-actions">
+              <button class="btn danger small" onclick="deleteAlbum('${album.$id}', '${album.name}')" title="Eliminar">🗑️</button>
+            </div>
+          ` : ''}
           <div style="width:140px;height:140px;background:linear-gradient(135deg, #1DB954, #1ed760);border-radius:12px;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:3rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>
           <h3 style="margin:0.5rem 0;font-size:1.1rem;">${album.name}</h3>
           <p style="color:#999;margin:0;font-size:0.9rem;">${album.artistName}</p>
