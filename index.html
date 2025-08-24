@@ -10,6 +10,10 @@
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding:2rem}
   header{background:#121212;padding:1rem;display:flex;align-items:center;justify-content:space-between;border-radius:12px;margin-bottom:2rem}
   .logo{font-weight:700;font-size:1.4rem;color:#1DB954}
+  .user-section{display:flex;align-items:center;gap:1rem}
+  .user-info{display:none;align-items:center;gap:0.5rem;background:#333;padding:0.5rem 1rem;border-radius:8px}
+  .lock-icon{cursor:pointer;font-size:1.4rem;padding:0.5rem;border-radius:8px;background:#333;transition:background 0.2s}
+  .lock-icon:hover{background:#444}
   .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
   .status.success{background:#1a2e1a;color:#51cf66;border-left-color:#51cf66}
   .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
@@ -22,14 +26,38 @@
   .btn:hover{background:#1ed760}
   .btn.secondary{background:#333;color:#fff}
   .btn.secondary:hover{background:#444}
+  .btn.danger{background:#dc3545}
+  .btn.danger:hover{background:#c82333}
   .empty-state{text-align:center;padding:3rem;color:#666;grid-column:1/-1;background:#222;border-radius:12px}
+
+  /* Modal de login */
+  .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center}
+  .modal.show{display:flex}
+  .modal-content{background:#222;padding:2rem;border-radius:12px;width:90%;max-width:400px;position:relative}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+  .modal-title{font-size:1.4rem;color:#1DB954;margin:0}
+  .close-btn{background:none;border:none;color:#999;font-size:1.5rem;cursor:pointer;padding:0}
+  .close-btn:hover{color:#fff}
+  .form-group{margin-bottom:1.5rem}
+  .form-group label{display:block;margin-bottom:0.5rem;color:#ccc}
+  .form-group input{width:100%;padding:0.75rem;background:#333;border:1px solid #555;border-radius:8px;color:#fff;font-size:1rem}
+  .form-group input:focus{outline:none;border-color:#1DB954}
+  .auth-buttons{display:flex;gap:1rem;margin-top:2rem}
+  .auth-toggle{text-align:center;margin-top:1rem;color:#999}
+  .auth-toggle button{background:none;border:none;color:#1DB954;cursor:pointer;text-decoration:underline}
   </style>
 </head>
 
 <body>
   <header>
     <span class="logo">🎵 KLMZ MUSIC</span>
-    <div>🔒</div>
+    <div class="user-section">
+      <div id="userInfo" class="user-info">
+        <span id="userName"></span>
+        <button class="btn danger" onclick="logout()">Salir</button>
+      </div>
+      <div id="lockIcon" class="lock-icon" onclick="openAuthModal()">🔒</div>
+    </div>
   </header>
 
   <main>
@@ -45,6 +73,43 @@
     <div id="albums" class="album-grid"></div>
   </main>
 
+  <!-- Modal de autenticación -->
+  <div id="authModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle" class="modal-title">Iniciar Sesión</h2>
+        <button class="close-btn" onclick="closeAuthModal()">&times;</button>
+      </div>
+      
+      <form id="authForm" onsubmit="handleAuth(event)">
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Contraseña:</label>
+          <input type="password" id="password" required>
+        </div>
+        
+        <div id="nameGroup" class="form-group" style="display:none">
+          <label for="name">Nombre:</label>
+          <input type="text" id="name">
+        </div>
+        
+        <div class="auth-buttons">
+          <button type="submit" class="btn" id="authSubmitBtn">Iniciar Sesión</button>
+          <button type="button" class="btn secondary" onclick="closeAuthModal()">Cancelar</button>
+        </div>
+      </form>
+      
+      <div class="auth-toggle">
+        <span id="toggleText">¿No tienes cuenta?</span>
+        <button type="button" onclick="toggleAuthMode()" id="toggleBtn">Registrarse</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Configuración
     const CONFIG = {
@@ -57,6 +122,8 @@
     };
 
     const $ = id => document.getElementById(id);
+    let isLoginMode = true;
+    let currentUser = null;
 
     function setStatus(message, type = 'info') {
       const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : '🔄';
@@ -64,7 +131,7 @@
       $('status').className = `status ${type}`;
     }
 
-    // Cliente Appwrite básico sin SDK
+    // Cliente Appwrite extendido con autenticación
     class SimpleAppwriteClient {
       constructor(endpoint, projectId) {
         this.endpoint = endpoint;
@@ -79,7 +146,8 @@
         let url = `${this.endpoint}${path}`;
         const options = {
           method,
-          headers: { ...this.headers }
+          headers: { ...this.headers },
+          credentials: 'include' // Importante para las cookies de sesión
         };
 
         if (method === 'GET' && Object.keys(params).length > 0) {
@@ -103,6 +171,26 @@
         return this.request('GET', '/account');
       }
 
+      async createUser(email, password, name) {
+        return this.request('POST', '/account', {
+          userId: 'unique()',
+          email,
+          password,
+          name
+        });
+      }
+
+      async createSession(email, password) {
+        return this.request('POST', '/account/sessions/email', {
+          email,
+          password
+        });
+      }
+
+      async deleteSession() {
+        return this.request('DELETE', '/account/sessions/current');
+      }
+
       async listDocuments(databaseId, collectionId) {
         return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`);
       }
@@ -118,12 +206,113 @@
     // Cliente inicializado
     const client = new SimpleAppwriteClient(CONFIG.endpoint, CONFIG.projectId);
 
-    // Funciones de prueba
+    // Funciones de autenticación
+    function openAuthModal() {
+      $('authModal').classList.add('show');
+    }
+
+    function closeAuthModal() {
+      $('authModal').classList.remove('show');
+      resetAuthForm();
+    }
+
+    function toggleAuthMode() {
+      isLoginMode = !isLoginMode;
+      
+      if (isLoginMode) {
+        $('modalTitle').textContent = 'Iniciar Sesión';
+        $('authSubmitBtn').textContent = 'Iniciar Sesión';
+        $('toggleText').textContent = '¿No tienes cuenta?';
+        $('toggleBtn').textContent = 'Registrarse';
+        $('nameGroup').style.display = 'none';
+        $('name').required = false;
+      } else {
+        $('modalTitle').textContent = 'Crear Cuenta';
+        $('authSubmitBtn').textContent = 'Registrarse';
+        $('toggleText').textContent = '¿Ya tienes cuenta?';
+        $('toggleBtn').textContent = 'Iniciar Sesión';
+        $('nameGroup').style.display = 'block';
+        $('name').required = true;
+      }
+    }
+
+    function resetAuthForm() {
+      $('authForm').reset();
+      isLoginMode = true;
+      toggleAuthMode();
+      toggleAuthMode(); // Para resetear a login
+    }
+
+    async function handleAuth(event) {
+      event.preventDefault();
+      
+      const email = $('email').value;
+      const password = $('password').value;
+      const name = $('name').value;
+
+      try {
+        if (isLoginMode) {
+          // Iniciar sesión
+          setStatus('Iniciando sesión...');
+          const session = await client.createSession(email, password);
+          const user = await client.getAccount();
+          
+          currentUser = user;
+          updateUserInterface(user);
+          closeAuthModal();
+          setStatus(`¡Bienvenido, ${user.name}!`, 'success');
+          
+        } else {
+          // Registrarse
+          setStatus('Creando cuenta...');
+          await client.createUser(email, password, name);
+          
+          // Después del registro, iniciar sesión automáticamente
+          const session = await client.createSession(email, password);
+          const user = await client.getAccount();
+          
+          currentUser = user;
+          updateUserInterface(user);
+          closeAuthModal();
+          setStatus(`¡Cuenta creada y sesión iniciada! Bienvenido, ${user.name}!`, 'success');
+        }
+        
+      } catch (error) {
+        console.error('Error de autenticación:', error);
+        setStatus(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    function updateUserInterface(user) {
+      $('lockIcon').textContent = '👤';
+      $('userName').textContent = user.name;
+      $('userInfo').style.display = 'flex';
+    }
+
+    async function logout() {
+      try {
+        setStatus('Cerrando sesión...');
+        await client.deleteSession();
+        
+        currentUser = null;
+        $('lockIcon').textContent = '🔒';
+        $('userInfo').style.display = 'none';
+        setStatus('Sesión cerrada correctamente', 'success');
+        
+      } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+        setStatus(`Error cerrando sesión: ${error.message}`, 'error');
+      }
+    }
+
+    // Funciones existentes
     async function testConnection() {
       setStatus('Probando conexión...');
       
       try {
-        await client.getAccount();
+        const user = await client.getAccount();
+        currentUser = user;
+        updateUserInterface(user);
         setStatus('✅ Conectado con sesión activa', 'success');
       } catch (error) {
         if (error.message.includes('401') || 
@@ -177,6 +366,12 @@
     }
 
     async function addTestAlbum() {
+      if (!currentUser) {
+        setStatus('Debes iniciar sesión para agregar álbumes', 'error');
+        openAuthModal();
+        return;
+      }
+
       setStatus('Agregando álbum de prueba...');
       
       try {
@@ -223,6 +418,13 @@
     document.addEventListener('DOMContentLoaded', () => {
       setStatus('Página cargada - Probando conexión automáticamente...');
       setTimeout(testConnection, 500);
+    });
+
+    // Cerrar modal al hacer clic fuera
+    window.addEventListener('click', (event) => {
+      if (event.target === $('authModal')) {
+        closeAuthModal();
+      }
     });
   </script>
 </body>
