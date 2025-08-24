@@ -12,12 +12,17 @@
   .logo{font-weight:700;font-size:1.4rem;color:#1DB954}
   .user-section{display:flex;align-items:center;gap:1rem}
   .user-info{display:none;align-items:center;gap:0.5rem;background:#333;padding:0.5rem 1rem;border-radius:8px}
-  .lock-icon{cursor:pointer;font-size:1.4rem;padding:0.5rem;border-radius:8px;background:#333;transition:background 0.2s}
+  .user-info.admin{background:#1DB954;animation:adminGlow 2s infinite alternate}
+  @keyframes adminGlow{0%{box-shadow:0 0 5px #1DB954}100%{box-shadow:0 0 20px #1DB954,0 0 30px #1DB954}}
+  .lock-icon{cursor:pointer;font-size:1.4rem;padding:0.5rem;border-radius:8px;background:#333;transition:all 0.2s}
   .lock-icon:hover{background:#444}
+  .lock-icon.admin{background:#1DB954;animation:crownPulse 1.5s infinite}
+  @keyframes crownPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
   .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
   .status.success{background:#1a2e1a;color:#51cf66;border-left-color:#51cf66}
   .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
   .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
+  .status.admin{background:#1DB954;color:#fff;border-left-color:#fff;font-weight:bold}
   .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2rem;margin-top:2rem}
   .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px;transition:transform 0.3s}
   .album-card:hover{transform:scale(1.05)}
@@ -28,7 +33,9 @@
   .btn.secondary:hover{background:#444}
   .btn.danger{background:#dc3545}
   .btn.danger:hover{background:#c82333}
+  .btn.admin{background:linear-gradient(45deg,#1DB954,#1ed760);box-shadow:0 4px 15px rgba(29,185,84,0.3)}
   .empty-state{text-align:center;padding:3rem;color:#666;grid-column:1/-1;background:#222;border-radius:12px}
+  .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
 
   /* Modal de login */
   .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center}
@@ -66,8 +73,9 @@
     
     <div class="test-buttons">
       <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
-      <button class="btn secondary" onclick="addTestAlbum()">➕ Agregar Álbum de Prueba</button>
+      <button class="btn secondary" onclick="addTestAlbum()" id="addAlbumBtn">➕ Agregar Álbum de Prueba</button>
       <button class="btn secondary" onclick="loadAlbums()">📀 Cargar Álbumes</button>
+      <button class="btn admin" onclick="showAdminPanel()" id="adminPanelBtn" style="display:none">👑 Panel Admin</button>
     </div>
     
     <div id="albums" class="album-grid"></div>
@@ -124,14 +132,32 @@
     const $ = id => document.getElementById(id);
     let isLoginMode = true;
     let currentUser = null;
+    let isAdmin = false;
 
     function setStatus(message, type = 'info') {
-      const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : '🔄';
+      const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'admin' ? '👑' : '🔄';
       $('status').innerHTML = `${emoji} ${message}`;
       $('status').className = `status ${type}`;
     }
 
-    // Cliente Appwrite extendido con autenticación
+    // Función para verificar si el usuario es admin
+    function checkUserAdmin(user) {
+      // Verificar labels en el objeto user
+      if (user.labels) {
+        // Los labels pueden venir como array o como objeto
+        if (Array.isArray(user.labels)) {
+          return user.labels.includes('admin');
+        } else if (typeof user.labels === 'object') {
+          return user.labels.admin === true || user.labels.admin === 'true';
+        }
+      }
+      
+      // También verificar por email como fallback
+      const adminEmails = ['klmzr230@gmail.com'];
+      return adminEmails.includes(user.email.toLowerCase());
+    }
+
+    // Cliente Appwrite extendido
     class SimpleAppwriteClient {
       constructor(endpoint, projectId) {
         this.endpoint = endpoint;
@@ -147,7 +173,7 @@
         const options = {
           method,
           headers: { ...this.headers },
-          credentials: 'include' // Importante para las cookies de sesión
+          credentials: 'include'
         };
 
         if (method === 'GET' && Object.keys(params).length > 0) {
@@ -203,7 +229,6 @@
       }
     }
 
-    // Cliente inicializado
     const client = new SimpleAppwriteClient(CONFIG.endpoint, CONFIG.projectId);
 
     // Funciones de autenticación
@@ -240,7 +265,7 @@
       $('authForm').reset();
       isLoginMode = true;
       toggleAuthMode();
-      toggleAuthMode(); // Para resetear a login
+      toggleAuthMode();
     }
 
     async function handleAuth(event) {
@@ -252,29 +277,34 @@
 
       try {
         if (isLoginMode) {
-          // Iniciar sesión
           setStatus('Iniciando sesión...');
-          const session = await client.createSession(email, password);
+          await client.createSession(email, password);
           const user = await client.getAccount();
           
           currentUser = user;
+          isAdmin = checkUserAdmin(user);
+          
           updateUserInterface(user);
           closeAuthModal();
-          setStatus(`¡Bienvenido, ${user.name}!`, 'success');
+          
+          if (isAdmin) {
+            setStatus(`¡Bienvenido ADMIN ${user.name}! Tienes acceso total al sistema.`, 'admin');
+          } else {
+            setStatus(`¡Bienvenido, ${user.name}!`, 'success');
+          }
           
         } else {
-          // Registrarse
           setStatus('Creando cuenta...');
           await client.createUser(email, password, name);
-          
-          // Después del registro, iniciar sesión automáticamente
-          const session = await client.createSession(email, password);
+          await client.createSession(email, password);
           const user = await client.getAccount();
           
           currentUser = user;
+          isAdmin = checkUserAdmin(user);
+          
           updateUserInterface(user);
           closeAuthModal();
-          setStatus(`¡Cuenta creada y sesión iniciada! Bienvenido, ${user.name}!`, 'success');
+          setStatus(`¡Cuenta creada! Bienvenido, ${user.name}!`, 'success');
         }
         
       } catch (error) {
@@ -284,8 +314,16 @@
     }
 
     function updateUserInterface(user) {
-      $('lockIcon').textContent = '👤';
-      $('userName').textContent = user.name;
+      if (isAdmin) {
+        $('lockIcon').textContent = '👑';
+        $('lockIcon').classList.add('admin');
+        $('userName').innerHTML = `${user.name}<span class="admin-badge">ADMIN</span>`;
+        $('userInfo').classList.add('admin');
+        $('adminPanelBtn').style.display = 'inline-block';
+      } else {
+        $('lockIcon').textContent = '👤';
+        $('userName').textContent = user.name;
+      }
       $('userInfo').style.display = 'flex';
     }
 
@@ -295,8 +333,12 @@
         await client.deleteSession();
         
         currentUser = null;
+        isAdmin = false;
         $('lockIcon').textContent = '🔒';
+        $('lockIcon').classList.remove('admin');
         $('userInfo').style.display = 'none';
+        $('userInfo').classList.remove('admin');
+        $('adminPanelBtn').style.display = 'none';
         setStatus('Sesión cerrada correctamente', 'success');
         
       } catch (error) {
@@ -305,15 +347,25 @@
       }
     }
 
-    // Funciones existentes
     async function testConnection() {
       setStatus('Probando conexión...');
       
       try {
         const user = await client.getAccount();
         currentUser = user;
+        isAdmin = checkUserAdmin(user);
+        
+        console.log('Usuario obtenido:', user); // Para debug
+        console.log('Labels detectados:', user.labels); // Para debug
+        console.log('Es admin:', isAdmin); // Para debug
+        
         updateUserInterface(user);
-        setStatus('✅ Conectado con sesión activa', 'success');
+        
+        if (isAdmin) {
+          setStatus(`✅ Conectado como ADMINISTRADOR: ${user.name}`, 'admin');
+        } else {
+          setStatus(`✅ Conectado como usuario: ${user.name}`, 'success');
+        }
       } catch (error) {
         if (error.message.includes('401') || 
             error.message.includes('missing scope') || 
@@ -356,12 +408,6 @@
         }
         
         setStatus(`❌ ${errorMsg}`, 'error');
-        $('albums').innerHTML = `
-          <div class="empty-state">
-            <h2>❌ Error al cargar álbumes</h2>
-            <p>${errorMsg}</p>
-          </div>
-        `;
       }
     }
 
@@ -376,31 +422,41 @@
       
       try {
         const albumData = {
-          name: 'Álbum de Prueba ' + new Date().getHours() + ':' + new Date().getMinutes(),
-          artistName: 'Artista Demo',
-          coverStorageId: 'test-cover-id-' + Date.now()
+          name: `Álbum ${isAdmin ? 'ADMIN' : 'Usuario'} - ${new Date().toLocaleTimeString()}`,
+          artistName: isAdmin ? 'Admin Freddy' : 'Usuario Demo',
+          coverStorageId: 'test-cover-' + Date.now()
         };
 
         await client.createDocument(
           CONFIG.databaseId,
           CONFIG.albumsCollectionId,
-          'test-album-' + Date.now(),
+          'album-' + Date.now(),
           albumData
         );
 
-        setStatus('✅ Álbum de prueba agregado correctamente', 'success');
+        if (isAdmin) {
+          setStatus('👑 Álbum agregado por ADMINISTRADOR', 'admin');
+        } else {
+          setStatus('✅ Álbum agregado correctamente', 'success');
+        }
+        
         setTimeout(loadAlbums, 1000);
         
       } catch (error) {
         console.error('Error:', error);
-        let errorMsg = error.message;
-        
-        if (error.message.includes('401')) {
-          errorMsg = 'Sin permisos de escritura. Agrega permisos de "create" para role:users.';
-        }
-        
-        setStatus(`❌ ${errorMsg}`, 'error');
+        setStatus(`❌ ${error.message}`, 'error');
       }
+    }
+
+    function showAdminPanel() {
+      if (!isAdmin) return;
+      
+      setStatus('👑 Panel de administración disponible para próximas versiones', 'admin');
+      // Aquí puedes agregar funciones admin como:
+      // - Gestión de usuarios
+      // - Subida masiva de álbumes
+      // - Estadísticas del sistema
+      // - Configuración avanzada
     }
 
     function displayAlbums(albums) {
