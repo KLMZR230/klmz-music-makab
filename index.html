@@ -5,59 +5,85 @@
   <title>KLMZ MUSIC</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- Appwrite SDK: debe ir ANTES del script de la app -->
-  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1/dist/appwrite.umd.js"></script>
+  <!-- SDK Appwrite (debe ir antes de tu código) -->
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13/dist/appwrite.umd.js"></script>
 
   <style>
-  /* ——— CSS comprimido ——— */
-  *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding-bottom:84px}header{background:#121212;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}.logo{font-weight:700;font-size:1.4rem}.user-actions{display:flex;align-items:center;gap:.5rem}.lock-icon{cursor:pointer;font-size:1.4rem}.theme-selector{display:flex;align-items:center;gap:.3rem;margin-right:.5rem}.theme-selector select{background:#333;color:#fff;border:1px solid #555;border-radius:4px;font-size:.7rem}.app-container{display:flex;min-height:calc(100vh - 60px)}main{flex:1;padding:1rem;max-width:900px;margin:0 auto}.section-title{font-size:1.8rem;font-weight:700;margin-bottom:1.5rem}.album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1.5rem}.album-card{cursor:pointer;display:flex;flex-direction:column;align-items:center}.album-img{border-radius:50%;width:100px;height:100px;object-fit:cover;margin-bottom:.7rem;background:#333}.player{position:fixed;bottom:84px;left:0;right:0;background:#212121cc;display:flex;align-items:center;padding:.8rem 1.2rem;min-height:56px;cursor:pointer}.player-img-mini{width:44px;height:44px;border-radius:100%;object-fit:cover;margin-right:1rem}.player-info-mini{flex:1;overflow:hidden}.play-btn-inline{background:#1DB954;color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:1.1rem;cursor:pointer}.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:2000}.modal-content{background:#282828;padding:2rem;border-radius:8px;width:95%;max-width:430px}.btn-primary{background:#1DB954;color:#fff;border:none;padding:.7rem 1.5rem;border-radius:999px;cursor:pointer;width:100%;margin-top:.7rem}.loading-indicator{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);color:#fff;padding:1.5rem 2.5rem;border-radius:12px;border:2px solid #1DB954}
+  /* —— estilos básicos —— */
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding-bottom:84px}
+  header{background:#121212;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .logo{font-weight:700;font-size:1.4rem}
+  .lock-icon{font-size:1.4rem;cursor:pointer}
+  .section-title{font-size:1.8rem;font-weight:700;margin:1.5rem 0}
+  .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1.5rem}
+  .album-card{text-align:center;cursor:pointer}
+  .album-img{border-radius:50%;width:100px;height:100px;object-fit:cover;margin-bottom:.7rem;background:#333}
+  .loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);color:#fff;padding:1.5rem 2.5rem;border-radius:12px;border:2px solid #1DB954}
   </style>
 </head>
 
 <body>
-  <!-- UI básica recortada para brevedad -->
-  <header><span class="logo">KLMZ MUSIC</span><div class="user-actions"><div class="user-menu"><div id="header-lock-icon" class="lock-icon">🔒</div></div></div></header>
-  <main><section id="home-section"><h2 class="section-title">Álbumes</h2><div id="albums">Cargando…</div></section></main>
-  <div id="loading-indicator" class="loading-indicator" hidden>Cargando…</div>
+  <header>
+    <span class="logo">KLMZ MUSIC</span>
+    <div id="header-lock-icon" class="lock-icon">🔒</div>
+  </header>
+
+  <main>
+    <h2 class="section-title">Álbumes</h2>
+    <div id="albums" class="album-grid">Cargando…</div>
+  </main>
+
+  <div id="loader" class="loading" hidden>Cargando…</div>
   <audio id="audio"></audio>
 
-  <!-- ——— LÓGICA ——— -->
+  <!-- —— Lógica JS —— -->
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    /* === UTILIDADES DOM === */
-    const $ = id => document.getElementById(id);
+    /* ==== utilidades DOM ==== */
+    const $    = id => document.getElementById(id);
     const show = el => el.hidden = false;
     const hide = el => el.hidden = true;
 
-    /* === Appwrite === */
-    const { Client, Databases, Storage } = Appwrite;
+    /* ==== configuración Appwrite ==== */
+    const { Client, Databases, Account, Storage } = Appwrite;
+
     const client = new Client()
-      .setEndpoint("https://nyc.cloud.appwrite.io/v1")     // tu endpoint
-      .setProject("68aa8307001f723f5518");                 // tu Project ID
-    const db     = new Databases(client);
-    const bucket = new Storage(client);
+      .setEndpoint('https://nyc.cloud.appwrite.io/v1')     // endpoint del proyecto
+      .setProject('68aa8307001f723f5518');                 // Project-ID
 
-    const DB_ID="68aa8566002832b4c093", COL_ALB="68aa85730036dd283cc9", BUCKET="68aa8cc5003a2c336a1f";
+    const account = new Account(client);
+    const db      = new Databases(client);
+    const bucket  = new Storage(client);
 
-    /* === Cargar álbumes === */
-    const loadAlbums = async () => {
-      show($('loading-indicator'));
+    const DB_ID   = '68aa8566002832b4c093';
+    const COL_ALB = '68aa85730036dd283cc9';
+    const BUCKET  = '68aa8cc5003a2c336a1f';
+
+    /* ==== carga de álbumes ==== */
+    async function loadAlbums () {
+      show($('loader'));
       try {
-        const res = await db.listDocuments(DB_ID, COL_ALB);
-        $('albums').innerHTML = res.documents.map(a => `
+        const { documents } = await db.listDocuments(DB_ID, COL_ALB);
+        $('albums').innerHTML = documents.map(a => `
           <div class="album-card">
-            <img class="album-img" src="${bucket.getFilePreview(BUCKET, a.coverStorageId)}">
-            <div>${a.name}</div>
+            <img class="album-img" src="\${bucket.getFilePreview(BUCKET, a.coverStorageId)}" alt="\${a.name}">
+            <div>\${a.name}</div>
           </div>`).join('');
       } catch {
         $('albums').textContent = 'Error al cargar álbumes';
       }
-      hide($('loading-indicator'));
-    };
+      hide($('loader'));
+    }
 
-    /* === Inicio === */
-    loadAlbums();
-  });
+    /* ==== inicio ==== */
+    document.addEventListener('DOMContentLoaded', () => {
+      // comprobación rápida de CORS: debe devolver 401 sin bloqueo
+      account.get()
+        .then(u => console.log('Sesión activa de', u.email))
+        .catch(() => console.log('Visitante sin sesión — CORS OK'));
+
+      loadAlbums();
+    });
   </script>
 </body>
 </html>
