@@ -96,28 +96,16 @@
         .back-btn:hover { background: #333; }
         .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
-        .search-song-item { background: #242424; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
-        .search-song-item:hover { background: #333; }
-        .search-song-info { flex: 1; }
-        .search-song-title { font-weight: bold; margin-bottom: 0.2rem; }
-        .search-song-artist { font-size: 0.9rem; color: #b3b3b3; }
-        .favorites-list, .downloads-list { margin-top: 1rem; }
-        .favorite-item, .download-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; transition: all 0.3s ease; }
-        .favorite-item:hover, .download-item:hover { background: #333; }
-        .favorite-info, .download-info { flex: 1; }
-        .favorite-title, .download-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
-        .favorite-artist, .download-artist { font-size: 0.9rem; color: #b3b3b3; }
-        .song-actions { display: flex; gap: 0.8rem; align-items: center; }
         #album-detail { padding-bottom: 120px; }
         .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; }
         .admin-section h4 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 0.8rem; margin-bottom: 1.5rem; }
         .admin-form { margin-bottom: 2rem; }
         .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; }
         .btn-secondary:hover { background: #666; }
-        /* TEMAS VISUALES */
+        /* TEMAS VISUALES Y ANIMACIONES */
         body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
         body.theme-neon header { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-bottom: 2px solid #00ff88 !important; box-shadow: 0 4px 20px rgba(0,255,136,0.3) !important; }
-        /* ... (resto de los estilos de temas) ... */
+        /* ... (he acortado los estilos de los temas aquí para que el código no sea tan largo, pero deben estar completos en tu archivo) ... */
         @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
         @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 768px) { .full-player-cover { width: 150px; height: 150px; } .full-player-title { font-size: 1.4rem; } .album-img { width: 80px; height: 80px; } }
@@ -165,15 +153,17 @@
                 <div id="album-detail" style="display:none;"></div>
             </section>
             <section class="content-section" id="search-section">
-                </section>
+                <!-- Contenido de Búsqueda -->
+            </section>
             <section class="content-section" id="favorites-section">
-                </section>
+                <!-- Contenido de Favoritos -->
+            </section>
             <section class="content-section" id="downloads-section">
-                </section>
+                <!-- Contenido de Descargas -->
+            </section>
             <section class="content-section" id="admin-section">
                 <div class="section-title">Panel de Administración</div>
-                <div id="admin-content">
-                    </div>
+                <div id="admin-content"></div>
             </section>
         </main>
     </div>
@@ -197,7 +187,8 @@
     </div>
 
     <div class="full-player-backdrop" id="full-player">
-        </div>
+        <!-- Contenido del reproductor completo -->
+    </div>
 
     <div class="modal" id="auth-modal">
         <div class="modal-content">
@@ -227,13 +218,15 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
     
+    <!-- ✅ SDK de Appwrite -->
     <script src="https://cdn.jsdelivr.net/npm/appwrite@11.0.0"></script>
     
+    <!-- ✅ Lógica de la Aplicación con Appwrite -->
     <script>
         // --- INICIO DEL SCRIPT ---
         
         // ===================================================
-        // PASO 1: CONFIGURACIÓN E INICIALIZACIÓN DE APPWRITE
+        // 1. CONFIGURACIÓN E INICIALIZACIÓN DE APPWRITE
         // ===================================================
         const { Client, Account, ID, Databases, Storage, Query } = Appwrite;
         const client = new Client();
@@ -247,26 +240,106 @@
         // -----------------------------------------
         
         client
-            .setEndpoint('https://cloud.appwrite.io/v1')
+            .setEndpoint('https://nyc.cloud.appwrite.io/v1') // ✅ ENDPOINT CORREGIDO
             .setProject(PROJECT_ID);
 
         const account = new Account(client);
         const databases = new Databases(client);
         const storage = new Storage(client);
 
-        // Variables globales de la aplicación
-        let currentSong = null;
-        let currentAlbum = null;
-        let currentPlaylist = [];
-        let currentIndex = 0;
-        let isPlaying = false;
-        let currentUser = null;
-        let allAlbums = [];
-        
+        // Variables globales
+        let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0;
+        let isPlaying = false, currentUser = null, allAlbums = [];
         const ADMIN_EMAIL = 'klmzr@gmail.com';
 
         // ===================================================
-        // PASO 2: AUTENTICACIÓN Y MANEJO DE SESIÓN
+        // 2. FUNCIONES DE UI (MENÚS, MODALES, NAVEGACIÓN)
+        // ===================================================
+
+        window.toggleUserMenu = function() {
+            const dropdown = document.getElementById('user-dropdown');
+            dropdown.classList.toggle('show');
+            if (dropdown.classList.contains('show')) {
+                setTimeout(() => { document.addEventListener('click', closeUserMenuOutside); }, 100);
+            }
+        }
+
+        function closeUserMenuOutside(event) {
+            const userMenu = document.querySelector('.user-menu');
+            if (userMenu && !userMenu.contains(event.target)) {
+                document.getElementById('user-dropdown').classList.remove('show');
+                document.removeEventListener('click', closeUserMenuOutside);
+            }
+        }
+
+        window.showAuth = function(type) {
+            document.getElementById('user-dropdown').classList.remove('show');
+            document.getElementById('login-form').style.display = (type === 'login') ? 'block' : 'none';
+            document.getElementById('register-form').style.display = (type === 'register') ? 'block' : 'none';
+            document.getElementById('auth-modal').style.display = 'flex';
+        }
+
+        window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
+        window.goToAdmin = function() { showSection('admin'); }
+
+        window.showSection = function(section) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`${section}-section`).classList.add('active');
+            document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
+            const navIdMap = { home: 'home', search: 'search', downloads: 'downloads', favorites: 'favs', admin: 'admin' };
+            const navItem = document.getElementById(`nav-${navIdMap[section]}`);
+            if(navItem) navItem.classList.add('active');
+            
+            if (section === 'home') showAlbumsGrid();
+            if (section === 'admin' && isAdmin()) renderAdminPanel();
+        }
+
+        window.showAlbumsGrid = function() {
+            document.getElementById('album-detail').style.display = 'none';
+            document.getElementById('albums').style.display = 'grid';
+            loadAllData();
+        }
+        
+        function showLoadingIndicator(show) { document.getElementById('loading-indicator').style.display = show ? 'block' : 'none'; }
+        
+        function showErrorMessage(message) {
+            document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>${message}</h2></div>`;
+        }
+        
+        function showInfoModal(message) {
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.className = 'modal';
+            modalBackdrop.style.display = 'flex';
+            modalBackdrop.innerHTML = `<div class="modal-content" style="text-align:center;"><p style="margin-bottom:1.5rem;">${message}</p><button class="btn-primary" onclick="this.closest('.modal').remove()">OK</button></div>`;
+            document.body.appendChild(modalBackdrop);
+        }
+        
+        function showConfirmationModal(message, onConfirm) {
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.className = 'modal';
+            modalBackdrop.style.display = 'flex';
+            modalBackdrop.innerHTML = `<div class="modal-content"><p style="text-align:center; margin-bottom:1.5rem;">${message}</p><div style="display:flex;gap:1rem;justify-content:center;"><button class="btn-secondary" style="width:auto;" onclick="this.closest('.modal').remove()">Cancelar</button><button id="confirm-action-btn" class="btn-danger" style="width:auto;">Confirmar</button></div></div>`;
+            modalBackdrop.querySelector('#confirm-action-btn').onclick = () => { onConfirm(); modalBackdrop.remove(); };
+            document.body.appendChild(modalBackdrop);
+        }
+
+        window.changeTheme = function(theme) {
+            const body = document.body;
+            body.className = '';
+            if (theme && theme !== 'default') {
+                body.classList.add('theme-' + theme);
+            }
+            localStorage.setItem('klmz_theme', theme);
+        }
+
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('klmz_theme') || 'default';
+            document.getElementById('theme-select').value = savedTheme;
+            changeTheme(savedTheme);
+        }
+
+        // ===================================================
+        // 3. AUTENTICACIÓN Y MANEJO DE SESIÓN
         // ===================================================
         
         async function checkSession() {
@@ -366,7 +439,7 @@
         }
 
         // ===================================================
-        // PASO 3: CARGA DE DATOS (ÁLBUMES Y CANCIONES)
+        // 4. CARGA DE DATOS (ÁLBUMES Y CANCIONES)
         // ===================================================
 
         async function loadAllData() {
@@ -448,7 +521,7 @@
         }
         
         // ===================================================
-        // PASO 4: LÓGICA DEL REPRODUCTOR
+        // 5. LÓGICA DEL REPRODUCTOR
         // ===================================================
         
         window.playSongFromPlaylist = function(index) {
@@ -490,9 +563,23 @@
             document.getElementById('full-player-title').textContent = currentSong.title;
             document.getElementById('full-player-artist').textContent = currentAlbum.artistName;
         }
+
+        function updatePlayButtons() {
+            const playText = isPlaying ? '⏸' : '▶';
+            ['mini-play-btn', 'full-play-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.textContent = playText;
+            });
+        }
+
+        window.togglePlay = function() {
+            const audio = document.getElementById('audio-player');
+            if (!audio.src) return;
+            if (isPlaying) { audio.pause(); } else { audio.play(); }
+        }
         
         // ===================================================
-        // PASO 5: PANEL DE ADMINISTRACIÓN
+        // 6. PANEL DE ADMINISTRACIÓN
         // ===================================================
 
         async function renderAdminPanel() {
@@ -600,109 +687,8 @@
         }
         
         // ===================================================
-        // FUNCIONES AUXILIARES Y DE UI
+        // INICIALIZACIÓN DE LA APP
         // ===================================================
-        window.changeTheme = function(theme) {
-            const body = document.body;
-            body.className = '';
-            if (theme && theme !== 'default') {
-                body.classList.add('theme-' + theme);
-            }
-            localStorage.setItem('klmz_theme', theme);
-        }
-
-        function loadSavedTheme() {
-            const savedTheme = localStorage.getItem('klmz_theme') || 'default';
-            document.getElementById('theme-select').value = savedTheme;
-            changeTheme(savedTheme);
-        }
-
-        window.showSection = function(section) {
-            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-            document.getElementById(`${section}-section`).classList.add('active');
-            document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
-            const navIdMap = { home: 'home', search: 'search', downloads: 'downloads', favorites: 'favs', admin: 'admin' };
-            const navItem = document.getElementById(`nav-${navIdMap[section]}`);
-            if(navItem) navItem.classList.add('active');
-            
-            if (section === 'home') showAlbumsGrid();
-            if (section === 'admin' && isAdmin()) renderAdminPanel();
-        }
-
-        window.showAlbumsGrid = function() {
-            document.getElementById('album-detail').style.display = 'none';
-            document.getElementById('albums').style.display = 'grid';
-            loadAllData();
-        }
-        
-        function showLoadingIndicator(show) { document.getElementById('loading-indicator').style.display = show ? 'block' : 'none'; }
-        
-        function showErrorMessage(message) {
-            document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>${message}</h2></div>`;
-        }
-        
-        function showInfoModal(message) {
-            const modalBackdrop = document.createElement('div');
-            modalBackdrop.className = 'modal';
-            modalBackdrop.style.display = 'flex';
-            modalBackdrop.innerHTML = `<div class="modal-content" style="text-align:center;"><p style="margin-bottom:1.5rem;">${message}</p><button class="btn-primary" onclick="this.closest('.modal').remove()">OK</button></div>`;
-            document.body.appendChild(modalBackdrop);
-        }
-        
-        function showConfirmationModal(message, onConfirm) {
-            const modalBackdrop = document.createElement('div');
-            modalBackdrop.className = 'modal';
-            modalBackdrop.style.display = 'flex';
-            modalBackdrop.innerHTML = `<div class="modal-content"><p style="text-align:center; margin-bottom:1.5rem;">${message}</p><div style="display:flex;gap:1rem;justify-content:center;"><button class="btn-secondary" style="width:auto;" onclick="this.closest('.modal').remove()">Cancelar</button><button id="confirm-action-btn" class="btn-danger" style="width:auto;">Confirmar</button></div></div>`;
-            modalBackdrop.querySelector('#confirm-action-btn').onclick = () => { onConfirm(); modalBackdrop.remove(); };
-            document.body.appendChild(modalBackdrop);
-        }
-        
-        window.showAuth = function(type) {
-            document.getElementById('user-dropdown').classList.remove('show');
-            document.getElementById('login-form').style.display = (type === 'login') ? 'block' : 'none';
-            document.getElementById('register-form').style.display = (type === 'register') ? 'block' : 'none';
-            document.getElementById('auth-modal').style.display = 'flex';
-        }
-        
-        window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
-        
-        window.goToAdmin = function() { 
-            document.getElementById('user-dropdown').classList.remove('show');
-            showSection('admin'); 
-        }
-
-        window.toggleUserMenu = function() {
-            const dropdown = document.getElementById('user-dropdown');
-            dropdown.classList.toggle('show');
-            if (dropdown.classList.contains('show')) {
-                setTimeout(() => { document.addEventListener('click', closeUserMenuOutside); }, 100);
-            }
-        }
-
-        function closeUserMenuOutside(event) {
-            const userMenu = document.querySelector('.user-menu');
-            if (userMenu && !userMenu.contains(event.target)) {
-                document.getElementById('user-dropdown').classList.remove('show');
-                document.removeEventListener('click', closeUserMenuOutside);
-            }
-        }
-        
-        function updatePlayButtons() {
-            const playText = isPlaying ? '⏸' : '▶';
-            ['mini-play-btn', 'full-play-btn'].forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) btn.textContent = playText;
-            });
-        }
-
-        window.togglePlay = function() {
-            const audio = document.getElementById('audio-player');
-            if (!audio.src) return;
-            if (isPlaying) { audio.pause(); } else { audio.play(); }
-        }
-
-        // --- INICIALIZACIÓN DE LA APP ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 KLMZ MUSIC iniciando con Appwrite...');
             
