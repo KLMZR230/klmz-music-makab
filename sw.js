@@ -1,5 +1,5 @@
-const STATIC_CACHE_NAME = 'klmz-static-v4';
-const DYNAMIC_CACHE_NAME = 'klmz-dynamic-v4';
+const STATIC_CACHE_NAME = 'klmz-static-v5';
+const DYNAMIC_CACHE_NAME = 'klmz-dynamic-v5';
 
 // Recursos esenciales de la app que siempre deben estar en caché.
 const APP_SHELL = [
