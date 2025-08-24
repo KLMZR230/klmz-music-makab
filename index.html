@@ -538,17 +538,10 @@
           credentials: 'include'
         };
 
-        if (method === 'GET' && Object.keys(params).length > 0) {
-            // Appwrite espera que los arrays en queries se pasen como 'queries[]'
-            const queryParams = new URLSearchParams();
-            for (const key in params) {
-                if (Array.isArray(params[key])) {
-                    params[key].forEach(value => queryParams.append(`${key}[]`, value));
-                } else {
-                    queryParams.append(key, params[key]);
-                }
-            }
-            url = `${url}?${queryParams.toString()}`;
+        // ✅ CORREGIDO: Manejo de parámetros GET más robusto
+        if (method === 'GET' && params.queries && params.queries.length > 0) {
+            const queryString = params.queries.map(q => `queries[]=${encodeURIComponent(q)}`).join('&');
+            url = `${url}?${queryString}`;
         } else if (method !== 'GET') {
           options.body = JSON.stringify(params);
         }
@@ -610,7 +603,6 @@
         return this.request('DELETE', `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`);
       }
 
-      // ✅ CORREGIDO: AHORA ACEPTA PERMISOS
       async createFile(bucketId, fileId, file, permissions = []) {
         const formData = new FormData();
         formData.append('fileId', fileId);
@@ -718,10 +710,7 @@
         setStatus('📸 Subiendo portada...', 'admin');
         const coverId = 'unique()';
         
-        // ✅ CORREGIDO: Añadir permisos de lectura pública al archivo
-        const filePermissions = [
-            'read("any")'
-        ];
+        const filePermissions = [ 'read("any")' ];
 
         const coverFile = await client.createFile(CONFIG.bucketId, coverId, selectedCoverFile, filePermissions);
         
@@ -969,7 +958,7 @@
         $('userInfo').style.display = 'flex';
         $('adminButtons').style.display = 'flex';
       } else {
-        $('lockIcon').textContent = '�';
+        $('lockIcon').textContent = '👤';
         $('userName').textContent = user.name;
         $('userInfo').style.display = 'flex';
         $('adminButtons').style.display = 'none';
@@ -1345,4 +1334,3 @@
   </script>
 </body>
 </html>
-�
