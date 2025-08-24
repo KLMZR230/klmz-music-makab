@@ -7,7 +7,6 @@
     <meta name="theme-color" content="#1DB954">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
-        /* CSS original, sin cambios */
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease;}
         header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
@@ -385,8 +384,8 @@
         let db;
 
         // --- Configuración de Supabase ---
-        const SUPABASE_URL = 'https://nqbldvpnqhngdtalvzov.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
+        const SUPABASE_URL = 'https://nqbldvpnqhngdtalvzov.supabase.co'; // Reemplaza con tu URL de Supabase
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0'; // Reemplaza con tu clave de Supabase
         
         // --- Configuración de Appwrite ---
         const APPWRITE_ENDPOINT = 'https://nyc.cloud.appwrite.io/v1';
@@ -395,7 +394,7 @@
         const APPWRITE_SONGS_COLLECTION_ID = '68ab0f0e002d9f334b0d';
         const APPWRITE_SONGS_BUCKET_ID = '68ab1101001cff947e6b';
 
-        const ADMIN_EMAIL = 'klmzr230@gmail.com';
+        const ADMIN_EMAIL = 'klmzr@gmail.com';
 
         // --- Base de Datos (IndexedDB) para descargas ---
         function initDB() {
@@ -459,7 +458,8 @@
                 element.textContent = '...';
                 
                 const audioUrl = appwriteStorage.getFileDownload(APPWRITE_SONGS_BUCKET_ID, song.file_id);
-                const coverUrl = appwriteStorage.getFileDownload('TU_BUCKET_DE_PORTADAS', song.cover_id);
+                // Asumo que la portada se obtiene del álbum en Supabase
+                const coverUrl = allAlbums.find(a => a.id === song.album_id).cover_url;
 
                 const audioResponse = await fetch(audioUrl);
                 if (!audioResponse.ok) throw new Error('Error en la red al descargar audio');
@@ -612,7 +612,7 @@
                 await loadAllData();
             } catch (error) {
                 console.error('Error conectando a servicios:', error);
-                showErrorMessage('Error de conexión. Revisa tu internet.');
+                showErrorMessage('Error de conexión. Revisa tu internet o las credenciales de tu base de datos.');
             } finally {
                 showLoadingIndicator(false);
             }
