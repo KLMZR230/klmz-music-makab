@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#1DB954">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
-        /* El CSS original sigue aquí sin cambios */
+        /* CSS original, sin cambios */
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease;}
         header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
@@ -620,10 +620,13 @@
 
         async function loadAllData() {
             try {
-                const [{ data: albums }, { documents: songs }] = await Promise.all([
-                    supabase.from('albums').select('*'),
-                    appwriteDatabases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_SONGS_COLLECTION_ID, [Appwrite.Query.limit(100)])
-                ]);
+                // Obtener álbumes de Supabase
+                const { data: albums, error: albumsError } = await supabase.from('albums').select('*');
+                if (albumsError) throw albumsError;
+                
+                // Obtener canciones de Appwrite
+                const { documents: songs, error: songsError } = await appwriteDatabases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_SONGS_COLLECTION_ID, [Appwrite.Query.limit(100)]);
+                if (songsError) throw songsError;
                 
                 allAlbums = albums || [];
                 allSongs = songs || [];
@@ -1005,7 +1008,7 @@
             if (!query) { results.innerHTML = ''; return; }
             
             const foundAlbums = allAlbums.filter(a => a.title.toLowerCase().includes(query) || a.artist.toLowerCase().includes(query));
-            const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.albums.artist.toLowerCase().includes(query));
+            const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || (s.albums && s.albums.artist.toLowerCase().includes(query)));
             
             let html = '';
             if (foundAlbums.length) {
@@ -1017,7 +1020,7 @@
             if (foundSongs.length) {
                 html += '<h3>🎵 Canciones</h3>' + foundSongs.map(song => `
                     <div class="search-song-item" onclick="playSongFromSearch('${song.$id}')">
-                        <div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums.artist}</div></div>
+                        <div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums?.artist || 'Desconocido'}</div></div>
                         <div style="font-size: 1.1rem;">▶</div>
                     </div>`).join('');
             }
