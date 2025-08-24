@@ -6,218 +6,441 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   
   <style>
-  *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding:2rem}
-  header{background:#121212;padding:1rem;display:flex;align-items:center;justify-content:space-between;border-radius:12px;margin-bottom:2rem}
-  .logo{font-weight:700;font-size:1.4rem;color:#1DB954}
-  .user-section{display:flex;align-items:center;gap:1rem}
-  .user-info{display:none;align-items:center;gap:0.5rem;background:#333;padding:0.5rem 1rem;border-radius:8px}
-  .user-info.admin{background:#1DB954;animation:adminGlow 2s infinite alternate}
-  @keyframes adminGlow{0%{box-shadow:0 0 5px #1DB954}100%{box-shadow:0 0 20px #1DB954,0 0 30px #1DB954}}
-  .lock-icon{cursor:pointer;font-size:1.4rem;padding:0.5rem;border-radius:8px;background:#333;transition:all 0.2s}
-  .lock-icon:hover{background:#444}
-  .lock-icon.admin{background:#1DB954;animation:crownPulse 1.5s infinite}
-  @keyframes crownPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-  .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
-  .status.success{background:#1a2e1a;color:#51cf66;border-left-color:#51cf66}
-  .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
-  .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
-  .status.admin{background:#1DB954;color:#fff;border-left-color:#fff;font-weight:bold}
-  .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2rem;margin-top:2rem}
-  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px;transition:transform 0.3s;position:relative}
-  .album-card:hover{transform:scale(1.05)}
-  .album-actions{position:absolute;top:0.5rem;right:0.5rem;display:none;gap:0.5rem}
-  .album-card:hover .album-actions{display:flex}
-  .test-buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
-  .btn{padding:0.75rem 1.5rem;background:#1DB954;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:background 0.2s}
-  .btn:hover{background:#1ed760}
-  .btn.secondary{background:#333;color:#fff}
-  .btn.secondary:hover{background:#444}
-  .btn.danger{background:#dc3545}
-  .btn.danger:hover{background:#c82333}
-  .btn.admin{background:linear-gradient(45deg,#1DB954,#1ed760);box-shadow:0 4px 15px rgba(29,185,84,0.3)}
-  .btn.small{padding:0.5rem;font-size:0.8rem;min-width:auto}
-  .empty-state{text-align:center;padding:3rem;color:#666;grid-column:1/-1;background:#222;border-radius:12px}
-  .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
+    /* Estilos Base y Generales */
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease;}
+    header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
+    .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; color: #1DB954; }
+    .user-actions { display:flex; align-items: center; gap:.5rem; }
+    .lock-icon { cursor:pointer; font-size:1.4rem; color:#fff; user-select:none; transition: all 0.3s ease; }
+    .lock-icon:hover { opacity:.7;}
+    .lock-icon.admin{background:#1DB954;animation:crownPulse 1.5s infinite;border-radius:8px;padding:0.5rem;}
+    @keyframes crownPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    .theme-selector { display: flex; align-items: center; gap: 0.3rem; margin-right: 0.5rem; }
+    .theme-selector label { font-size: 0.7rem; color: #b3b3b3; }
+    .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease; }
+    .app-container { display: flex; min-height: calc(100vh - 60px);}
+    main { flex:1; padding:1rem; max-width:900px; margin:0 auto;}
+    #search-input { width: 100%; padding: 1rem; background: #242424; border: none; border-radius: 4px; color: #fff; margin-bottom: 2rem; transition: all 0.3s ease; }
+    .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
+    .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
+    .album-card { background:none; padding:0; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition: transform 0.3s; position: relative;}
+    .album-card:hover { transform:scale(1.05);}
+    .album-actions{position:absolute;top:0.5rem;right:0.5rem;display:none;gap:0.5rem;z-index:2;}
+    .album-card:hover .album-actions{display:flex;}
+    .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease; }
+    .album-title { font-size:.98rem; font-weight: bold; margin-bottom: 0.4rem; transition: all 0.3s ease; }
+    .album-artist { font-size: .9rem; color: #b3b3b3; transition: all 0.3s ease; }
+    .song-list { width:100%; margin-top:1rem; padding-bottom: 120px; }
+    .song-list ul { list-style:none; padding:0; margin:0;}
+    .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease;}
+    .song-list li:hover { color:#fff; background: rgba(255,255,255,.05);}
+    .play-icon { font-size: 1.1rem; }
+    .player { position: fixed; bottom: 84px; left: 0; right: 0; background: #212121cc; border-top: 1px solid #282828; z-index: 300; display: flex; align-items: center; padding: 0.8rem 1.2rem; min-height: 56px; cursor: pointer; box-shadow: 0 -2px 10px #0002; transition: all 0.3s ease;}
+    .player-img-mini { width:44px; height:44px; border-radius:100%; object-fit:cover; margin-right:1rem;}
+    .player-info-mini { flex:1; overflow:hidden;}
+    .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
+    .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
+    .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: all 0.3s ease; }
+    .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
+    .full-player-backdrop.active { display: flex;}
+    .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
+    .full-player-title { font-size: 1.8rem; font-weight: bold; margin: 1rem 0 .5rem 0; text-align: center;}
+    .full-player-artist { color: #b3b3b3; font-size: 1.1rem; margin-bottom: 2rem; text-align: center;}
+    .full-player-controls { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%; }
+    .full-control-buttons { display: flex; gap: 3rem; align-items: center; }
+    .full-control-btn { background: none; border: none; color: #fff; font-size: 2rem; padding: 0.6rem; border-radius: 50%; cursor: pointer; transition: all 0.3s ease; }
+    .full-control-btn:hover { background: rgba(255,255,255,0.1); }
+    .full-play-btn { background: #1DB954; color: #fff; border-radius: 50%; font-size: 2.5rem; padding: 0.8rem; transition: all 0.3s ease; }
+    .full-play-btn:hover { background: #1ed760; transform: scale(1.05); }
+    .mode-controls { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; }
+    .mode-btn { background: none; border: 1px solid #444; color: #b3b3b3; padding: 0.5rem; border-radius: 50%; cursor: pointer; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+    .mode-btn:hover { color: #fff; border-color: #666; }
+    .mode-btn.active { color: #1DB954; border-color: #1DB954; background: rgba(29,185,84,0.1); }
+    .full-progress-bar { flex: 1; height: 8px; background: #4f4f4f; border-radius: 4px; cursor: pointer; position: relative;}
+    .full-progress-fill { height: 100%; background: #1DB954; border-radius: 4px; width: 0%; position: absolute; top: 0; left: 0; transition: all 0.3s ease;}
+    .full-progress-container { width: 90%; max-width: 400px; display: flex; align-items: center; gap: 1rem;}
+    .full-progress-time { font-size: 1rem; color: #b3b3b3; min-width: 50px;}
+    .full-player-volume { margin-top: 1rem;}
+    .full-volume-slider { width: 150px; }
+    .full-player-close { position: absolute; top: 30px; right: 40px; background: none; border: none; font-size: 2.5rem; color: #fff; cursor: pointer; transition: all 0.3s ease; }
+    .full-player-close:hover { color: #ff4757; }
+    .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
+    .modal.show{display:flex;}
+    .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; max-height:90vh; overflow-y:auto; transition: all 0.3s ease; position:relative; }
+    .modal-content p a { color: #1DB954; text-decoration: none; }
+    .modal-content p { text-align: center; margin-top: 1rem; }
+    .form-group { margin-bottom:1rem;}
+    .form-group label { display:block; margin-bottom:0.5rem;}
+    .form-group input, .form-group select { width:100%; padding:.7rem; background:#404040; border:1px solid #555; border-radius:4px; color:#fff; transition: all 0.3s ease;}
+    .form-group input:focus, .form-group select:focus{outline:none;border-color:#1DB954;}
+    .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
+    .btn-primary:hover { background:#1ed760; }
+    .btn-danger { background:#e22134; color:#fff; border:none; padding:.5rem 1rem; border-radius:4px; cursor:pointer; transition: all 0.3s ease; }
+    .btn-danger:hover { background:#ff4757; }
+    .btn{background:#1DB954;color:#fff;border:none;padding:.7rem 1.5rem;border-radius:8px;cursor:pointer;transition:all 0.3s ease;}
+    .btn:hover{background:#1ed760;}
+    .btn.secondary{background:#555;}
+    .btn.secondary:hover{background:#666;}
+    .btn.small{padding:.3rem .6rem;font-size:.8rem;}
+    .btn.admin{background:linear-gradient(45deg,#1DB954,#1ed760);box-shadow:0 4px 15px rgba(29,185,84,0.3);}
+    .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
+    .user-menu { position: relative; display: inline-block; }
+    .user-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #282828; min-width: 200px; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 1000; border: 1px solid #404040; transition: all 0.3s ease; }
+    .user-dropdown.show { display: block; animation: dropdownFadeIn 0.2s ease; }
+    .user-dropdown-item { padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid #404040; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; transition: all 0.3s ease; }
+    .user-dropdown-item:last-child { border-bottom: none; }
+    .user-dropdown-item:hover { background: #404040; }
+    .user-dropdown-item.logout { color: #ff4757; border-top: 1px solid #404040; margin-top: 0.3rem; }
+    .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; }
+    .user-info strong { color: #fff; font-size: 0.9rem; }
+    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
+    .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; font-size: 1.14rem; padding: 4px 0 0 0; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
+    .bottom-nav-item.active { color: #1DB954; background: rgba(29,185,84,.09);}
+    .bottom-nav-item:hover {background:rgba(255,255,255,0.05);}
+    .bottom-nav-item .icon { font-size: 1.12rem; }
+    .bottom-nav-item small { font-size: 0.67rem;}
+    .content-section { display: none; }
+    .content-section.active { display: block; }
+    .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: all 0.3s ease; }
+    .back-btn:hover { background: #333; }
+    .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
+    .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
+    .search-song-item { background: #242424; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
+    .search-song-item:hover { background: #333; }
+    .search-song-info { flex: 1; }
+    .search-song-title { font-weight: bold; margin-bottom: 0.2rem; }
+    .search-song-artist { font-size: 0.9rem; color: #b3b3b3; }
+    .favorites-list, .downloads-list { margin-top: 1rem; }
+    .favorite-item, .download-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; transition: all 0.3s ease; }
+    .favorite-item:hover, .download-item:hover { background: #333; }
+    .favorite-info, .download-info { flex: 1; }
+    .favorite-title, .download-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
+    .favorite-artist, .download-artist { font-size: 0.9rem; color: #b3b3b3; }
+    .song-actions { display: flex; gap: 0.8rem; align-items: center; }
+    .download-icon { cursor: pointer; color: #666; font-size: 1.2rem; }
+    .download-icon.downloaded { color: #1DB954; }
+    #album-detail { padding-bottom: 120px; }
 
-  /* Panel de administración */
-  .admin-panel{display:none;background:#222;border-radius:12px;padding:2rem;margin:2rem 0;border:2px solid #1DB954}
-  .admin-panel.show{display:block}
-  .admin-tabs{display:flex;gap:1rem;margin-bottom:2rem;border-bottom:1px solid #333}
-  .admin-tab{background:none;border:none;color:#999;padding:1rem;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
-  .admin-tab.active{color:#1DB954;border-bottom-color:#1DB954}
-  .admin-content{display:none}
-  .admin-content.active{display:block}
-  .form-row{display:flex;gap:1rem;margin-bottom:1rem}
-  .form-group{flex:1;margin-bottom:1.5rem}
-  .form-group label{display:block;margin-bottom:0.5rem;color:#ccc;font-weight:600}
-  .form-group input, .form-group textarea{width:100%;padding:0.75rem;background:#333;border:1px solid #555;border-radius:8px;color:#fff;font-size:1rem;font-family:inherit}
-  .form-group input:focus, .form-group textarea:focus{outline:none;border-color:#1DB954;box-shadow:0 0 0 2px rgba(29,185,84,0.2)}
-  .form-group textarea{resize:vertical;min-height:100px}
-  
-  /* Subida de portada */
-  .cover-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:all 0.2s;cursor:pointer;position:relative;overflow:hidden}
-  .cover-upload:hover{border-color:#1DB954}
-  .cover-upload.has-image{border-color:#1DB954;background-size:cover;background-position:center;background-repeat:no-repeat}
-  .cover-upload-overlay{background:rgba(0,0,0,0.7);padding:1rem;border-radius:4px;position:relative;z-index:2}
-  .cover-preview{width:100px;height:100px;border-radius:8px;object-fit:cover;margin:0 auto 1rem;display:none}
-  
-  .file-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:border-color 0.2s}
-  .file-upload:hover{border-color:#1DB954}
-  .file-upload.dragover{border-color:#1DB954;background:#1a2e1a}
-  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
-  .stat-card{background:#333;padding:1.5rem;border-radius:8px;text-align:center}
-  .stat-number{font-size:2rem;font-weight:bold;color:#1DB954;margin-bottom:0.5rem}
-  .stat-label{color:#999;font-size:0.9rem}
+    /* --- Admin Panel Styles --- */
+    .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; }
+    .admin-section h4 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 0.8rem; margin-bottom: 1.5rem; }
+    .admin-form { margin-bottom: 2rem; }
+    .admin-list .admin-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-radius: 4px; margin-bottom: 0.5rem; background: #2c2c2c; }
+    .admin-item-info { flex: 1; }
+    .admin-item-actions button { margin-left: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    
+    /* Status y elementos específicos de KLMZ */
+    .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
+    .status.success{background:#1a2e1a;color:#51cf66;border-left-color:#51cf66}
+    .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
+    .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
+    .status.admin{background:#1DB954;color:#fff;border-left-color:#fff;font-weight:bold}
+    .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
+    .admin-panel{display:none;background:#242424;border-radius:12px;padding:2rem;margin:2rem 0;border:2px solid #1DB954}
+    .admin-panel.show{display:block}
+    .admin-tabs{display:flex;gap:1rem;margin-bottom:2rem;border-bottom:1px solid #333}
+    .admin-tab{background:none;border:none;color:#999;padding:1rem;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+    .admin-tab.active{color:#1DB954;border-bottom-color:#1DB954}
+    .admin-content{display:none}
+    .admin-content.active{display:block}
+    .form-row{display:flex;gap:1rem;margin-bottom:1rem}
+    .cover-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:all 0.2s;cursor:pointer;position:relative;overflow:hidden}
+    .cover-upload:hover{border-color:#1DB954}
+    .cover-upload.has-image{border-color:#1DB954;background-size:cover;background-position:center;background-repeat:no-repeat}
+    .cover-upload-overlay{background:rgba(0,0,0,0.7);padding:1rem;border-radius:4px;position:relative;z-index:2}
+    .cover-preview{width:100px;height:100px;border-radius:8px;object-fit:cover;margin:0 auto 1rem;display:none}
+    .file-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:border-color 0.2s}
+    .file-upload:hover{border-color:#1DB954}
+    .file-upload.dragover{border-color:#1DB954;background:#1a2e1a}
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+    .stat-card{background:#333;padding:1.5rem;border-radius:8px;text-align:center}
+    .stat-number{font-size:2rem;font-weight:bold;color:#1DB954;margin-bottom:0.5rem}
+    .stat-label{color:#999;font-size:0.9rem}
+    .test-buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
+    .empty-state{text-align:center;padding:3rem;color:#666;grid-column:1/-1;background:#333;border-radius:12px}
 
-  /* Modal styles */
-  .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center}
-  .modal.show{display:flex}
-  .modal-content{background:#222;padding:2rem;border-radius:12px;width:90%;max-width:500px;position:relative;max-height:80vh;overflow-y:auto}
-  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
-  .modal-title{font-size:1.4rem;color:#1DB954;margin:0}
-  .close-btn{background:none;border:none;color:#999;font-size:1.5rem;cursor:pointer;padding:0}
-  .close-btn:hover{color:#fff}
-  .auth-buttons{display:flex;gap:1rem;margin-top:2rem}
-  .auth-toggle{text-align:center;margin-top:1rem;color:#999}
-  .auth-toggle button{background:none;border:none;color:#1DB954;cursor:pointer;text-decoration:underline}
+    /* ✅ TEMAS VISUALES COMPLETOS Y ARREGLADOS */
+    /* ⚡ TEMA NEON CYBERPUNK */
+    body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
+    body.theme-neon header { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-bottom: 2px solid #00ff88 !important; box-shadow: 0 4px 20px rgba(0,255,136,0.3) !important; }
+    body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
+    body.theme-neon .album-img { border: 3px solid #ff0080 !important; box-shadow: 0 0 20px rgba(255,0,128,0.6) !important; }
+    body.theme-neon .album-title { color: #00ff88 !important; text-shadow: 0 0 10px rgba(0,255,136,0.5) !important; }
+    body.theme-neon .album-artist { color: #ff0080 !important; }
+    body.theme-neon .section-title { color: #00ff88 !important; text-shadow: 0 0 15px rgba(0,255,136,0.7) !important; }
+    body.theme-neon .btn-primary, body.theme-neon .play-btn-inline, body.theme-neon .full-play-btn { background: linear-gradient(45deg, #00ff88, #00ccff) !important; box-shadow: 0 0 25px rgba(0,255,136,0.5) !important; color: #000 !important;}
+    body.theme-neon .bottom-nav { background: linear-gradient(180deg, rgba(26,26,46,0.95), rgba(10,10,10,0.95)) !important; border-top: 2px solid #00ff88 !important; }
+    body.theme-neon .bottom-nav-item.active { color: #00ff88 !important; background: rgba(0,255,136,0.15) !important; text-shadow: 0 0 10px rgba(0,255,136,0.8) !important; }
+    body.theme-neon .mode-btn.active { color: #00ff88 !important; border-color: #00ff88 !important; background: rgba(0,255,136,0.1) !important; }
+    body.theme-neon .player { background: linear-gradient(135deg, rgba(26,26,46,0.95), rgba(22,33,62,0.95)) !important; border-top: 2px solid #ff0080 !important; }
+    body.theme-neon .user-dropdown { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border: 2px solid #00ff88 !important; box-shadow: 0 8px 32px rgba(0,255,136,0.3) !important; }
+    body.theme-neon .modal-content { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border: 2px solid #00ff88 !important; }
+    body.theme-neon #search-input { background: #1a1a2e !important; border: 1px solid #00ff88 !important; }
+    body.theme-neon .theme-selector select { background: #1a1a2e !important; border: 1px solid #00ff88 !important; }
+    /* ✨ TEMA MINIMAL ELEGANTE */
+    body.theme-minimal { background: linear-gradient(135deg, #0f0f0f 0%, #1c1c1c 50%, #2a2a2a 70%, #0f0f0f 100%) !important; color: #f5f5f5 !important; font-family: 'SF Pro Display', -apple-system, sans-serif !important; }
+    body.theme-minimal header { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; border-bottom: 1px solid rgba(245,245,245,0.1) !important; }
+    body.theme-minimal .logo { color: #f5f5f5 !important; font-weight: 200 !important; letter-spacing: 4px !important; }
+    body.theme-minimal .album-img { border-radius: 12px !important; border: 1px solid rgba(245,245,245,0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;}
+    body.theme-minimal .album-img:hover { transform: translateY(-8px) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important; }
+    body.theme-minimal .album-title { color: #f5f5f5 !important; }
+    body.theme-minimal .album-artist { color: #a0a0a0 !important; }
+    body.theme-minimal .section-title { color: #f5f5f5 !important; font-weight: 200 !important; }
+    body.theme-minimal .btn-primary, body.theme-minimal .play-btn-inline, body.theme-minimal .full-play-btn { background: #f5f5f5 !important; color: #0f0f0f !important; border-radius: 8px !important; }
+    body.theme-minimal .bottom-nav { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; }
+    body.theme-minimal .bottom-nav-item.active { color: #f5f5f5 !important; background: rgba(245,245,245,0.08) !important; }
+    body.theme-minimal .mode-btn.active { color: #f5f5f5 !important; border-color: #f5f5f5 !important; background: rgba(245,245,245,0.1) !important; }
+    body.theme-minimal .user-dropdown { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; border: 1px solid rgba(245,245,245,0.1) !important; }
+    body.theme-minimal .modal-content { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; border: 1px solid rgba(245,245,245,0.1) !important; }
+    body.theme-minimal #search-input { background: rgba(60,60,60,0.5) !important; border: 1px solid rgba(245,245,245,0.1) !important; }
+    /* 🌅 TEMA SUNSET VIBES */
+    body.theme-sunset { background: linear-gradient(135deg, #2c1810 0%, #4a2c2a 30%, #6d4c41 60%, #1a1a1a 100%) !important; color: #ffab91 !important; }
+    body.theme-sunset header { background: linear-gradient(135deg, #4a2c2a, #6d4c41) !important; border-bottom: 2px solid #ff8a65 !important; box-shadow: 0 4px 20px rgba(255,138,101,0.3) !important; }
+    body.theme-sunset .logo { color: #ff8a65 !important; text-shadow: 0 2px 8px rgba(255,138,101,0.4) !important; }
+    body.theme-sunset .album-img { border: 3px solid #ff8a65 !important; box-shadow: 0 8px 25px rgba(255,138,101,0.4) !important; }
+    body.theme-sunset .album-title { color: #ffab91 !important; }
+    body.theme-sunset .album-artist { color: #ff8a65 !important; }
+    body.theme-sunset .section-title { color: #ff8a65 !important; text-shadow: 0 2px 10px rgba(255,138,101,0.4) !important; }
+    body.theme-sunset .btn-primary, body.theme-sunset .play-btn-inline, body.theme-sunset .full-play-btn { background: linear-gradient(45deg, #ff8a65, #ff6f00) !important; box-shadow: 0 4px 15px rgba(255,138,101,0.4) !important; }
+    body.theme-sunset .bottom-nav { background: linear-gradient(180deg, rgba(76,44,42,0.95), rgba(26,26,26,0.95)) !important; border-top: 2px solid #ff8a65 !important; }
+    body.theme-sunset .bottom-nav-item.active { color: #ff8a65 !important; background: rgba(255,138,101,0.15) !important; }
+    body.theme-sunset .mode-btn.active { color: #ff8a65 !important; border-color: #ff8a65 !important; background: rgba(255,138,101,0.1) !important; }
+    body.theme-sunset .user-dropdown { background: linear-gradient(135deg, #4a2c2a, #6d4c41) !important; border: 2px solid #ff8a65 !important; }
+    body.theme-sunset .modal-content { background: linear-gradient(135deg, #4a2c2a, #6d4c41) !important; border: 2px solid #ff8a65 !important; }
+    body.theme-sunset #search-input { background: #4a2c2a !important; border: 1px solid #ff8a65 !important; }
+    /* 🌸 TEMA PASTEL DREAMS */
+    body.theme-pastel { background: linear-gradient(135deg, #1a1625 0%, #2d2438 50%, #3d2f47 70%, #4a3b5c 100%) !important; color: #d4c5f9 !important; }
+    body.theme-pastel header { background: rgba(139,130,176,0.15) !important; backdrop-filter: blur(20px) !important; border-bottom: 2px solid rgba(184,169,232,0.4) !important; }
+    body.theme-pastel .logo { color: #b8a9e8 !important; text-shadow: 0 2px 12px rgba(184,169,232,0.5) !important; }
+    body.theme-pastel .album-img { border-radius: 20px !important; border: 2px solid rgba(184,169,232,0.5) !important; box-shadow: 0 12px 40px rgba(184,169,232,0.3) !important; }
+    body.theme-pastel .album-title { color: #d4c5f9 !important; }
+    body.theme-pastel .album-artist { color: #b8a9e8 !important; }
+    body.theme-pastel .section-title { color: #b8a9e8 !important; text-shadow: 0 2px 15px rgba(184,169,232,0.5) !important; }
+    body.theme-pastel .btn-primary, body.theme-pastel .play-btn-inline, body.theme-pastel .full-play-btn { background: linear-gradient(45deg, #b8a9e8, #d4c5f9) !important; color: #1a1625 !important; box-shadow: 0 4px 20px rgba(184,169,232,0.4) !important; }
+    body.theme-pastel .bottom-nav { background: rgba(45,36,56,0.9) !important; backdrop-filter: blur(25px) !important; border-top: 2px solid rgba(184,169,232,0.4) !important; }
+    body.theme-pastel .bottom-nav-item.active { color: #d4c5f9 !important; background: rgba(184,169,232,0.15) !important; }
+    body.theme-pastel .mode-btn.active { color: #b8a9e8 !important; border-color: #b8a9e8 !important; background: rgba(184,169,232,0.1) !important; }
+    body.theme-pastel .user-dropdown { background: rgba(45,36,56,0.95) !important; backdrop-filter: blur(25px) !important; border: 2px solid rgba(184,169,232,0.4) !important; }
+    body.theme-pastel .modal-content { background: rgba(45,36,56,0.95) !important; border: 2px solid rgba(184,169,232,0.4) !important; }
+    body.theme-pastel #search-input { background: rgba(45,36,56,0.7) !important; border: 1px solid rgba(184,169,232,0.4) !important; }
+    /* 💎 TEMA LUXURY JEWELS */
+    body.theme-luxury { background: linear-gradient(135deg, #0f1419 0%, #1a252f 50%, #2c3e50 70%, #34495e 100%) !important; color: #f0f8ff !important; }
+    body.theme-luxury header { background: linear-gradient(135deg, #1e3a5f, #34495e) !important; border-bottom: 3px solid #d4af37 !important; box-shadow: 0 4px 20px rgba(212,175,55,0.3) !important; }
+    body.theme-luxury .logo { color: #d4af37 !important; font-weight: 700 !important; text-shadow: 0 3px 10px rgba(212,175,55,0.5) !important; }
+    body.theme-luxury .album-img { border: 3px solid #d4af37 !important; box-shadow: 0 10px 30px rgba(212,175,55,0.4) !important; }
+    body.theme-luxury .album-title { color: #f0f8ff !important; }
+    body.theme-luxury .album-artist { color: #4a9eff !important; }
+    body.theme-luxury .section-title { color: #d4af37 !important; text-shadow: 0 3px 15px rgba(212,175,55,0.5) !important; }
+    body.theme-luxury .btn-primary, body.theme-luxury .play-btn-inline, body.theme-luxury .full-play-btn { background: linear-gradient(45deg, #d4af37, #b8860b) !important; color: #0f1419 !important; box-shadow: 0 4px 20px rgba(212,175,55,0.4) !important; }
+    body.theme-luxury .bottom-nav { background: linear-gradient(180deg, rgba(30,58,95,0.95), rgba(15,20,25,0.95)) !important; border-top: 3px solid #d4af37 !important; }
+    body.theme-luxury .bottom-nav-item.active { color: #d4af37 !important; background: rgba(212,175,55,0.15) !important; }
+    body.theme-luxury .mode-btn.active { color: #d4af37 !important; border-color: #d4af37 !important; background: rgba(212,175,55,0.1) !important; }
+    body.theme-luxury .user-dropdown { background: linear-gradient(135deg, #1e3a5f, #34495e) !important; border: 2px solid #d4af37 !important; box-shadow: 0 8px 32px rgba(212,175,55,0.3) !important; }
+    body.theme-luxury .modal-content { background: linear-gradient(135deg, #1e3a5f, #34495e) !important; border: 2px solid #d4af37 !important; }
+    body.theme-luxury #search-input { background: #1e3a5f !important; border: 1px solid #d4af37 !important; }
+    
+    /* 🌊 TEMA OCEANIC SERENITY */
+    body.theme-oceanic { background: linear-gradient(135deg, #0a192f 0%, #173a5e 50%, #3b6978 70%, #84a9ac 100%) !important; color: #e0e0e0 !important; font-family: 'Inter', -apple-system, sans-serif !important; }
+    body.theme-oceanic header { background: rgba(10, 25, 47, 0.85) !important; backdrop-filter: blur(10px) !important; border-bottom: 1px solid rgba(102, 252, 241, 0.2) !important; }
+    body.theme-oceanic .logo { color: #98ded9 !important; font-weight: 300 !important; text-shadow: 0 1px 5px rgba(152, 222, 217, 0.5) !important; }
+    body.theme-oceanic .album-img { border-radius: 15px !important; border: 2px solid rgba(152, 222, 217, 0.4) !important; box-shadow: 0 10px 30px rgba(23, 58, 94, 0.5) !important; }
+    body.theme-oceanic .album-title { color: #e0e0e0 !important; }
+    body.theme-oceanic .album-artist { color: #98ded9 !important; }
+    body.theme-oceanic .section-title { color: #e0e0e0 !important; font-weight: 300 !important; border-bottom: 1px solid rgba(152, 222, 217, 0.2); padding-bottom: 0.5rem; }
+    body.theme-oceanic .btn-primary, body.theme-oceanic .play-btn-inline, body.theme-oceanic .full-play-btn { background: linear-gradient(45deg, #20c997, #57b894) !important; color: #0a192f !important; box-shadow: 0 4px 15px rgba(87, 184, 148, 0.3) !important; }
+    body.theme-oceanic .bottom-nav { background: rgba(10, 25, 47, 0.85) !important; backdrop-filter: blur(10px) !important; border-top: 1px solid rgba(102, 252, 241, 0.2) !important; }
+    body.theme-oceanic .bottom-nav-item.active { color: #98ded9 !important; background: rgba(152, 222, 217, 0.1) !important; }
+    body.theme-oceanic .mode-btn.active { color: #98ded9 !important; border-color: #98ded9 !important; background: rgba(152, 222, 217, 0.1) !important; }
+    body.theme-oceanic .player { background: rgba(23, 58, 94, 0.9) !important; backdrop-filter: blur(10px) !important; border-top: 1px solid rgba(102, 252, 241, 0.2) !important; }
+    body.theme-oceanic .user-dropdown { background: rgba(23, 58, 94, 0.95) !important; backdrop-filter: blur(15px) !important; border: 1px solid rgba(102, 252, 241, 0.2) !important; }
+    body.theme-oceanic .modal-content { background: linear-gradient(135deg, #173a5e, #3b6978) !important; border: 1px solid rgba(102, 252, 241, 0.3) !important; }
+    body.theme-oceanic #search-input { background: rgba(10, 25, 47, 0.7) !important; border: 1px solid rgba(102, 252, 241, 0.2) !important; }
+    body.theme-oceanic .theme-selector select { background: rgba(10, 25, 47, 0.7) !important; border: 1px solid rgba(102, 252, 241, 0.2) !important; }
+
+    /* Animaciones */
+    @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
+    @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 768px) { .full-player-cover { width: 150px; height: 150px; } .full-player-title { font-size: 1.4rem; } .album-img { width: 80px; height: 80px; } }
   </style>
 </head>
 
 <body>
   <header>
     <span class="logo">🎵 KLMZ MUSIC</span>
-    <div class="user-section">
-      <div id="userInfo" class="user-info">
+    <div class="user-actions">
+      <div class="theme-selector">
+        <label>Tema:</label>
+        <select id="themeSelect" onchange="changeTheme(this.value)">
+          <option value="">Spotify</option>
+          <option value="theme-neon">⚡ Neon</option>
+          <option value="theme-minimal">✨ Minimal</option>
+          <option value="theme-sunset">🌅 Sunset</option>
+          <option value="theme-pastel">🌸 Pastel</option>
+          <option value="theme-luxury">💎 Luxury</option>
+          <option value="theme-oceanic">🌊 Oceanic</option>
+        </select>
+      </div>
+      <div id="userInfo" class="user-info" style="display:none;">
         <span id="userName"></span>
-        <button class="btn danger" onclick="logout()">Salir</button>
+        <button class="btn-danger" onclick="logout()">Salir</button>
       </div>
       <div id="lockIcon" class="lock-icon" onclick="openAuthModal()">🔒</div>
     </div>
   </header>
 
-  <main>
-    <h1>Álbumes</h1>
-    <div id="status" class="status info">🔄 Inicializando conexión directa...</div>
-    
-    <div class="test-buttons">
-      <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
-      <button class="btn secondary" onclick="addTestAlbum()" id="addAlbumBtn">➕ Agregar Álbum de Prueba</button>
-      <button class="btn secondary" onclick="loadAlbums()">📀 Cargar Álbumes</button>
-      <button class="btn admin" onclick="toggleAdminPanel()" id="adminPanelBtn" style="display:none">👑 Panel Admin</button>
-    </div>
-    
-    <!-- Panel de administración -->
-    <div id="adminPanel" class="admin-panel">
-      <div class="admin-tabs">
-        <button class="admin-tab active" onclick="switchAdminTab('albums')">📀 Crear Álbum</button>
-        <button class="admin-tab" onclick="switchAdminTab('upload')">📤 Subir Archivos</button>
-        <button class="admin-tab" onclick="switchAdminTab('stats')">📊 Estadísticas</button>
-        <button class="admin-tab" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
-      </div>
-      
-      <!-- Tab: Crear Álbum -->
-      <div id="adminTabAlbums" class="admin-content active">
-        <h3>🎵 Crear Nuevo Álbum</h3>
-        <form id="albumForm" onsubmit="createAlbumWithCover(event)">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="albumName">Nombre del Álbum: *</label>
-              <input type="text" id="albumName" required placeholder="Ej: KLMZ Hits Vol. 1">
-            </div>
-            <div class="form-group">
-              <label for="artistName">Artista: *</label>
-              <input type="text" id="artistName" required placeholder="Ej: Freddy Granados">
-            </div>
+  <div class="app-container">
+    <main>
+      <div id="homeSection" class="content-section active">
+        <h1 class="section-title">Álbumes</h1>
+        <div id="status" class="status info">🔄 Inicializando conexión directa...</div>
+        
+        <div class="test-buttons">
+          <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
+          <button class="btn secondary" onclick="addTestAlbum()" id="addAlbumBtn">➕ Agregar Álbum de Prueba</button>
+          <button class="btn secondary" onclick="loadAlbums()">📀 Cargar Álbumes</button>
+          <button class="btn admin" onclick="toggleAdminPanel()" id="adminPanelBtn" style="display:none">👑 Panel Admin</button>
+        </div>
+        
+        <!-- Panel de administración -->
+        <div id="adminPanel" class="admin-panel">
+          <div class="admin-tabs">
+            <button class="admin-tab active" onclick="switchAdminTab('albums')">📀 Crear Álbum</button>
+            <button class="admin-tab" onclick="switchAdminTab('upload')">📤 Subir Archivos</button>
+            <button class="admin-tab" onclick="switchAdminTab('stats')">📊 Estadísticas</button>
+            <button class="admin-tab" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
           </div>
           
-          <div class="form-group">
-            <label>Portada del Álbum: *</label>
-            <div id="coverUpload" class="cover-upload" onclick="$('coverInput').click()">
-              <div class="cover-upload-overlay">
-                <img id="coverPreview" class="cover-preview" alt="Preview">
-                <div id="coverUploadText">
-                  <p>📸 Haz clic para subir portada</p>
-                  <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
+          <!-- Tab: Crear Álbum -->
+          <div id="adminTabAlbums" class="admin-content active">
+            <h3>🎵 Crear Nuevo Álbum</h3>
+            <form id="albumForm" onsubmit="createAlbumWithCover(event)">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="albumName">Nombre del Álbum: *</label>
+                  <input type="text" id="albumName" required placeholder="Ej: KLMZ Hits Vol. 1">
+                </div>
+                <div class="form-group">
+                  <label for="artistName">Artista: *</label>
+                  <input type="text" id="artistName" required placeholder="Ej: Freddy Granados">
                 </div>
               </div>
-            </div>
-            <input type="file" id="coverInput" accept=".jpg,.jpeg,.png" style="display:none" onchange="handleCoverUpload(event)">
+              
+              <div class="form-group">
+                <label>Portada del Álbum: *</label>
+                <div id="coverUpload" class="cover-upload" onclick="$('coverInput').click()">
+                  <div class="cover-upload-overlay">
+                    <img id="coverPreview" class="cover-preview" alt="Preview">
+                    <div id="coverUploadText">
+                      <p>📸 Haz clic para subir portada</p>
+                      <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
+                    </div>
+                  </div>
+                </div>
+                <input type="file" id="coverInput" accept=".jpg,.jpeg,.png" style="display:none" onchange="handleCoverUpload(event)">
+              </div>
+              
+              <button type="submit" class="btn admin" id="createAlbumBtn">➕ Crear Álbum</button>
+            </form>
           </div>
           
-          <button type="submit" class="btn admin" id="createAlbumBtn">➕ Crear Álbum</button>
-        </form>
+          <!-- Tab: Subir Archivos -->
+          <div id="adminTabUpload" class="admin-content">
+            <h3>📤 Subir Archivos de Audio</h3>
+            <div class="file-upload" id="fileUpload">
+              <p>🎵 Arrastra archivos de música aquí o haz clic para seleccionar</p>
+              <p style="color:#999;font-size:0.9rem;">Soporta: MP3, WAV, FLAC</p>
+              <input type="file" id="fileInput" multiple accept=".mp3,.wav,.flac" style="display:none">
+            </div>
+            <div id="uploadProgress" style="display:none;margin-top:1rem;">
+              <div style="background:#333;border-radius:8px;overflow:hidden;">
+                <div id="progressBar" style="background:#1DB954;height:20px;width:0%;transition:width 0.3s;"></div>
+              </div>
+              <p id="uploadStatus" style="margin-top:0.5rem;text-align:center;"></p>
+            </div>
+          </div>
+          
+          <!-- Tab: Estadísticas -->
+          <div id="adminTabStats" class="admin-content">
+            <h3>📊 Estadísticas del Sistema</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-number" id="statAlbums">-</div>
+                <div class="stat-label">Álbumes</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="statSongs">-</div>
+                <div class="stat-label">Canciones</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="statStorage">-</div>
+                <div class="stat-label">Archivos</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="statUsers">1</div>
+                <div class="stat-label">Usuarios</div>
+              </div>
+            </div>
+            <button class="btn" onclick="refreshStats()">🔄 Actualizar Estadísticas</button>
+          </div>
+          
+          <!-- Tab: Configuración -->
+          <div id="adminTabSettings" class="admin-content">
+            <h3>⚙️ Configuración del Sistema</h3>
+            <div class="form-group">
+              <label>Estado del Sistema:</label>
+              <p style="color:#51cf66;">✅ Todos los servicios funcionando correctamente</p>
+            </div>
+            <div class="form-group">
+              <label>Información del Proyecto:</label>
+              <p style="color:#999;font-family:monospace;font-size:0.9rem;">
+                Project ID: 68ab0cf2000365979a71<br>
+                Database ID: 68ab0d9b00124af501a5<br>
+                Endpoint: https://nyc.cloud.appwrite.io/v1
+              </p>
+            </div>
+            <button class="btn secondary" onclick="testAllServices()">🔍 Probar Todos los Servicios</button>
+            <button class="btn-danger" onclick="clearAllData()" style="margin-left:1rem;">🗑️ Limpiar Datos de Prueba</button>
+          </div>
+        </div>
+        
+        <div id="albums" class="album-grid"></div>
       </div>
-      
-      <!-- Tab: Subir Archivos -->
-      <div id="adminTabUpload" class="admin-content">
-        <h3>📤 Subir Archivos de Audio</h3>
-        <div class="file-upload" id="fileUpload">
-          <p>🎵 Arrastra archivos de música aquí o haz clic para seleccionar</p>
-          <p style="color:#999;font-size:0.9rem;">Soporta: MP3, WAV, FLAC</p>
-          <input type="file" id="fileInput" multiple accept=".mp3,.wav,.flac" style="display:none">
-        </div>
-        <div id="uploadProgress" style="display:none;margin-top:1rem;">
-          <div style="background:#333;border-radius:8px;overflow:hidden;">
-            <div id="progressBar" style="background:#1DB954;height:20px;width:0%;transition:width 0.3s;"></div>
-          </div>
-          <p id="uploadStatus" style="margin-top:0.5rem;text-align:center;"></p>
-        </div>
-      </div>
-      
-      <!-- Tab: Estadísticas -->
-      <div id="adminTabStats" class="admin-content">
-        <h3>📊 Estadísticas del Sistema</h3>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-number" id="statAlbums">-</div>
-            <div class="stat-label">Álbumes</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number" id="statSongs">-</div>
-            <div class="stat-label">Canciones</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number" id="statStorage">-</div>
-            <div class="stat-label">Archivos</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number" id="statUsers">1</div>
-            <div class="stat-label">Usuarios</div>
-          </div>
-        </div>
-        <button class="btn" onclick="refreshStats()">🔄 Actualizar Estadísticas</button>
-      </div>
-      
-      <!-- Tab: Configuración -->
-      <div id="adminTabSettings" class="admin-content">
-        <h3>⚙️ Configuración del Sistema</h3>
-        <div class="form-group">
-          <label>Estado del Sistema:</label>
-          <p style="color:#51cf66;">✅ Todos los servicios funcionando correctamente</p>
-        </div>
-        <div class="form-group">
-          <label>Información del Proyecto:</label>
-          <p style="color:#999;font-family:monospace;font-size:0.9rem;">
-            Project ID: 68ab0cf2000365979a71<br>
-            Database ID: 68ab0d9b00124af501a5<br>
-            Endpoint: https://nyc.cloud.appwrite.io/v1
-          </p>
-        </div>
-        <button class="btn secondary" onclick="testAllServices()">🔍 Probar Todos los Servicios</button>
-        <button class="btn danger" onclick="clearAllData()" style="margin-left:1rem;">🗑️ Limpiar Datos de Prueba</button>
-      </div>
+    </main>
+  </div>
+
+  <!-- Navegación inferior -->
+  <div class="bottom-nav">
+    <div class="bottom-nav-item active" onclick="showSection('home')">
+      <div class="icon">🏠</div>
+      <small>Inicio</small>
     </div>
-    
-    <div id="albums" class="album-grid"></div>
-  </main>
+    <div class="bottom-nav-item" onclick="showSection('search')">
+      <div class="icon">🔍</div>
+      <small>Buscar</small>
+    </div>
+    <div class="bottom-nav-item" onclick="showSection('library')">
+      <div class="icon">📚</div>
+      <small>Biblioteca</small>
+    </div>
+    <div class="bottom-nav-item" onclick="showSection('profile')" id="profileNavItem">
+      <div class="icon">👤</div>
+      <small>Perfil</small>
+    </div>
+  </div>
+
+  <!-- Copyright -->
+  <div class="copyright">
+    © 2025 KLMZ MUSIC - Powered by Appwrite
+  </div>
 
   <!-- Modal de autenticación -->
   <div id="authModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="modalTitle" class="modal-title">Iniciar Sesión</h2>
-        <button class="close-btn" onclick="closeAuthModal()">&times;</button>
+        <button class="close-modal" onclick="closeAuthModal()">&times;</button>
       </div>
       
       <form id="authForm" onsubmit="handleAuth(event)">
@@ -237,14 +460,13 @@
         </div>
         
         <div class="auth-buttons">
-          <button type="submit" class="btn" id="authSubmitBtn">Iniciar Sesión</button>
-          <button type="button" class="btn secondary" onclick="closeAuthModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" id="authSubmitBtn">Iniciar Sesión</button>
         </div>
       </form>
       
       <div class="auth-toggle">
-        <span id="toggleText">¿No tienes cuenta?</span>
-        <button type="button" onclick="toggleAuthMode()" id="toggleBtn">Registrarse</button>
+        <p><span id="toggleText">¿No tienes cuenta?</span>
+        <a href="#" onclick="toggleAuthMode()" id="toggleBtn">Registrarse</a></p>
       </div>
     </div>
   </div>
@@ -271,6 +493,45 @@
       const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'admin' ? '👑' : '🔄';
       $('status').innerHTML = `${emoji} ${message}`;
       $('status').className = `status ${type}`;
+    }
+
+    // Función para cambiar tema
+    function changeTheme(theme) {
+      // Remover todas las clases de tema
+      const themes = ['theme-neon', 'theme-minimal', 'theme-sunset', 'theme-pastel', 'theme-luxury', 'theme-oceanic'];
+      themes.forEach(t => document.body.classList.remove(t));
+      
+      // Agregar nuevo tema si se seleccionó
+      if (theme) {
+        document.body.classList.add(theme);
+        localStorage.setItem('klmzTheme', theme);
+      } else {
+        localStorage.removeItem('klmzTheme');
+      }
+    }
+
+    // Función para mostrar secciones
+    function showSection(section) {
+      // Remover active de todos los nav items
+      document.querySelectorAll('.bottom-nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // Agregar active al seleccionado
+      event.currentTarget.classList.add('active');
+      
+      // Mostrar la sección correspondiente
+      if (section === 'home') {
+        $('homeSection').style.display = 'block';
+        loadAlbums(); // Cargar álbumes al volver al inicio
+      } else {
+        $('homeSection').style.display = 'none';
+      }
+      
+      // Actualizar ícono de perfil si es admin
+      if (section === 'profile' && isAdmin) {
+        document.querySelector('.bottom-nav-item:last-child .icon').textContent = '👑';
+      }
     }
 
     // Función para verificar si el usuario es admin
@@ -317,7 +578,6 @@
 
         // CORRECCIÓN: Manejar respuestas vacías (común en DELETE)
         if (response.status === 204 || response.headers.get('content-length') === '0') {
-          // Respuesta exitosa sin contenido (típica en DELETE)
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
@@ -381,19 +641,16 @@
         return this.request('DELETE', '/account/sessions/current');
       }
 
-      // FUNCIÓN CORREGIDA - SIN PARÁMETRO QUERIES PROBLEMÁTICO
       async listDocuments(databaseId, collectionId) {
         return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`);
       }
 
-      // FUNCIÓN CORREGIDA - CON SOPORTE PARA PERMISOS
       async createDocument(databaseId, collectionId, documentId, data, permissions = []) {
         const payload = {
           documentId,
           data
         };
         
-        // Solo agregar permisos si se proporcionan
         if (permissions && permissions.length > 0) {
           payload.permissions = permissions;
         }
@@ -445,13 +702,11 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      // Validar tamaño
       if (file.size > 5 * 1024 * 1024) {
         setStatus('❌ La imagen debe ser menor a 5MB', 'error');
         return;
       }
 
-      // Validar tipo
       if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
         setStatus('❌ Solo se permiten imágenes JPG y PNG', 'error');
         return;
@@ -459,7 +714,6 @@
 
       selectedCoverFile = file;
 
-      // Mostrar preview
       const reader = new FileReader();
       reader.onload = (e) => {
         const coverUpload = $('coverUpload');
@@ -479,7 +733,6 @@
 
       setStatus(`✅ Portada seleccionada: ${file.name}`, 'success');
     }
-
     // Crear álbum con portada (FORMATO DE PERMISOS CORRECTO)
     async function createAlbumWithCover(event) {
       event.preventDefault();
@@ -642,13 +895,15 @@
         $('lockIcon').textContent = '👑';
         $('lockIcon').classList.add('admin');
         $('userName').innerHTML = `${user.name}<span class="admin-badge">ADMIN</span>`;
-        $('userInfo').classList.add('admin');
+        $('userInfo').style.display = 'flex';
         $('adminPanelBtn').style.display = 'inline-block';
+        // Actualizar ícono de perfil en nav
+        document.querySelector('#profileNavItem .icon').textContent = '👑';
       } else {
         $('lockIcon').textContent = '👤';
         $('userName').textContent = user.name;
+        $('userInfo').style.display = 'flex';
       }
-      $('userInfo').style.display = 'flex';
     }
 
     async function logout() {
@@ -661,9 +916,9 @@
         $('lockIcon').textContent = '🔒';
         $('lockIcon').classList.remove('admin');
         $('userInfo').style.display = 'none';
-        $('userInfo').classList.remove('admin');
         $('adminPanelBtn').style.display = 'none';
         $('adminPanel').classList.remove('show');
+        document.querySelector('#profileNavItem .icon').textContent = '👤';
         setStatus('Sesión cerrada correctamente', 'success');
         
       } catch (error) {
@@ -893,6 +1148,13 @@
       const fileUpload = $('fileUpload');
       const fileInput = $('fileInput');
       
+      // Cargar tema guardado
+      const savedTheme = localStorage.getItem('klmzTheme');
+      if (savedTheme) {
+        document.body.classList.add(savedTheme);
+        $('themeSelect').value = savedTheme;
+      }
+      
       fileUpload.addEventListener('click', () => fileInput.click());
       
       fileUpload.addEventListener('dragover', (e) => {
@@ -968,15 +1230,14 @@
                 <button class="btn danger small" onclick="deleteAlbum('${album.$id}', '${album.name}')" title="Eliminar">🗑️</button>
               </div>
             ` : ''}
-            <div style="width:140px;height:140px;border-radius:12px;margin:0 auto 1rem;overflow:hidden;">
+            <div style="width:100px;height:100px;border-radius:50%;margin:0 auto 0.7rem;overflow:hidden;">
               ${coverUrl ? 
-                `<img src="${coverUrl}" alt="${album.name}" style="width:100%;height:100%;object-fit:cover;">` :
-                `<div style="width:100%;height:100%;background:linear-gradient(135deg, #1DB954, #1ed760);display:flex;align-items:center;justify-content:center;font-size:3rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>`
+                `<img src="${coverUrl}" alt="${album.name}" class="album-img" style="width:100%;height:100%;object-fit:cover;">` :
+                `<div class="album-img" style="width:100%;height:100%;background:linear-gradient(135deg, #1DB954, #1ed760);display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>`
               }
             </div>
-            <h3 style="margin:0.5rem 0;font-size:1.1rem;">${album.name}</h3>
-            <p style="color:#999;margin:0;font-size:0.9rem;">${album.artistName}</p>
-            <p style="color:#666;font-size:0.8rem;margin-top:0.5rem;">ID: ${album.$id.slice(-8)}</p>
+            <div class="album-title">${album.name}</div>
+            <div class="album-artist">${album.artistName}</div>
           </div>
         `;
       }).join('');
