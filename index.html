@@ -45,7 +45,6 @@
         transition: all 0.3s ease;
     }
 
-    /* Estilo para cada elemento/botón de la barra */
     .bottom-nav-item {
         color: #b3b3b3;         
         text-align: center;
@@ -60,35 +59,29 @@
         transition: all 0.3s ease;
     }
 
-    /* Estilo para el elemento activo (la sección actual) */
     .bottom-nav-item.active {
         color: #1DB954;                        
         background: rgba(29, 185, 84, .09); 
     }
 
-    /* Efecto al pasar el mouse sobre un elemento */
     .bottom-nav-item:hover {
         background: rgba(255, 255, 255, 0.05); 
     }
 
-    /* Estilo específico para el ícono dentro del botón */
     .bottom-nav-item .icon {
         font-size: 1.12rem;
     }
 
-    /* Estilo para el texto pequeño debajo del ícono */
     .bottom-nav-item small {
         font-size: 0.67rem;
     }
 
-    /* Estilo base para el ícono de descarga */
     .download-icon {
         cursor: pointer;      
         color: #666;          
         font-size: 1.2rem;    
     }
 
-    /* Estilo para el ícono CUANDO la canción ya está descargada */
     .download-icon.downloaded {
         color: #1DB954;      
     }
@@ -116,6 +109,8 @@
     .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
     .user-info { display: none; }
     .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
+    .back-btn{background:#333;color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:99px;cursor:pointer;margin-bottom:1rem;transition:all 0.3s ease;}
+    .back-btn:hover{background:#555;}
 
     /* Status y elementos específicos de KLMZ */
     .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
@@ -145,6 +140,26 @@
     .stat-label{color:#999;font-size:0.9rem}
     .test-buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
 
+    /* 🎵 ESTILOS PARA DETALLES DE ÁLBUM Y CANCIONES */
+    .album-detail{padding:2rem 0;}
+    .album-detail-header{display:flex;gap:2rem;margin-bottom:2rem;align-items:flex-end;}
+    .album-detail-cover{width:200px;height:200px;border-radius:12px;object-fit:cover;box-shadow:0 8px 32px rgba(0,0,0,0.3);}
+    .album-detail-info{flex:1;}
+    .album-detail-type{color:#b3b3b3;font-size:0.9rem;margin-bottom:0.5rem;}
+    .album-detail-title{font-size:2.5rem;font-weight:bold;margin-bottom:1rem;}
+    .album-detail-artist{font-size:1.2rem;color:#b3b3b3;margin-bottom:1rem;}
+    .album-detail-stats{color:#b3b3b3;font-size:0.9rem;}
+    .songs-section{margin-top:2rem;}
+    .songs-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;}
+    .song-item{display:flex;align-items:center;padding:0.8rem;border-radius:8px;cursor:pointer;transition:all 0.3s ease;}
+    .song-item:hover{background:rgba(255,255,255,0.05);}
+    .song-number{width:20px;color:#b3b3b3;font-size:0.9rem;}
+    .song-info{flex:1;margin-left:1rem;}
+    .song-title{font-weight:500;margin-bottom:0.2rem;}
+    .song-artist{color:#b3b3b3;font-size:0.9rem;}
+    .song-actions{display:flex;gap:0.5rem;align-items:center;}
+    .song-duration{color:#b3b3b3;font-size:0.9rem;margin-left:1rem;}
+
     /* ✅ TEMAS VISUALES */
     body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
     body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
@@ -164,7 +179,7 @@
     body.theme-oceanic .bottom-nav-item.active { color: #98ded9 !important; background: rgba(152, 222, 217, 0.1) !important; }
 
     @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
-    @media (max-width: 768px) { .album-img { width: 80px; height: 80px; } }
+    @media (max-width: 768px) { .album-img { width: 80px; height: 80px; } .album-detail-header{flex-direction:column;text-align:center;} .album-detail-cover{width:150px;height:150px;margin:0 auto;} }
   </style>
 </head>
 
@@ -199,7 +214,7 @@
         <h1 class="section-title">Álbumes</h1>
         <div id="status" class="status info">🔄 Inicializando conexión directa...</div>
         
-        <!-- Botones admin - OCULTOS para visitantes públicos -->
+        <!-- Botones admin -->
         <div class="test-buttons" id="adminButtons" style="display:none;">
           <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
           <button class="btn secondary" onclick="addTestAlbum()">➕ Agregar Álbum de Prueba</button>
@@ -211,6 +226,7 @@
         <div id="adminPanel" class="admin-panel">
           <div class="admin-tabs">
             <button class="admin-tab active" onclick="switchAdminTab('albums')">📀 Crear Álbum</button>
+            <button class="admin-tab" onclick="switchAdminTab('songs')">🎵 Agregar Canciones</button>
             <button class="admin-tab" onclick="switchAdminTab('upload')">📤 Subir Archivos</button>
             <button class="admin-tab" onclick="switchAdminTab('stats')">📊 Estadísticas</button>
             <button class="admin-tab" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
@@ -246,6 +262,46 @@
               </div>
               
               <button type="submit" class="btn admin" id="createAlbumBtn">➕ Crear Álbum</button>
+            </form>
+          </div>
+
+          <!-- ✅ NUEVA TAB: Agregar Canciones -->
+          <div id="adminTabSongs" class="admin-content">
+            <h3>🎵 Agregar Canciones a Álbum</h3>
+            <div class="form-group">
+              <label for="selectAlbum">Seleccionar Álbum: *</label>
+              <select id="selectAlbum" required>
+                <option value="">Selecciona un álbum...</option>
+              </select>
+            </div>
+            
+            <form id="songForm" onsubmit="addSongToAlbum(event)">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="songTitle">Título de la Canción: *</label>
+                  <input type="text" id="songTitle" required placeholder="Ej: Mi Mejor Canción">
+                </div>
+                <div class="form-group">
+                  <label for="songArtist">Artista: *</label>
+                  <input type="text" id="songArtist" required placeholder="Ej: Freddy Granados">
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="songDuration">Duración: *</label>
+                <input type="text" id="songDuration" required placeholder="Ej: 3:45" pattern="[0-9]+:[0-5][0-9]">
+              </div>
+              
+              <div class="form-group">
+                <label>Archivo de Audio:</label>
+                <div class="file-upload" id="songFileUpload">
+                  <p>🎵 Arrastra archivo de música aquí o haz clic para seleccionar</p>
+                  <p style="color:#999;font-size:0.9rem;">Soporta: MP3, WAV, FLAC</p>
+                  <input type="file" id="songFileInput" accept=".mp3,.wav,.flac" style="display:none">
+                </div>
+              </div>
+              
+              <button type="submit" class="btn admin" id="addSongBtn">➕ Agregar Canción</button>
             </form>
           </div>
           
@@ -318,6 +374,12 @@
         </div>
         
         <div id="albums" class="album-grid"></div>
+      </div>
+
+      <!-- ✅ NUEVA SECCIÓN: Detalle de Álbum -->
+      <div id="albumDetailSection" class="content-section">
+        <button class="back-btn" onclick="showSection('home')">← Volver a Álbumes</button>
+        <div id="albumDetailContent" class="album-detail"></div>
       </div>
 
       <!-- Sección Buscar -->
@@ -425,7 +487,9 @@
     let currentUser = null;
     let isAdmin = false;
     let currentAlbums = [];
+    let currentAlbumSongs = [];
     let selectedCoverFile = null;
+    let selectedSongFile = null;
 
     function setStatus(message, type = 'info') {
       const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'admin' ? '👑' : '🔄';
@@ -433,7 +497,7 @@
       $('status').className = `status ${type}`;
     }
 
-    // ✅ FUNCIÓN DE NAVEGACIÓN
+    // ✅ FUNCIÓN DE NAVEGACIÓN MEJORADA
     function showSection(section) {
       console.log('Cambiando a sección:', section);
       
@@ -457,6 +521,7 @@
 
       if (section === 'home') {
         loadAlbums();
+        loadAlbumsForSelect(); // Cargar álbumes en el selector
       } else if (section === 'search') {
         setTimeout(() => {
           const searchInput = document.getElementById('searchInput');
@@ -467,7 +532,6 @@
       }
     }
 
-    // ✅ FUNCIÓN CAMBIAR TEMA
     function changeTheme(theme) {
       const themes = ['theme-neon', 'theme-minimal', 'theme-sunset', 'theme-pastel', 'theme-luxury', 'theme-oceanic'];
       themes.forEach(t => document.body.classList.remove(t));
@@ -479,8 +543,7 @@
         localStorage.removeItem('klmzTheme');
       }
     }
-
-    // ✅ CLIENTE APPWRITE CON UPLOAD DE ARCHIVOS
+    // ✅ CLIENTE APPWRITE CON UPLOAD DE ARCHIVOS Y URL CORREGIDA
     class SimpleAppwriteClient {
       constructor(endpoint, projectId) {
         this.endpoint = endpoint;
@@ -591,8 +654,14 @@
         return this.request('GET', `/storage/buckets/${bucketId}/files`);
       }
 
+      // ✅ FUNCIÓN CORREGIDA PARA OBTENER URL DE IMAGEN
       getFilePreview(bucketId, fileId, width = 300, height = 300) {
         return `${this.endpoint}/storage/buckets/${bucketId}/files/${fileId}/preview?width=${width}&height=${height}&project=${this.projectId}`;
+      }
+
+      // ✅ FUNCIÓN PARA OBTENER URL DIRECTA DEL ARCHIVO
+      getFileView(bucketId, fileId) {
+        return `${this.endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${this.projectId}`;
       }
     }
 
@@ -635,7 +704,7 @@
       setStatus(`✅ Portada seleccionada: ${file.name}`, 'success');
     }
 
-    // ✅ CREAR ÁLBUM CON PORTADA (PERMISOS CORREGIDOS)
+    // ✅ CREAR ÁLBUM CON PORTADA
     async function createAlbumWithCover(event) {
       event.preventDefault();
       
@@ -668,11 +737,11 @@
           coverStorageId: coverFile.$id
         };
 
-        // ✅ FORMATO CORRECTO DE PERMISOS (SIN PARÉNTESIS)
+        // ✅ FORMATO CORRECTO DE PERMISOS
         const permissions = [
-          'read("any")',                           // Todos pueden ver
-          `write("user:${currentUser.$id}")`,      // Solo tú puedes editar  
-          `delete("user:${currentUser.$id}")`      // Solo tú puedes eliminar
+          'read("any")',
+          `write("user:${currentUser.$id}")`,
+          `delete("user:${currentUser.$id}")`
         ];
 
         await client.createDocument(
@@ -696,7 +765,10 @@
           <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
         `;
         
-        setTimeout(loadAlbums, 1000);
+        setTimeout(() => {
+          loadAlbums();
+          loadAlbumsForSelect();
+        }, 1000);
         
       } catch (error) {
         console.error('Error:', error);
@@ -706,6 +778,239 @@
       $('createAlbumBtn').disabled = false;
       $('createAlbumBtn').textContent = '➕ Crear Álbum';
     }
+
+    // ✅ CARGAR ÁLBUMES EN SELECTOR
+    async function loadAlbumsForSelect() {
+      try {
+        const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        const selectAlbum = $('selectAlbum');
+        
+        selectAlbum.innerHTML = '<option value="">Selecciona un álbum...</option>';
+        
+        response.documents.forEach(album => {
+          const option = document.createElement('option');
+          option.value = album.$id;
+          option.textContent = `${album.name} - ${album.artistName}`;
+          selectAlbum.appendChild(option);
+        });
+        
+      } catch (error) {
+        console.error('Error cargando álbumes para selector:', error);
+      }
+    }
+
+    // ✅ AGREGAR CANCIÓN A ÁLBUM
+    async function addSongToAlbum(event) {
+      event.preventDefault();
+      
+      if (!isAdmin) {
+        setStatus('Solo los administradores pueden agregar canciones', 'error');
+        return;
+      }
+
+      const albumId = $('selectAlbum').value;
+      const songTitle = $('songTitle').value;
+      const songArtist = $('songArtist').value;
+      const songDuration = $('songDuration').value;
+
+      if (!albumId) {
+        setStatus('❌ Debes seleccionar un álbum', 'error');
+        return;
+      }
+
+      setStatus('👑 Agregando canción...', 'admin');
+      $('addSongBtn').disabled = true;
+      $('addSongBtn').textContent = 'Agregando...';
+
+      try {
+        let audioFileId = null;
+        
+        // Si hay archivo de audio, subirlo
+        if (selectedSongFile) {
+          setStatus('🎵 Subiendo archivo de audio...', 'admin');
+          const audioId = 'audio-' + Date.now();
+          const audioFile = await client.createFile(CONFIG.bucketId, audioId, selectedSongFile);
+          audioFileId = audioFile.$id;
+        }
+        
+        setStatus('💾 Guardando canción en la base de datos...', 'admin');
+        const songData = {
+          title: songTitle,
+          artist: songArtist,
+          duration: songDuration,
+          albumId: albumId,
+          audioFileId: audioFileId
+        };
+
+        const permissions = [
+          'read("any")',
+          `write("user:${currentUser.$id}")`,
+          `delete("user:${currentUser.$id}")`
+        ];
+
+        await client.createDocument(
+          CONFIG.databaseId,
+          CONFIG.songsCollectionId,
+          'song-' + Date.now(),
+          songData,
+          permissions
+        );
+
+        setStatus(`👑 ¡Canción "${songTitle}" agregada exitosamente!`, 'admin');
+        
+        // Limpiar formulario
+        $('songForm').reset();
+        $('selectAlbum').value = '';
+        selectedSongFile = null;
+        
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus(`❌ Error agregando canción: ${error.message}`, 'error');
+      }
+
+      $('addSongBtn').disabled = false;
+      $('addSongBtn').textContent = '➕ Agregar Canción';
+    }
+
+    // ✅ VER DETALLE DE ÁLBUM
+    async function viewAlbumDetail(albumId, albumName) {
+      try {
+        setStatus('Cargando detalles del álbum...');
+        
+        // Obtener información del álbum
+        const album = currentAlbums.find(a => a.$id === albumId);
+        if (!album) {
+          setStatus('❌ Álbum no encontrado', 'error');
+          return;
+        }
+
+        // Obtener canciones del álbum
+        const songsResponse = await client.listDocuments(CONFIG.databaseId, CONFIG.songsCollectionId);
+        const albumSongs = songsResponse.documents.filter(song => song.albumId === albumId);
+        
+        // Mostrar detalle del álbum
+        showAlbumDetail(album, albumSongs);
+        showSection('albumDetail');
+        
+        setStatus(`✅ ${albumSongs.length} canción(es) cargadas`, 'success');
+        
+      } catch (error) {
+        console.error('Error cargando detalles:', error);
+        setStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    // ✅ MOSTRAR DETALLE DE ÁLBUM
+    function showAlbumDetail(album, songs) {
+      const coverUrl = album.coverStorageId && !album.coverStorageId.startsWith('test-cover-') 
+        ? client.getFilePreview(CONFIG.bucketId, album.coverStorageId, 200, 200)
+        : null;
+
+      const albumDetailContent = $('albumDetailContent');
+      
+      albumDetailContent.innerHTML = `
+        <div class="album-detail-header">
+          <div style="width:200px;height:200px;border-radius:12px;overflow:hidden;">
+            ${coverUrl ? 
+              `<img src="${coverUrl}" alt="${album.name}" class="album-detail-cover">` :
+              `<div class="album-detail-cover" style="width:200px;height:200px;background:linear-gradient(135deg, #1DB954, #1ed760);display:flex;align-items:center;justify-content:center;font-size:4rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>`
+            }
+          </div>
+          <div class="album-detail-info">
+            <div class="album-detail-type">ÁLBUM</div>
+            <h1 class="album-detail-title">${album.name}</h1>
+            <div class="album-detail-artist">${album.artistName}</div>
+            <div class="album-detail-stats">
+              ${songs.length} canción${songs.length !== 1 ? 'es' : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="songs-section">
+          <div class="songs-header">
+            <h3>Canciones</h3>
+            ${isAdmin ? `
+              <button class="btn small" onclick="switchAdminTab('songs'); showSection('home');">➕ Agregar Canción</button>
+            ` : ''}
+          </div>
+          
+          ${songs.length > 0 ? `
+            <div class="songs-list">
+              ${songs.map((song, index) => `
+                <div class="song-item">
+                  <div class="song-number">${index + 1}</div>
+                  <div class="song-info">
+                    <div class="song-title">${song.title}</div>
+                    <div class="song-artist">${song.artist}</div>
+                  </div>
+                  <div class="song-actions">
+                    ${song.audioFileId ? `<button class="btn small" onclick="playSong('${song.audioFileId}')">▶️</button>` : ''}
+                    ${isAdmin ? `<button class="btn danger small" onclick="deleteSong('${song.$id}', '${song.title}')">🗑️</button>` : ''}
+                  </div>
+                  <div class="song-duration">${song.duration}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="empty-state">
+              <h3>🎵 Sin canciones</h3>
+              <p>${isAdmin ? 'Agrega canciones usando el panel admin.' : 'Este álbum aún no tiene canciones.'}</p>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // ✅ REPRODUCIR CANCIÓN
+    function playSong(audioFileId) {
+      try {
+        const audioUrl = client.getFileView(CONFIG.bucketId, audioFileId);
+        
+        // Crear elemento de audio
+        let audio = document.getElementById('musicPlayer');
+        if (!audio) {
+          audio = document.createElement('audio');
+          audio.id = 'musicPlayer';
+          audio.controls = true;
+          audio.style.position = 'fixed';
+          audio.style.bottom = '100px';
+          audio.style.left = '50%';
+          audio.style.transform = 'translateX(-50%)';
+          audio.style.zIndex = '6000';
+          document.body.appendChild(audio);
+        }
+        
+        audio.src = audioUrl;
+        audio.play();
+        
+        setStatus('🎵 Reproduciendo canción...', 'success');
+        
+      } catch (error) {
+        setStatus(`❌ Error reproduciendo: ${error.message}`, 'error');
+      }
+    }
+
+    // ✅ ELIMINAR CANCIÓN
+    async function deleteSong(songId, songTitle) {
+      if (!isAdmin) return;
+      
+      if (!confirm(`¿Estás seguro de eliminar "${songTitle}"?`)) return;
+
+      try {
+        await client.deleteDocument(CONFIG.databaseId, CONFIG.songsCollectionId, songId);
+        setStatus(`👑 Canción "${songTitle}" eliminada`, 'admin');
+        
+        // Recargar detalle del álbum
+        const currentAlbumId = $('selectAlbum').value;
+        if (currentAlbumId) {
+          setTimeout(() => viewAlbumDetail(currentAlbumId, 'Album'), 500);
+        }
+        
+      } catch (error) {
+        setStatus(`❌ Error eliminando canción: ${error.message}`, 'error');
+      }
+    }
+
     // ✅ FUNCIONES PANEL ADMIN
     function toggleAdminPanel() {
       if (!isAdmin) return;
@@ -725,6 +1030,10 @@
       
       document.querySelector(`[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
       $(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+      
+      if (tabName === 'songs') {
+        loadAlbumsForSelect();
+      }
     }
 
     async function refreshStats() {
@@ -767,22 +1076,33 @@
     async function clearAllData() {
       if (!isAdmin) return;
       
-      if (!confirm('⚠️ PELIGRO: ¿Eliminar TODOS los álbumes de prueba? Esta acción no se puede deshacer.')) return;
+      if (!confirm('⚠️ PELIGRO: ¿Eliminar TODOS los datos de prueba? Esta acción no se puede deshacer.')) return;
 
       setStatus('🗑️ Eliminando datos de prueba...');
 
       try {
-        const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        const albums = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        const songs = await client.listDocuments(CONFIG.databaseId, CONFIG.songsCollectionId);
+        
         let deleted = 0;
         
-        for (const album of response.documents) {
+        // Eliminar canciones de prueba
+        for (const song of songs.documents) {
+          if (song.title && (song.title.includes('Test') || song.title.includes('Prueba') || song.title.includes('Demo'))) {
+            await client.deleteDocument(CONFIG.databaseId, CONFIG.songsCollectionId, song.$id);
+            deleted++;
+          }
+        }
+        
+        // Eliminar álbumes de prueba
+        for (const album of albums.documents) {
           if (album.name.includes('Prueba') || album.name.includes('Demo') || album.name.includes('Test') || album.name.includes('ADMIN')) {
             await client.deleteDocument(CONFIG.databaseId, CONFIG.albumsCollectionId, album.$id);
             deleted++;
           }
         }
         
-        setStatus(`👑 ${deleted} álbum(es) de prueba eliminados`, 'admin');
+        setStatus(`👑 ${deleted} elemento(s) de prueba eliminados`, 'admin');
         setTimeout(loadAlbums, 1000);
         
       } catch (error) {
@@ -881,6 +1201,7 @@
       }
     }
 
+    // ✅ MOSTRAR ÁLBUMES CON PORTADAS CORREGIDAS
     function displayAlbums(albums, containerId = 'albums') {
       const container = $(containerId);
       
@@ -895,15 +1216,16 @@
         }
 
         return `
-          <div class="album-card">
+          <div class="album-card" onclick="viewAlbumDetail('${album.$id}', '${album.name}')">
             ${isAdmin && containerId === 'albums' ? `
               <div class="album-actions">
-                <button class="btn danger small" onclick="deleteAlbum('${album.$id}', '${album.name}')" title="Eliminar">🗑️</button>
+                <button class="btn danger small" onclick="event.stopPropagation(); deleteAlbum('${album.$id}', '${album.name}')" title="Eliminar">🗑️</button>
               </div>
             ` : ''}
             <div style="width:100px;height:100px;border-radius:50%;margin:0 auto 0.7rem;overflow:hidden;">
               ${coverUrl ? 
-                `<img src="${coverUrl}" alt="${album.name}" class="album-img" style="width:100%;height:100%;object-fit:cover;">` :
+                `<img src="${coverUrl}" alt="${album.name}" class="album-img" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                 <div class="album-img" style="width:100%;height:100%;background:linear-gradient(135deg, #1DB954, #1ed760);display:none;align-items:center;justify-content:center;font-size:2rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>` :
                 `<div class="album-img" style="width:100%;height:100%;background:linear-gradient(135deg, #1DB954, #1ed760);display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>`
               }
             </div>
@@ -929,7 +1251,7 @@
       }
     }
 
-    // ✅ AGREGAR ÁLBUM DE PRUEBA (PERMISOS CORREGIDOS)
+    // ✅ AGREGAR ÁLBUM DE PRUEBA
     async function addTestAlbum() {
       if (!currentUser) {
         setStatus('Inicia sesión primero', 'error');
@@ -944,7 +1266,6 @@
           coverStorageId: 'test-cover-' + Date.now()
         };
 
-        // ✅ FORMATO CORRECTO DE PERMISOS (SIN PARÉNTESIS)
         const permissions = [
           'read("any")',
           `write("user:${currentUser.$id}")`,
@@ -960,7 +1281,10 @@
         );
 
         setStatus('✅ Álbum creado correctamente', isAdmin ? 'admin' : 'success');
-        setTimeout(loadAlbums, 1000);
+        setTimeout(() => {
+          loadAlbums();
+          loadAlbumsForSelect();
+        }, 1000);
       } catch (error) {
         setStatus(`❌ Error: ${error.message}`, 'error');
       }
@@ -1037,7 +1361,6 @@
         $('adminPanel').classList.remove('show');
         setStatus('Sesión cerrada', 'success');
         
-        // Actualizar perfil si está activo
         if (document.getElementById('profileSection').classList.contains('active')) {
           updateProfileSection();
         }
@@ -1102,7 +1425,7 @@
       }
     }
 
-    // ✅ INICIALIZACIÓN (COMPLETA Y FUNCIONAL)
+    // ✅ INICIALIZACIÓN COMPLETA
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOM cargado, inicializando KLMZ MUSIC...');
 
@@ -1163,10 +1486,29 @@
         });
       }
 
+      // Setup file upload para canciones
+      const songFileUpload = $('songFileUpload');
+      const songFileInput = $('songFileInput');
+      
+      if (songFileUpload && songFileInput) {
+        songFileUpload.addEventListener('click', () => songFileInput.click());
+        
+        songFileInput.addEventListener('change', (e) => {
+          selectedSongFile = e.target.files[0];
+          if (selectedSongFile) {
+            songFileUpload.innerHTML = `
+              <p>✅ ${selectedSongFile.name}</p>
+              <p style="color:#1DB954;font-size:0.9rem;">Archivo seleccionado</p>
+            `;
+          }
+        });
+      }
+
       // Inicialización automática
       setTimeout(() => {
         testConnection();
         loadAlbums();
+        loadAlbumsForSelect();
       }, 500);
 
       console.log('✅ KLMZ MUSIC inicializado correctamente');
@@ -1179,11 +1521,10 @@
       }
     });
 
-    // Log de inicialización
-    console.log('🎵 KLMZ MUSIC - Sistema cargado');
+    console.log('🎵 KLMZ MUSIC - Sistema completo cargado');
     console.log('👑 Desarrollado por: Freddy Granados');
     console.log('🚀 Powered by: Appwrite');
-    console.log('✅ Permisos corregidos - Formato: read("any"), write("user:id"), delete("user:id")');
+    console.log('✅ Funcionalidades: Portadas ✓ | Canciones ✓ | Reproductor ✓');
 
   </script>
 </body>
