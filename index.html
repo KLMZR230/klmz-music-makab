@@ -2,64 +2,710 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Prueba de Conexión a Appwrite</title>
+    <title>KLMZ MUSIC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1DB954">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <style>
-        body { font-family: sans-serif; background: #222; color: #fff; display: grid; place-content: center; height: 100vh; margin: 0; text-align: center; }
-        div { background: #333; padding: 2rem; border-radius: 8px; }
-        input, button { display: block; width: 100%; padding: 0.8rem; margin-bottom: 1rem; border-radius: 4px; border: 1px solid #555; background: #444; color: #fff; font-size: 1rem; }
-        button { background: #1DB954; cursor: pointer; }
-        #status { margin-top: 1rem; font-weight: bold; min-height: 24px; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease;}
+        header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
+        .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; }
+        .user-actions { display:flex; align-items: center; gap:.5rem; }
+        .lock-icon { cursor:pointer; font-size:1.4rem; color:#fff; user-select:none; transition: all 0.3s ease; }
+        .lock-icon:hover { opacity:.7;}
+        .theme-selector { display: flex; align-items: center; gap: 0.3rem; margin-right: 0.5rem; }
+        .theme-selector label { font-size: 0.7rem; color: #b3b3b3; }
+        .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease; }
+        .app-container { display: flex; min-height: calc(100vh - 60px);}
+        main { flex:1; padding:1rem; max-width:900px; margin:0 auto;}
+        #search-input { width: 100%; padding: 1rem; background: #242424; border: none; border-radius: 4px; color: #fff; margin-bottom: 2rem; transition: all 0.3s ease; }
+        .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
+        .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
+        .album-card { background:none; padding:0; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition: transform 0.3s;}
+        .album-card:hover { transform:scale(1.05);}
+        .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease; }
+        .album-title { font-size:.98rem; font-weight: bold; margin-bottom: 0.4rem; transition: all 0.3s ease; }
+        .album-artist { font-size: .9rem; color: #b3b3b3; transition: all 0.3s ease; }
+        .song-list { width:100%; margin-top:1rem; padding-bottom: 120px; }
+        .song-list ul { list-style:none; padding:0; margin:0;}
+        .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease;}
+        .song-list li:hover { color:#fff; background: rgba(255,255,255,.05);}
+        .play-icon { font-size: 1.1rem; }
+        .player { position: fixed; bottom: 84px; left: 0; right: 0; background: #212121cc; border-top: 1px solid #282828; z-index: 300; display: flex; align-items: center; padding: 0.8rem 1.2rem; min-height: 56px; cursor: pointer; box-shadow: 0 -2px 10px #0002; transition: all 0.3s ease;}
+        .player-img-mini { width:44px; height:44px; border-radius:100%; object-fit:cover; margin-right:1rem;}
+        .player-info-mini { flex:1; overflow:hidden;}
+        .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
+        .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+        .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
+        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: all 0.3s ease; }
+        .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
+        .full-player-backdrop.active { display: flex;}
+        .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
+        .full-player-title { font-size: 1.8rem; font-weight: bold; margin: 1rem 0 .5rem 0; text-align: center;}
+        .full-player-artist { color: #b3b3b3; font-size: 1.1rem; margin-bottom: 2rem; text-align: center;}
+        .full-player-controls { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%; }
+        .full-control-buttons { display: flex; gap: 3rem; align-items: center; }
+        .full-control-btn { background: none; border: none; color: #fff; font-size: 2rem; padding: 0.6rem; border-radius: 50%; cursor: pointer; transition: all 0.3s ease; }
+        .full-control-btn:hover { background: rgba(255,255,255,0.1); }
+        .full-play-btn { background: #1DB954; color: #fff; border-radius: 50%; font-size: 2.5rem; padding: 0.8rem; transition: all 0.3s ease; }
+        .full-play-btn:hover { background: #1ed760; transform: scale(1.05); }
+        .mode-controls { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; }
+        .mode-btn { background: none; border: 1px solid #444; color: #b3b3b3; padding: 0.5rem; border-radius: 50%; cursor: pointer; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .mode-btn:hover { color: #fff; border-color: #666; }
+        .mode-btn.active { color: #1DB954; border-color: #1DB954; background: rgba(29,185,84,0.1); }
+        .full-progress-bar { flex: 1; height: 8px; background: #4f4f4f; border-radius: 4px; cursor: pointer; position: relative;}
+        .full-progress-fill { height: 100%; background: #1DB954; border-radius: 4px; width: 0%; position: absolute; top: 0; left: 0; transition: all 0.3s ease;}
+        .full-progress-container { width: 90%; max-width: 400px; display: flex; align-items: center; gap: 1rem;}
+        .full-progress-time { font-size: 1rem; color: #b3b3b3; min-width: 50px;}
+        .full-player-volume { margin-top: 1rem;}
+        .full-volume-slider { width: 150px; }
+        .full-player-close { position: absolute; top: 30px; right: 40px; background: none; border: none; font-size: 2.5rem; color: #fff; cursor: pointer; transition: all 0.3s ease; }
+        .full-player-close:hover { color: #ff4757; }
+        .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
+        .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; max-height:90vh; overflow-y:auto; transition: all 0.3s ease; }
+        .modal-content p a { color: #1DB954; text-decoration: none; }
+        .modal-content p { text-align: center; margin-top: 1rem; }
+        .form-group { margin-bottom:1rem;}
+        .form-group label { display:block; margin-bottom:0.5rem;}
+        .form-group input, .form-group select { width:100%; padding:.7rem; background:#404040; border:1px solid #555; border-radius:4px; color:#fff; transition: all 0.3s ease;}
+        .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
+        .btn-primary:hover { background:#1ed760; }
+        .btn-danger { background:#e22134; color:#fff; border:none; padding:.5rem 1rem; border-radius:4px; cursor:pointer; transition: all 0.3s ease; }
+        .btn-danger:hover { background:#ff4757; }
+        .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
+        .user-menu { position: relative; display: inline-block; }
+        .user-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #282828; min-width: 200px; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 1000; border: 1px solid #404040; transition: all 0.3s ease; }
+        .user-dropdown.show { display: block; animation: dropdownFadeIn 0.2s ease; }
+        .user-dropdown-item { padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid #404040; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; transition: all 0.3s ease; }
+        .user-dropdown-item:last-child { border-bottom: none; }
+        .user-dropdown-item:hover { background: #404040; }
+        .user-dropdown-item.logout { color: #ff4757; border-top: 1px solid #404040; margin-top: 0.3rem; }
+        .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; }
+        .user-info strong { color: #fff; font-size: 0.9rem; }
+        .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
+        .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; font-size: 1.14rem; padding: 4px 0 0 0; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
+        .bottom-nav-item.active { color: #1DB954; background: rgba(29,185,84,.09);}
+        .bottom-nav-item:hover {background:rgba(255,255,255,0.05);}
+        .bottom-nav-item .icon { font-size: 1.12rem; }
+        .bottom-nav-item small { font-size: 0.67rem;}
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: all 0.3s ease; }
+        .back-btn:hover { background: #333; }
+        .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
+        .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
+        #album-detail { padding-bottom: 120px; }
+        .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; }
+        .admin-section h4 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 0.8rem; margin-bottom: 1.5rem; }
+        .admin-form { margin-bottom: 2rem; }
+        .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; }
+        .btn-secondary:hover { background: #666; }
+        /* TEMAS VISUALES Y ANIMACIONES */
+        body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
+        body.theme-neon header { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-bottom: 2px solid #00ff88 !important; box-shadow: 0 4px 20px rgba(0,255,136,0.3) !important; }
+        /* ... (he acortado los estilos de los temas aquí para que el código no sea tan largo, pero deben estar completos en tu archivo) ... */
+        @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
+        @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) { .full-player-cover { width: 150px; height: 150px; } .full-player-title { font-size: 1.4rem; } .album-img { width: 80px; height: 80px; } }
     </style>
 </head>
 <body>
-    <div>
-        <h2>Prueba de Registro en Appwrite</h2>
-        <form id="test-form">
-            <input type="email" id="test-email" placeholder="Email de prueba" required>
-            <input type="password" id="test-password" placeholder="Contraseña" required>
-            <button type="submit">Registrar Nuevo Usuario</button>
-        </form>
-        <p id="status"></p>
+    <div class="loading-indicator" id="loading-indicator" style="display:none;">🎵 Cargando...</div>
+
+    <header>
+        <span class="logo">KLMZ MUSIC</span>
+        <div class="user-actions">
+            <div class="theme-selector">
+                <label for="theme-select">Tema:</label>
+                <select id="theme-select" onchange="changeTheme(this.value)">
+                    <option value="default">🎵 Default</option>
+                    <option value="neon">⚡ Neon Cyberpunk</option>
+                    <option value="minimal">✨ Elegancia Minimal</option>
+                    <option value="sunset">🌅 Sunset Vibes</option>
+                    <option value="pastel">🌸 Pastel Dreams</option>
+                    <option value="luxury">💎 Luxury Jewels</option>
+                    <option value="oceanic">🌊 Oceanic Serenity</option>
+                </select>
+            </div>
+            <div class="user-menu">
+                <div class="lock-icon" id="header-lock-icon" onclick="toggleUserMenu()">🔒</div>
+                <div class="user-dropdown" id="user-dropdown">
+                    <div class="user-info" id="user-info-section" style="display: none;">
+                        <div><strong id="user-email-display"></strong></div>
+                        <div id="user-role-display">Usuario</div>
+                    </div>
+                    <div class="user-dropdown-item" id="admin-menu-item" onclick="goToAdmin()" style="display: none;"><span>⚙️</span><span>Panel Admin</span></div>
+                    <div class="user-dropdown-item" onclick="showAuth('register')" id="register-menu-item"><span>📝</span><span>Registrarse</span></div>
+                    <div class="user-dropdown-item" onclick="showAuth('login')" id="login-menu-item"><span>🔐</span><span>Iniciar Sesión</span></div>
+                    <div class="user-dropdown-item logout" onclick="confirmLogout()" id="logout-menu-item" style="display: none;"><span>🚪</span><span>Cerrar Sesión</span></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <main>
+            <section class="content-section active" id="home-section">
+                <div class="section-title">Albums</div>
+                <div class="album-grid" id="albums"><div style="text-align: center; padding: 2rem;">Cargando álbumes...</div></div>
+                <div id="album-detail" style="display:none;"></div>
+            </section>
+            <section class="content-section" id="search-section">
+                <!-- Contenido de Búsqueda -->
+            </section>
+            <section class="content-section" id="favorites-section">
+                <!-- Contenido de Favoritos -->
+            </section>
+            <section class="content-section" id="downloads-section">
+                <!-- Contenido de Descargas -->
+            </section>
+            <section class="content-section" id="admin-section">
+                <div class="section-title">Panel de Administración</div>
+                <div id="admin-content"></div>
+            </section>
+        </main>
     </div>
 
-    <!-- SDK de Appwrite -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-item active" onclick="showSection('home')" id="nav-home"><span class="icon">⌂</span><small>Inicio</small></div>
+        <div class="bottom-nav-item" onclick="showSection('search')" id="nav-search"><span class="icon">⌕</span><small>Buscar</small></div>
+        <div class="bottom-nav-item" onclick="showSection('downloads')" id="nav-downloads"><span class="icon">↓</span><small>Descargas</small></div>
+        <div class="bottom-nav-item" onclick="showSection('favorites')" id="nav-favs"><span class="icon">♡</span><small>Favoritos</small></div>
+    </nav>
+
+    <div class="player" id="mini-player" style="display:none;">
+        <img class="player-img-mini" id="mini-player-img" alt="cover">
+        <div class="player-info-mini">
+            <div class="player-title-mini" id="mini-player-title"></div>
+            <div class="player-artist-mini" id="mini-player-artist"></div>
+        </div>
+        <div class="player-controls-inline" onclick="event.stopPropagation()">
+            <button class="play-btn-inline" id="mini-play-btn" onclick="togglePlay()">▶</button>
+        </div>
+    </div>
+
+    <div class="full-player-backdrop" id="full-player">
+        <!-- Contenido del reproductor completo -->
+    </div>
+
+    <div class="modal" id="auth-modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeAuth()">&times;</button>
+            <div id="login-form">
+                <h2>Iniciar sesión</h2>
+                <form onsubmit="login(event)">
+                    <div class="form-group"><label>Email:</label><input type="email" id="login-email" required></div>
+                    <div class="form-group"><label>Contraseña:</label><input type="password" id="login-password" required></div>
+                    <button type="submit" class="btn-primary">Iniciar sesión</button>
+                </form>
+                <p>¿No tienes cuenta? <a href="#" onclick="showAuth('register')">Regístrate</a></p>
+            </div>
+            <div id="register-form" style="display: none;">
+                <h2>Registrarse</h2>
+                <form onsubmit="register(event)">
+                    <div class="form-group"><label>Email:</label><input type="email" id="register-email" required></div>
+                    <div class="form-group"><label>Contraseña:</label><input type="password" id="register-password" required></div>
+                    <div class="form-group"><label>Confirmar contraseña:</label><input type="password" id="register-confirm-password" required></div>
+                    <button type="submit" class="btn-primary">Registrarse</button>
+                </form>
+                <p>¿Ya tienes cuenta? <a href="#" onclick="showAuth('login')">Inicia sesión</a></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
+    <audio id="audio-player" preload="metadata"></audio>
+    
+    <!-- ✅ SDK de Appwrite -->
     <script src="https://cdn.jsdelivr.net/npm/appwrite@11.0.0"></script>
     
+    <!-- ✅ Lógica de la Aplicación con Appwrite -->
     <script>
-        // --- CONFIGURACIÓN DE APPWRITE ---
-        const { Client, Account, ID } = Appwrite;
+        // --- INICIO DEL SCRIPT ---
+        
+        // ===================================================
+        // 1. CONFIGURACIÓN E INICIALIZACIÓN DE APPWRITE
+        // ===================================================
+        const { Client, Account, ID, Databases, Storage, Query } = Appwrite;
         const client = new Client();
 
+        // --- ✅ DATOS DE TU PROYECTO INSERTADOS ---
         const PROJECT_ID = '68aa8307001f723f5518';
+        const DATABASE_ID = '68aa8566002832b4c093';
+        const ALBUMS_COLLECTION_ID = '68aa85730036dd283cc9';
+        const CANCIONES_COLLECTION_ID = '68aa859a00308a612142';
+        const STORAGE_BUCKET_ID = '68aa8cc5003a2c336a1f';
+        // -----------------------------------------
         
         client
-            .setEndpoint('https://nyc.cloud.appwrite.io/v1')
+            .setEndpoint('https://nyc.cloud.appwrite.io/v1') // ✅ ENDPOINT CORREGIDO
             .setProject(PROJECT_ID);
 
         const account = new Account(client);
-        const statusEl = document.getElementById('status');
+        const databases = new Databases(client);
+        const storage = new Storage(client);
 
-        // --- LÓGICA DEL FORMULARIO ---
-        document.getElementById('test-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('test-email').value;
-            const password = document.getElementById('test-password').value;
+        // Variables globales
+        let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0;
+        let isPlaying = false, currentUser = null, allAlbums = [];
+        let repeatMode = 'off', shuffleMode = false;
+        const ADMIN_EMAIL = 'klmzr@gmail.com';
+
+        // ===================================================
+        // 2. FUNCIONES DE UI (MENÚS, MODALES, NAVEGACIÓN)
+        // ===================================================
+
+        window.toggleUserMenu = function() {
+            const dropdown = document.getElementById('user-dropdown');
+            dropdown.classList.toggle('show');
+            if (dropdown.classList.contains('show')) {
+                setTimeout(() => { document.addEventListener('click', closeUserMenuOutside); }, 100);
+            }
+        }
+
+        function closeUserMenuOutside(event) {
+            const userMenu = document.querySelector('.user-menu');
+            if (userMenu && !userMenu.contains(event.target)) {
+                document.getElementById('user-dropdown').classList.remove('show');
+                document.removeEventListener('click', closeUserMenuOutside);
+            }
+        }
+
+        window.showAuth = function(type) {
+            document.getElementById('user-dropdown').classList.remove('show');
+            document.getElementById('login-form').style.display = (type === 'login') ? 'block' : 'none';
+            document.getElementById('register-form').style.display = (type === 'register') ? 'block' : 'none';
+            document.getElementById('auth-modal').style.display = 'flex';
+        }
+
+        window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
+        window.goToAdmin = function() { 
+            document.getElementById('user-dropdown').classList.remove('show');
+            showSection('admin'); 
+        }
+
+        window.showSection = function(section) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`${section}-section`).classList.add('active');
+            document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
+            const navIdMap = { home: 'home', search: 'search', downloads: 'downloads', favorites: 'favs', admin: 'admin' };
+            const navItem = document.getElementById(`nav-${navIdMap[section]}`);
+            if(navItem) navItem.classList.add('active');
             
-            statusEl.textContent = 'Intentando registrar usuario...';
-            statusEl.style.color = '#fff';
+            if (section === 'home') showAlbumsGrid();
+            if (section === 'admin' && isAdmin()) renderAdminPanel();
+        }
+
+        window.showAlbumsGrid = function() {
+            document.getElementById('album-detail').style.display = 'none';
+            document.getElementById('albums').style.display = 'grid';
+            loadAllData();
+        }
+        
+        function showLoadingIndicator(show) { document.getElementById('loading-indicator').style.display = show ? 'block' : 'none'; }
+        
+        function showErrorMessage(message) {
+            document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>${message}</h2></div>`;
+        }
+        
+        function showInfoModal(message) {
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.className = 'modal';
+            modalBackdrop.style.display = 'flex';
+            modalBackdrop.innerHTML = `<div class="modal-content" style="text-align:center;"><p style="margin-bottom:1.5rem;">${message}</p><button class="btn-primary" onclick="this.closest('.modal').remove()">OK</button></div>`;
+            document.body.appendChild(modalBackdrop);
+        }
+        
+        function showConfirmationModal(message, onConfirm) {
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.className = 'modal';
+            modalBackdrop.style.display = 'flex';
+            modalBackdrop.innerHTML = `<div class="modal-content"><p style="text-align:center; margin-bottom:1.5rem;">${message}</p><div style="display:flex;gap:1rem;justify-content:center;"><button class="btn-secondary" style="width:auto;" onclick="this.closest('.modal').remove()">Cancelar</button><button id="confirm-action-btn" class="btn-danger" style="width:auto;">Confirmar</button></div></div>`;
+            modalBackdrop.querySelector('#confirm-action-btn').onclick = () => { onConfirm(); modalBackdrop.remove(); };
+            document.body.appendChild(modalBackdrop);
+        }
+
+        window.changeTheme = function(theme) {
+            const body = document.body;
+            body.className = '';
+            if (theme && theme !== 'default') {
+                body.classList.add('theme-' + theme);
+            }
+            localStorage.setItem('klmz_theme', theme);
+        }
+
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('klmz_theme') || 'default';
+            document.getElementById('theme-select').value = savedTheme;
+            changeTheme(savedTheme);
+        }
+
+        // ===================================================
+        // 3. AUTENTICACIÓN Y MANEJO DE SESIÓN
+        // ===================================================
+        
+        async function checkSession() {
+            try {
+                currentUser = await account.get();
+            } catch (error) {
+                currentUser = null;
+            }
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            const [headerLockIcon, userInfo, userEmail, adminMenu, loginMenu, registerMenu, logoutMenu] = [
+                'header-lock-icon', 'user-info-section', 'user-email-display', 'admin-menu-item',
+                'login-menu-item', 'register-menu-item', 'logout-menu-item'
+            ].map(id => document.getElementById(id));
+            
+            if (currentUser) {
+                userInfo.style.display = 'block';
+                userEmail.textContent = currentUser.email;
+                loginMenu.style.display = 'none';
+                registerMenu.style.display = 'none';
+                logoutMenu.style.display = 'flex';
+                
+                if (isAdmin()) {
+                    headerLockIcon.innerHTML = '⚙️';
+                    adminMenu.style.display = 'flex';
+                } else {
+                    headerLockIcon.innerHTML = '�';
+                    adminMenu.style.display = 'none';
+                }
+            } else {
+                headerLockIcon.innerHTML = '🔒';
+                userInfo.style.display = 'none';
+                adminMenu.style.display = 'none';
+                loginMenu.style.display = 'flex';
+                registerMenu.style.display = 'flex';
+                logoutMenu.style.display = 'none';
+            }
+        }
+
+        function isAdmin() {
+            return currentUser && currentUser.email === ADMIN_EMAIL;
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            try {
+                await account.createEmailSession(email, password);
+                await checkSession();
+                showInfoModal('¡Bienvenido!');
+                closeAuth();
+            } catch (error) {
+                console.error(error);
+                showInfoModal('Error de login: ' + error.message);
+            }
+        }
+
+        async function register(event) {
+            event.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+
+            if (password !== confirmPassword) {
+                return showInfoModal('Las contraseñas no coinciden');
+            }
 
             try {
-                // Usamos account.create para registrar un nuevo usuario
                 await account.create(ID.unique(), email, password);
-                statusEl.textContent = '✅ ¡ÉXITO! Usuario registrado correctamente.';
-                statusEl.style.color = 'lightgreen';
+                await account.createEmailSession(email, password);
+                await checkSession();
+                showInfoModal('Registro exitoso. ¡Bienvenido!');
+                closeAuth();
             } catch (error) {
-                console.error('Error de registro:', error);
-                statusEl.textContent = '❌ ERROR: ' + error.message;
-                statusEl.style.color = 'tomato';
+                console.error(error);
+                showInfoModal('Error de registro: ' + error.message);
             }
+        }
+        
+        function confirmLogout() {
+            showConfirmationModal('¿Estás seguro de que quieres cerrar sesión?', logout);
+        }
+
+        async function logout() {
+            try {
+                await account.deleteSession('current');
+                currentUser = null;
+                updateAuthUI();
+                showInfoModal('Sesión cerrada correctamente');
+            } catch (error) {
+                console.error('Error logout:', error);
+                showInfoModal('Error cerrando sesión');
+            }
+        }
+
+        // ===================================================
+        // 4. CARGA DE DATOS (ÁLBUMES Y CANCIONES)
+        // ===================================================
+
+        async function loadAllData() {
+            showLoadingIndicator(true);
+            try {
+                const response = await databases.listDocuments(DATABASE_ID, ALBUMS_COLLECTION_ID);
+                allAlbums = response.documents;
+                displayAlbums(allAlbums);
+            } catch (error) {
+                console.error('Error cargando álbumes:', error);
+                showErrorMessage('No se pudieron cargar los álbumes. Revisa los permisos de la colección.');
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
+
+        function displayAlbums(albums) {
+            const container = document.getElementById('albums');
+            if (!albums || albums.length === 0) {
+                container.innerHTML = '<h2>No hay álbumes disponibles</h2>';
+                return;
+            }
+            container.innerHTML = albums.map(album => {
+                const coverUrl = storage.getFilePreview(STORAGE_BUCKET_ID, album.coverStorageId);
+                return `
+                <div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'>
+                    <img class="album-img" src="${coverUrl}" alt="${album.name}" loading="lazy">
+                    <div class="album-title">${album.name}</div>
+                    <div class="album-artist">${album.artistName}</div>
+                </div>`;
+            }).join('');
+        }
+
+        async function showAlbumDetail(album) {
+            currentAlbum = album;
+            document.getElementById('albums').style.display = 'none';
+            const detailView = document.getElementById('album-detail');
+            const coverUrl = storage.getFilePreview(STORAGE_BUCKET_ID, album.coverStorageId);
+            
+            detailView.style.display = 'block';
+            detailView.innerHTML = `
+                <button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <img class="album-img" src="${coverUrl}" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem;">
+                    <div class="album-title" style="font-size: 1.5rem;">${album.name}</div>
+                    <div class="album-artist" style="font-size: 1.1rem; color: #b3b3b3;">${album.artistName}</div>
+                </div>
+                <div class="song-list" id="detail-song-list">Cargando canciones...</div>
+            `;
+            
+            try {
+                const response = await databases.listDocuments(
+                    DATABASE_ID,
+                    CANCIONES_COLLECTION_ID,
+                    [
+                        Query.equal('albumId', album.$id)
+                    ]
+                );
+                const songs = response.documents;
+                const listDiv = document.getElementById('detail-song-list');
+                if (songs.length === 0) {
+                    listDiv.innerHTML = 'No hay canciones en este álbum.';
+                    return;
+                }
+                
+                currentPlaylist = songs;
+                listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `
+                    <li>
+                        <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
+                        <div class="song-actions">
+                            <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
+                        </div>
+                    </li>
+                `).join('') + '</ul>';
+            } catch (error) {
+                console.error('Error cargando canciones del álbum:', error);
+                document.getElementById('detail-song-list').innerHTML = 'Error al cargar canciones. Revisa los permisos y el atributo "albumId".';
+            }
+        }
+        
+        // ===================================================
+        // 5. LÓGICA DEL REPRODUCTOR
+        // ===================================================
+        
+        window.playSongFromPlaylist = function(index) {
+            playSong(currentPlaylist[index], currentAlbum);
+        }
+
+        window.playSong = function(song, album) {
+            currentSong = song;
+            currentAlbum = album;
+
+            const audio = document.getElementById('audio-player');
+            const songUrl = storage.getFileDownload(STORAGE_BUCKET_ID, song.storageId);
+            
+            audio.src = songUrl;
+            audio.play().catch(e => console.error("Error al reproducir audio:", e));
+            
+            updateAllPlayers();
+        }
+
+        function updateAllPlayers() {
+            updateMiniPlayer();
+            updateFullPlayer();
+            updatePlayButtons();
+        }
+
+        function updateMiniPlayer() {
+             if (!currentSong || !currentAlbum) return;
+            const coverUrl = storage.getFilePreview(STORAGE_BUCKET_ID, currentAlbum.coverStorageId);
+            document.getElementById('mini-player').style.display = 'flex';
+            document.getElementById('mini-player-img').src = coverUrl;
+            document.getElementById('mini-player-title').textContent = currentSong.title;
+            document.getElementById('mini-player-artist').textContent = currentAlbum.artistName;
+        }
+
+        function updateFullPlayer() {
+            if (!currentSong || !currentAlbum) return;
+            const coverUrl = storage.getFilePreview(STORAGE_BUCKET_ID, currentAlbum.coverStorageId);
+            document.getElementById('full-player-cover').src = coverUrl;
+            document.getElementById('full-player-title').textContent = currentSong.title;
+            document.getElementById('full-player-artist').textContent = currentAlbum.artistName;
+        }
+
+        function updatePlayButtons() {
+            const playText = isPlaying ? '⏸' : '▶';
+            ['mini-play-btn', 'full-play-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.textContent = playText;
+            });
+        }
+
+        window.togglePlay = function() {
+            const audio = document.getElementById('audio-player');
+            if (!audio.src) return;
+            if (isPlaying) { audio.pause(); } else { audio.play(); }
+        }
+        
+        // ===================================================
+        // 6. PANEL DE ADMINISTRACIÓN
+        // ===================================================
+
+        async function renderAdminPanel() {
+            const adminContent = document.getElementById('admin-content');
+            adminContent.innerHTML = `
+                <div class="admin-section">
+                    <h4>Gestión de Álbumes</h4>
+                    <form id="upload-album-form" class="admin-form">
+                        <div class="form-group"><label for="album-name">Nombre del Álbum:</label><input type="text" id="album-name" required></div>
+                        <div class="form-group"><label for="album-artist">Nombre del Artista:</label><input type="text" id="album-artist" required></div>
+                        <div class="form-group"><label for="album-cover">Imagen de Portada:</label><input type="file" id="album-cover" accept="image/*" required></div>
+                        <button type="submit" class="btn-primary">Guardar Álbum</button>
+                    </form>
+                </div>
+                <div class="admin-section">
+                    <h4>Gestión de Canciones</h4>
+                    <form id="upload-song-form" class="admin-form">
+                        <div class="form-group"><label for="song-title">Título de la Canción:</label><input type="text" id="song-title" required></div>
+                        <div class="form-group"><label for="song-artist">Artista:</label><input type="text" id="song-artist" required></div>
+                        <div class="form-group"><label for="song-album-select">Seleccionar Álbum:</label><select id="song-album-select" required><option>Cargando álbumes...</option></select></div>
+                        <div class="form-group"><label for="song-file">Archivo de Audio:</label><input type="file" id="song-file" accept="audio/*" required></div>
+                        <button type="submit" class="btn-primary">Guardar Canción</button>
+                    </form>
+                </div>
+            `;
+            
+            const albumSelect = document.getElementById('song-album-select');
+            try {
+                const response = await databases.listDocuments(DATABASE_ID, ALBUMS_COLLECTION_ID);
+                albumSelect.innerHTML = '<option value="">-- Selecciona un álbum --</option>' + 
+                    response.documents.map(album => `<option value="${album.$id}">${album.name}</option>`).join('');
+            } catch (error) {
+                albumSelect.innerHTML = '<option>Error al cargar álbumes</option>';
+            }
+
+            setupAdminForms();
+        }
+
+        function setupAdminForms() {
+            const albumForm = document.getElementById('upload-album-form');
+            if(albumForm) {
+                albumForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('album-name').value;
+                    const artistName = document.getElementById('album-artist').value;
+                    const coverFile = document.getElementById('album-cover').files[0];
+
+                    if (!coverFile) return alert('Selecciona una imagen de portada.');
+                    
+                    showLoadingIndicator(true);
+                    try {
+                        const fileRes = await storage.createFile(STORAGE_BUCKET_ID, ID.unique(), coverFile);
+                        const coverStorageId = fileRes.$id;
+
+                        await databases.createDocument(DATABASE_ID, ALBUMS_COLLECTION_ID, ID.unique(), {
+                            name,
+                            artistName,
+                            coverStorageId
+                        });
+
+                        showInfoModal('Álbum guardado con éxito.');
+                        e.target.reset();
+                        await renderAdminPanel();
+                        await loadAllData(); 
+                    } catch (error) {
+                        showInfoModal('Error al guardar el álbum: ' + error.message);
+                    } finally {
+                        showLoadingIndicator(false);
+                    }
+                });
+            }
+
+            const songForm = document.getElementById('upload-song-form');
+            if(songForm) {
+                songForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const title = document.getElementById('song-title').value;
+                    const artist = document.getElementById('song-artist').value;
+                    const albumId = document.getElementById('song-album-select').value;
+                    const songFile = document.getElementById('song-file').files[0];
+
+                    if (!songFile || !albumId) return alert('Completa todos los campos.');
+
+                    showLoadingIndicator(true);
+                    try {
+                        const fileRes = await storage.createFile(STORAGE_BUCKET_ID, ID.unique(), songFile);
+                        const storageId = fileRes.$id;
+
+                        await databases.createDocument(DATABASE_ID, CANCIONES_COLLECTION_ID, ID.unique(), {
+                            title,
+                            artist,
+                            storageId,
+                            albumId
+                        });
+
+                        showInfoModal('Canción guardada con éxito.');
+                        e.target.reset();
+                    } catch (error) {
+                        showInfoModal('Error al guardar la canción: ' + error.message);
+                    } finally {
+                        showLoadingIndicator(false);
+                    }
+                });
+            }
+        }
+        
+        // ===================================================
+        // INICIALIZACIÓN DE LA APP
+        // ===================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 KLMZ MUSIC iniciando con Appwrite...');
+            
+            const audio = document.getElementById('audio-player');
+            audio.addEventListener('play', () => { isPlaying = true; updatePlayButtons(); });
+            audio.addEventListener('pause', () => { isPlaying = false; updatePlayButtons(); });
+            
+            loadSavedTheme();
+            await checkSession();
+            loadAllData();
         });
+
     </script>
 </body>
 </html>
+�
