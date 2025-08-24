@@ -93,7 +93,7 @@
     .user-dropdown-item:last-child { border-bottom: none; }
     .user-dropdown-item:hover { background: #404040; }
     .user-dropdown-item.logout { color: #ff4757; border-top: 1px solid #404040; margin-top: 0.3rem; }
-    .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; }
+    .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; display: none; }
     .user-info strong { color: #fff; font-size: 0.9rem; }
     .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
     .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; font-size: 1.14rem; padding: 4px 0 0 0; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
@@ -282,7 +282,7 @@
           <option value="theme-oceanic">🌊 Oceanic</option>
         </select>
       </div>
-      <div id="userInfo" class="user-info" style="display:none;">
+      <div id="userInfo" class="user-info">
         <span id="userName"></span>
         <button class="btn-danger" onclick="logout()">Salir</button>
       </div>
@@ -296,11 +296,12 @@
         <h1 class="section-title">Álbumes</h1>
         <div id="status" class="status info">🔄 Inicializando conexión directa...</div>
         
-        <div class="test-buttons">
+        <!-- Botones admin - OCULTOS para visitantes públicos -->
+        <div class="test-buttons" id="adminButtons" style="display:none;">
           <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
           <button class="btn secondary" onclick="addTestAlbum()" id="addAlbumBtn">➕ Agregar Álbum de Prueba</button>
           <button class="btn secondary" onclick="loadAlbums()">📀 Cargar Álbumes</button>
-          <button class="btn admin" onclick="toggleAdminPanel()" id="adminPanelBtn" style="display:none">👑 Panel Admin</button>
+          <button class="btn admin" onclick="toggleAdminPanel()" id="adminPanelBtn">👑 Panel Admin</button>
         </div>
         
         <!-- Panel de administración -->
@@ -546,7 +547,6 @@
       const adminEmails = ['klmzr230@gmail.com'];
       return adminEmails.includes(user.email.toLowerCase());
     }
-
     // Cliente Appwrite extendido (CON CORRECCIÓN PARA RESPUESTAS VACÍAS)
     class SimpleAppwriteClient {
       constructor(endpoint, projectId) {
@@ -733,6 +733,7 @@
 
       setStatus(`✅ Portada seleccionada: ${file.name}`, 'success');
     }
+
     // Crear álbum con portada (FORMATO DE PERMISOS CORRECTO)
     async function createAlbumWithCover(event) {
       event.preventDefault();
@@ -890,22 +891,30 @@
       }
     }
 
+    // FUNCIÓN CORREGIDA - Control de visibilidad para admin/visitantes
     function updateUserInterface(user) {
       if (isAdmin) {
         $('lockIcon').textContent = '👑';
         $('lockIcon').classList.add('admin');
         $('userName').innerHTML = `${user.name}<span class="admin-badge">ADMIN</span>`;
         $('userInfo').style.display = 'flex';
-        $('adminPanelBtn').style.display = 'inline-block';
+        
+        // MOSTRAR botones admin
+        $('adminButtons').style.display = 'flex';
+        
         // Actualizar ícono de perfil en nav
         document.querySelector('#profileNavItem .icon').textContent = '👑';
       } else {
         $('lockIcon').textContent = '👤';
         $('userName').textContent = user.name;
         $('userInfo').style.display = 'flex';
+        
+        // OCULTAR botones admin para usuarios normales
+        $('adminButtons').style.display = 'none';
       }
     }
 
+    // FUNCIÓN CORREGIDA - Ocultar elementos admin al cerrar sesión
     async function logout() {
       try {
         setStatus('Cerrando sesión...');
@@ -916,8 +925,11 @@
         $('lockIcon').textContent = '🔒';
         $('lockIcon').classList.remove('admin');
         $('userInfo').style.display = 'none';
-        $('adminPanelBtn').style.display = 'none';
+        
+        // OCULTAR elementos admin al cerrar sesión
+        $('adminButtons').style.display = 'none';
         $('adminPanel').classList.remove('show');
+        
         document.querySelector('#profileNavItem .icon').textContent = '👤';
         setStatus('Sesión cerrada correctamente', 'success');
         
@@ -927,6 +939,7 @@
       }
     }
 
+    // FUNCIÓN CORREGIDA - Control de visibilidad para visitantes
     async function testConnection() {
       setStatus('Probando conexión...');
       
@@ -947,7 +960,9 @@
             error.message.includes('missing scope') || 
             error.message.includes('guests') ||
             error.message.includes('Unauthorized')) {
+          // VISITANTE PÚBLICO - Sin botones admin
           setStatus('✅ Conectado como visitante - CORS OK', 'success');
+          $('adminButtons').style.display = 'none';
         } else {
           setStatus(`❌ Error: ${error.message}`, 'error');
         }
@@ -965,7 +980,7 @@
           $('albums').innerHTML = `
             <div class="empty-state">
               <h2>🎵 Conexión exitosa</h2>
-              <p>No hay álbumes en la base de datos.<br>Usa el panel admin para crear álbumes con portadas.</p>
+              <p>No hay álbumes en la base de datos.<br>${isAdmin ? 'Usa el panel admin para crear álbumes con portadas.' : 'Próximamente habrá contenido disponible.'}</p>
             </div>
           `;
           setStatus('✅ Conexión exitosa - Base de datos vacía', 'success');
@@ -1155,26 +1170,28 @@
         $('themeSelect').value = savedTheme;
       }
       
-      fileUpload.addEventListener('click', () => fileInput.click());
-      
-      fileUpload.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        fileUpload.classList.add('dragover');
-      });
-      
-      fileUpload.addEventListener('dragleave', () => {
-        fileUpload.classList.remove('dragover');
-      });
-      
-      fileUpload.addEventListener('drop', (e) => {
-        e.preventDefault();
-        fileUpload.classList.remove('dragover');
-        handleFiles(e.dataTransfer.files);
-      });
-      
-      fileInput.addEventListener('change', (e) => {
-        handleFiles(e.target.files);
-      });
+      if (fileUpload && fileInput) {
+        fileUpload.addEventListener('click', () => fileInput.click());
+        
+        fileUpload.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          fileUpload.classList.add('dragover');
+        });
+        
+        fileUpload.addEventListener('dragleave', () => {
+          fileUpload.classList.remove('dragover');
+        });
+        
+        fileUpload.addEventListener('drop', (e) => {
+          e.preventDefault();
+          fileUpload.classList.remove('dragover');
+          handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+          handleFiles(e.target.files);
+        });
+      }
     });
 
     async function handleFiles(files) {
@@ -1243,10 +1260,14 @@
       }).join('');
     }
 
-    // Auto-test al cargar
+    // Auto-test al cargar - CON CARGA AUTOMÁTICA DE ÁLBUMES
     document.addEventListener('DOMContentLoaded', () => {
       setStatus('Página cargada - Probando conexión automáticamente...');
-      setTimeout(testConnection, 500);
+      setTimeout(() => {
+        testConnection();
+        // Cargar álbumes automáticamente para visitantes
+        loadAlbums();
+      }, 500);
     });
 
     // Cerrar modal al hacer clic fuera
