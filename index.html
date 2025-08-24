@@ -122,7 +122,7 @@
         .btn-secondary:hover { background: #666; }
 
         /* ✅ TEMAS VISUALES COMPLETOS Y ARREGLADOS */
-        /* � TEMA NEON CYBERPUNK */
+        /* TEMA NEON CYBERPUNK */
         body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
         body.theme-neon header { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-bottom: 2px solid #00ff88 !important; box-shadow: 0 4px 20px rgba(0,255,136,0.3) !important; }
         body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
@@ -282,8 +282,7 @@
             <section class="content-section" id="admin-section">
                 <div class="section-title">Panel de Administración</div>
                 <div id="admin-content">
-                    <!-- Admin content will be rendered here by JavaScript -->
-                </div>
+                    </div>
             </section>
         </main>
     </div>
@@ -358,11 +357,18 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
 
+    <script src="https://unpkg.com/appwrite@11.0.0/dist/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+
     <script>
         // --- INICIO DEL SCRIPT ---
 
         // Variables globales
         let supabase = null;
+        let appwriteClient = null;
+        let appwriteDatabases = null;
+        let appwriteStorage = null;
+        
         let currentSong = null;
         let currentAlbum = null;
         let currentPlaylist = [];
@@ -377,8 +383,17 @@
         let originalPlaylist = [];
         let db;
 
-        const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
+        // --- Configuración de Supabase ---
+        const SUPABASE_URL = 'https://nqbldvpnqhngdtalvzov.supabase.co'; // Reemplaza con tu URL de Supabase
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0'; // Reemplaza con tu clave de Supabase
+        
+        // --- Configuración de Appwrite ---
+        const APPWRITE_ENDPOINT = 'https://nyc.cloud.appwrite.io/v1';
+        const APPWRITE_PROJECT_ID = '68ab0cf2000365979a71';
+        const APPWRITE_DATABASE_ID = '68ab0d9b00124af501a5';
+        const APPWRITE_SONGS_COLLECTION_ID = '68ab0f0e002d9f334b0d';
+        const APPWRITE_SONGS_BUCKET_ID = '68ab1101001cff947e6b';
+
         const ADMIN_EMAIL = 'klmzr@gmail.com';
 
         // --- Base de Datos (IndexedDB) para descargas ---
@@ -437,20 +452,28 @@
             }
 
             try {
-                const song = songsWithAlbumInfo.find(s => s.id === songId);
+                const song = allSongs.find(s => s.$id === songId);
                 if (!song) throw new Error('Canción no encontrada');
 
                 element.textContent = '...';
-                const response = await fetch(song.song_url);
-                if (!response.ok) throw new Error('Error en la red');
-                const audioBlob = await response.blob();
                 
-                const coverResponse = await fetch(song.albums.cover_url);
+                const audioUrl = appwriteStorage.getFileDownload(APPWRITE_SONGS_BUCKET_ID, song.file_id);
+                // Asumo que la portada se obtiene del álbum en Supabase
+                const coverUrl = allAlbums.find(a => a.id === song.album_id).cover_url;
+
+                const audioResponse = await fetch(audioUrl);
+                if (!audioResponse.ok) throw new Error('Error en la red al descargar audio');
+                const audioBlob = await audioResponse.blob();
+                
+                const coverResponse = await fetch(coverUrl);
                 const coverBlob = await coverResponse.blob();
 
                 const songData = {
-                    id: song.id,
-                    metadata: song,
+                    id: song.$id,
+                    metadata: {
+                        ...song,
+                        albums: allAlbums.find(a => a.id === song.album_id)
+                    },
                     audio: audioBlob,
                     cover: coverBlob
                 };
@@ -520,38 +543,35 @@
             audio.pause();
             updateAllPlayers(); // This updates song info
             
-            // The 'play' and 'pause' event listeners will handle the isPlaying state and button updates.
-
             // Define a one-time listener for when the audio is ready to play
             const onCanPlay = () => {
                 audio.play().catch(error => {
                     console.error("Error al reproducir:", error);
-                    // Avoid alerting for the common AbortError, which is the error we are fixing.
                     if (error.name !== 'AbortError') {
                         showInfoModal('No se pudo reproducir la canción.');
                     }
                 });
-                // Remove listener so it doesn't fire again for the same track
                 audio.removeEventListener('canplay', onCanPlay);
             };
             audio.addEventListener('canplay', onCanPlay);
             
             try {
-                const downloadedSong = await getSongFromDB(song.id);
+                const downloadedSong = await getSongFromDB(song.$id);
                 if (downloadedSong && downloadedSong.audio) {
                     console.log(`Reproduciendo "${song.title}" desde descargas.`);
                     const audioURL = URL.createObjectURL(downloadedSong.audio);
                     audio.src = audioURL;
                 } else {
                     console.log(`Reproduciendo "${song.title}" desde la red.`);
-                    audio.src = song.song_url;
+                    const fileUrl = appwriteStorage.getFileDownload(APPWRITE_SONGS_BUCKET_ID, song.file_id);
+                    audio.src = fileUrl;
                 }
             } catch (error) {
                 console.error("Error al buscar canción en DB, reproduciendo desde red:", error);
-                audio.src = song.song_url;
+                const fileUrl = appwriteStorage.getFileDownload(APPWRITE_SONGS_BUCKET_ID, song.file_id);
+                audio.src = fileUrl;
             }
             
-            // Explicitly load the new source. The 'canplay' event will trigger playback.
             audio.load();
         }
         
@@ -572,24 +592,27 @@
             changeTheme(savedTheme);
         }
 
-        async function loadSupabase() {
+        async function loadData() {
             showLoadingIndicator(true);
             try {
+                // Initialize Supabase
                 const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-                supabase = createClient(supabaseUrl, supabaseKey);
-                
-                supabase.auth.onAuthStateChange((event, session) => {
-                    currentUser = session?.user || null;
-                    updateAuthUI();
-                });
+                supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+                // Initialize Appwrite
+                appwriteClient = new Appwrite.Client();
+                appwriteClient.setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
+                appwriteDatabases = new Appwrite.Databases(appwriteClient);
+                appwriteStorage = new Appwrite.Storage(appwriteClient);
+                
                 const { data: { session } } = await supabase.auth.getSession();
                 currentUser = session?.user || null;
                 updateAuthUI();
+
                 await loadAllData();
             } catch (error) {
-                console.error('Error conectando a Supabase:', error);
-                showErrorMessage('Error de conexión. Revisa tu internet.');
+                console.error('Error conectando a servicios:', error);
+                showErrorMessage('Error de conexión. Revisa tu internet o las credenciales de tu base de datos.');
             } finally {
                 showLoadingIndicator(false);
             }
@@ -597,13 +620,22 @@
 
         async function loadAllData() {
             try {
-                const [{ data: albums }, { data: songs }] = await Promise.all([
-                    supabase.from('albums').select('*'),
-                    supabase.from('songs').select('*, albums:album_id(*)')
-                ]);
+                // Obtener álbumes de Supabase
+                const { data: albums, error: albumsError } = await supabase.from('albums').select('*');
+                if (albumsError) throw albumsError;
+                
+                // Obtener canciones de Appwrite
+                const { documents: songs, error: songsError } = await appwriteDatabases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_SONGS_COLLECTION_ID, [Appwrite.Query.limit(100)]);
+                if (songsError) throw songsError;
+                
                 allAlbums = albums || [];
                 allSongs = songs || [];
-                songsWithAlbumInfo = songs || [];
+                
+                songsWithAlbumInfo = allSongs.map(song => {
+                    const album = allAlbums.find(a => a.id === song.album_id);
+                    return { ...song, albums: album };
+                });
+                
                 displayAlbums(allAlbums);
             } catch (error) {
                 console.error('Error cargando datos:', error);
@@ -641,25 +673,36 @@
                 <div class="song-list" id="detail-song-list">Cargando...</div>
             `;
             
-            const { data: songs } = await supabase.from('songs').select('*').eq('album_id', album.id);
-            const listDiv = document.getElementById('detail-song-list');
-            if (!songs || songs.length === 0) { listDiv.innerHTML = 'No hay canciones en este álbum.'; return; }
-            currentPlaylist = songs;
-            originalPlaylist = [...songs];
-            const favorites = getLocalFavorites();
-            const downloaded = await getAllDownloadedSongs();
-            const downloadedIds = downloaded.map(s => s.id);
+            try {
+                const { documents: songs } = await appwriteDatabases.listDocuments(
+                    APPWRITE_DATABASE_ID, 
+                    APPWRITE_SONGS_COLLECTION_ID, 
+                    [Appwrite.Query.equal('album_id', album.id)]
+                );
+                
+                const listDiv = document.getElementById('detail-song-list');
+                if (!songs || songs.length === 0) { listDiv.innerHTML = 'No hay canciones en este álbum.'; return; }
+                currentPlaylist = songs;
+                originalPlaylist = [...songs];
+                const favorites = getLocalFavorites();
+                const downloaded = await getAllDownloadedSongs();
+                const downloadedIds = downloaded.map(s => s.id);
 
-            listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `
-                <li>
-                    <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
-                    <div class="song-actions">
-                        <span onclick="toggleFavorite('${song.id}', this)" style="cursor: pointer; color: ${favorites.includes(song.id) ? '#1DB954' : '#666'};">${favorites.includes(song.id) ? '❤️' : '🤍'}</span>
-                        <span class="download-icon ${downloadedIds.includes(song.id) ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.id}', this)">↓</span>
-                        <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
-                    </div>
-                </li>
-            `).join('') + '</ul>';
+                listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `
+                    <li>
+                        <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
+                        <div class="song-actions">
+                            <span onclick="toggleFavorite('${song.$id}', this)" style="cursor: pointer; color: ${favorites.includes(song.$id) ? '#1DB954' : '#666'};">${favorites.includes(song.$id) ? '❤️' : '🤍'}</span>
+                            <span class="download-icon ${downloadedIds.includes(song.$id) ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.$id}', this)">↓</span>
+                            <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
+                        </div>
+                    </li>
+                `).join('') + '</ul>';
+            } catch (error) {
+                console.error("Error al cargar canciones del álbum:", error);
+                const listDiv = document.getElementById('detail-song-list');
+                listDiv.innerHTML = "Error al cargar las canciones.";
+            }
         }
 
         function updateAllPlayers() {
@@ -670,7 +713,7 @@
 
         async function updateMiniPlayer() {
             document.getElementById('mini-player').style.display = 'flex';
-            const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null);
+            const downloadedSong = await getSongFromDB(currentSong.$id).catch(() => null);
             let coverUrl = currentAlbum?.cover_url || '';
             if (downloadedSong && downloadedSong.cover) {
                 coverUrl = URL.createObjectURL(downloadedSong.cover);
@@ -681,7 +724,7 @@
         }
 
         async function updateFullPlayer() {
-            const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null);
+            const downloadedSong = await getSongFromDB(currentSong.$id).catch(() => null);
             let coverUrl = currentAlbum?.cover_url || '';
             if (downloadedSong && downloadedSong.cover) {
                 coverUrl = URL.createObjectURL(downloadedSong.cover);
@@ -890,26 +933,38 @@
                 content.innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>No tienes favoritos</h2></div>`;
                 return;
             }
-            const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites);
-            if (error) { content.innerHTML = `Error cargando favoritos.`; return; }
-            let html = '<div class="favorites-list">';
-            songs.forEach(song => {
-                html += `<div class="favorite-item" onclick="playSongFromFavorites('${song.id}')">
-                    <div class="favorite-info">
-                        <div class="favorite-title">${song.title}</div>
-                        <div class="favorite-artist">${song.albums.artist} • ${song.albums.title}</div>
-                    </div>
-                    <div class="song-actions">
-                        <span onclick="event.stopPropagation(); toggleFavorite('${song.id}', this);" style="cursor: pointer; color: #1DB954; font-size: 1.2rem;">❤️</span>
-                        <span style="font-size: 1.1rem;">▶</span>
-                    </div>
-                </div>`;
-            });
-            content.innerHTML = html + '</div>';
+            try {
+                const songsResponse = await appwriteDatabases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_SONGS_COLLECTION_ID, [
+                    Appwrite.Query.equal('$id', favorites)
+                ]);
+
+                const songs = songsResponse.documents.map(song => {
+                    const album = allAlbums.find(a => a.id === song.album_id);
+                    return { ...song, albums: album };
+                });
+
+                let html = '<div class="favorites-list">';
+                songs.forEach(song => {
+                    html += `<div class="favorite-item" onclick="playSongFromFavorites('${song.$id}')">
+                        <div class="favorite-info">
+                            <div class="favorite-title">${song.title}</div>
+                            <div class="favorite-artist">${song.albums.artist} • ${song.albums.title}</div>
+                        </div>
+                        <div class="song-actions">
+                            <span onclick="event.stopPropagation(); toggleFavorite('${song.$id}', this);" style="cursor: pointer; color: #1DB954; font-size: 1.2rem;">❤️</span>
+                            <span style="font-size: 1.1rem;">▶</span>
+                        </div>
+                    </div>`;
+                });
+                content.innerHTML = html + '</div>';
+            } catch (error) {
+                console.error("Error cargando favoritos:", error);
+                content.innerHTML = `Error cargando favoritos.`;
+            }
         }
 
         window.playSongFromFavorites = async function(songId) {
-            const song = songsWithAlbumInfo.find(s => s.id === songId);
+            const song = songsWithAlbumInfo.find(s => s.$id === songId);
             if (song) playSong(song, song.albums, [song], 0);
         }
 
@@ -953,7 +1008,7 @@
             if (!query) { results.innerHTML = ''; return; }
             
             const foundAlbums = allAlbums.filter(a => a.title.toLowerCase().includes(query) || a.artist.toLowerCase().includes(query));
-            const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.albums.artist.toLowerCase().includes(query));
+            const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || (s.albums && s.albums.artist.toLowerCase().includes(query)));
             
             let html = '';
             if (foundAlbums.length) {
@@ -964,8 +1019,8 @@
             }
             if (foundSongs.length) {
                 html += '<h3>🎵 Canciones</h3>' + foundSongs.map(song => `
-                    <div class="search-song-item" onclick="playSongFromSearch('${song.id}')">
-                        <div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums.artist}</div></div>
+                    <div class="search-song-item" onclick="playSongFromSearch('${song.$id}')">
+                        <div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums?.artist || 'Desconocido'}</div></div>
                         <div style="font-size: 1.1rem;">▶</div>
                     </div>`).join('');
             }
@@ -973,7 +1028,7 @@
         }
 
         window.playSongFromSearch = async function(songId) {
-            const song = songsWithAlbumInfo.find(s => s.id === songId);
+            const song = songsWithAlbumInfo.find(s => s.$id === songId);
             if (song) playSong(song, song.albums, [song], 0);
         }
 
@@ -1072,25 +1127,25 @@
             const adminContent = document.getElementById('admin-content');
             adminContent.innerHTML = `
                 <div class="admin-section">
-                    <h4>Gestión de Álbumes</h4>
+                    <h4>Gestión de Álbumes (Supabase)</h4>
                     <form id="album-form" class="admin-form">
                         <input type="hidden" id="album-id">
-                        <div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div>
-                        <div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div>
-                        <div class="form-group"><input type="url" id="album-cover" placeholder="URL de la Portada" required></div>
+                        <div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div>
+                        <div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div>
+                        <div class="form-group"><label>URL Portada:</label><input type="url" id="album-cover" required></div>
                         <button type="submit" class="btn-primary">Guardar Álbum</button>
                         <button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button>
                     </form>
                     <div id="admin-album-list" class="admin-list">Cargando álbumes...</div>
                 </div>
                 <div class="admin-section">
-                    <h4>Gestión de Canciones</h4>
+                    <h4>Gestión de Canciones (Appwrite)</h4>
                     <form id="song-form" class="admin-form">
                         <input type="hidden" id="song-id">
-                        <div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div>
-                        <div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div>
-                        <div class="form-group"><input type="url" id="song-url" placeholder="URL de la Canción" required></div>
-                        <button type="submit" class="btn-primary">Guardar Canción</button>
+                        <div class="form-group"><label>Título:</label><input type="text" id="song-title" required></div>
+                        <div class="form-group"><label>Archivo de Canción:</label><input type="file" id="song-file" accept="audio/*"></div>
+                        <div class="form-group"><label>Álbum:</label><select id="song-album-select" required></select></div>
+                        <button type="submit" class="btn-primary">Subir Canción</button>
                         <button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button>
                     </form>
                     <div id="admin-song-list" class="admin-list">Cargando canciones...</div>
@@ -1102,12 +1157,17 @@
         }
 
         async function renderAdminLists() {
-            const { data: albums } = await supabase.from('albums').select('*');
-            const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)');
+            const [{ data: albums }, { documents: songs }] = await Promise.all([
+                supabase.from('albums').select('*'),
+                appwriteDatabases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_SONGS_COLLECTION_ID)
+            ]);
+            
+            allAlbums = albums || [];
+            allSongs = songs || [];
 
             // Render Album List
             const albumList = document.getElementById('admin-album-list');
-            albumList.innerHTML = albums.map(album => `
+            albumList.innerHTML = allAlbums.map(album => `
                 <div class="admin-item">
                     <div class="admin-item-info"><strong>${album.title}</strong><br><small>${album.artist}</small></div>
                     <div class="admin-item-actions">
@@ -1119,19 +1179,24 @@
 
             // Render Song List
             const songList = document.getElementById('admin-song-list');
-            songList.innerHTML = songs.map(song => `
+            const songsWithAlbumInfoAdmin = allSongs.map(song => {
+                const album = allAlbums.find(a => a.id === song.album_id);
+                return { ...song, albums: album };
+            });
+
+            songList.innerHTML = songsWithAlbumInfoAdmin.map(song => `
                 <div class="admin-item">
-                    <div class="admin-item-info"><strong>${song.title}</strong><br><small>${song.albums.title}</small></div>
+                    <div class="admin-item-info"><strong>${song.title}</strong><br><small>${song.albums?.title || 'Sin álbum'}</small></div>
                     <div class="admin-item-actions">
-                        <button class="btn-secondary" onclick="editSong('${song.id}', '${song.title}', '${song.album_id}', '${song.song_url}')">Editar</button>
-                        <button class="btn-danger" onclick="deleteSong('${song.id}')">Borrar</button>
+                        <button class="btn-secondary" onclick="editSong('${song.$id}', '${song.title}', '${song.album_id}')">Editar</button>
+                        <button class="btn-danger" onclick="deleteSong('${song.$id}', '${song.file_id}')">Borrar</button>
                     </div>
                 </div>
             `).join('');
 
             // Populate album select in song form
             const albumSelect = document.getElementById('song-album-select');
-            albumSelect.innerHTML = `<option value="">-- Seleccionar Álbum --</option>` + albums.map(album => `<option value="${album.id}">${album.title}</option>`).join('');
+            albumSelect.innerHTML = `<option value="">-- Seleccionar Álbum --</option>` + allAlbums.map(album => `<option value="${album.id}">${album.title}</option>`).join('');
         }
 
         function setupAdminForms() {
@@ -1171,26 +1236,48 @@
             const songForm = document.getElementById('song-form');
             songForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const id = document.getElementById('song-id').value;
                 const title = document.getElementById('song-title').value;
                 const album_id = document.getElementById('song-album-select').value;
-                const song_url = document.getElementById('song-url').value;
+                const song_file = document.getElementById('song-file').files[0];
+                const song_id_field = document.getElementById('song-id').value;
+
+                if (!song_file) {
+                    showInfoModal("Por favor, selecciona un archivo de audio.");
+                    return;
+                }
 
                 showLoadingIndicator(true);
-                const { error } = id
-                    ? await supabase.from('songs').update({ title, album_id, song_url }).eq('id', id)
-                    : await supabase.from('songs').insert([{ title, album_id, song_url }]);
-                
-                showLoadingIndicator(false);
-                if (error) {
-                    showInfoModal('Error guardando canción: ' + error.message);
-                } else {
-                    showInfoModal('Canción guardada con éxito.');
+                try {
+                    // 1. Subir el archivo a Appwrite Storage
+                    const uploadedFile = await appwriteStorage.createFile(
+                        APPWRITE_SONGS_BUCKET_ID,
+                        Appwrite.ID.unique(),
+                        song_file
+                    );
+
+                    // 2. Crear el documento en la base de datos de Appwrite
+                    await appwriteDatabases.createDocument(
+                        APPWRITE_DATABASE_ID,
+                        APPWRITE_SONGS_COLLECTION_ID,
+                        Appwrite.ID.unique(),
+                        { 
+                            title: title, 
+                            album_id: album_id,
+                            file_id: uploadedFile.$id // Guardamos el ID del archivo subido
+                        }
+                    );
+                    
+                    showInfoModal('Canción subida y guardada con éxito.');
                     songForm.reset();
                     document.getElementById('song-id').value = '';
                     document.getElementById('cancel-song-edit').style.display = 'none';
                     await loadAllData();
                     await renderAdminLists();
+                } catch (error) {
+                    showInfoModal('Error subiendo canción: ' + error.message);
+                    console.error('Error:', error);
+                } finally {
+                    showLoadingIndicator(false);
                 }
             });
             document.getElementById('cancel-song-edit').addEventListener('click', () => {
@@ -1211,58 +1298,69 @@
 
         window.deleteAlbum = (id) => {
             showConfirmationModal(
-                '¿Seguro que quieres borrar este álbum? Esto también borrará todas sus canciones.',
+                '¿Seguro que quieres borrar este álbum? Esto también borrará las canciones asociadas en Appwrite.',
                 async () => {
                     showLoadingIndicator(true);
-                    // First delete songs of the album
-                    const { error: songsError } = await supabase.from('songs').delete().eq('album_id', id);
-                    if (songsError) {
-                        showLoadingIndicator(false);
-                        showInfoModal('Error borrando las canciones del álbum: ' + songsError.message);
-                        return;
-                    }
-                    
-                    // Then delete the album
-                    const { error } = await supabase.from('albums').delete().eq('id', id);
-                    showLoadingIndicator(false);
-                    if (error) {
-                        showInfoModal('Error borrando álbum: ' + error.message);
-                    } else {
+                    try {
+                        // 1. Obtener y borrar canciones de Appwrite
+                        const { documents: songsToDelete } = await appwriteDatabases.listDocuments(
+                            APPWRITE_DATABASE_ID, 
+                            APPWRITE_SONGS_COLLECTION_ID, 
+                            [Appwrite.Query.equal('album_id', id)]
+                        );
+                        
+                        const deletePromises = songsToDelete.map(async song => {
+                            await appwriteDatabases.deleteDocument(APPWRITE_DATABASE_ID, APPWRITE_SONGS_COLLECTION_ID, song.$id);
+                            await appwriteStorage.deleteFile(APPWRITE_SONGS_BUCKET_ID, song.file_id);
+                        });
+                        await Promise.all(deletePromises);
+                        
+                        // 2. Borrar el álbum de Supabase
+                        const { error } = await supabase.from('albums').delete().eq('id', id);
+                        if (error) throw error;
+
                         showInfoModal('Álbum borrado con éxito.');
                         await loadAllData();
                         await renderAdminLists();
+                    } catch (error) {
+                        showInfoModal('Error borrando álbum: ' + error.message);
+                    } finally {
+                        showLoadingIndicator(false);
                     }
                 }
             );
         };
 
-        window.editSong = (id, title, album_id, song_url) => {
+        window.editSong = (id, title, album_id) => {
             document.getElementById('song-id').value = id;
             document.getElementById('song-title').value = title;
             document.getElementById('song-album-select').value = album_id;
-            document.getElementById('song-url').value = song_url;
-            document.getElementById('cancel-song-edit').style.display = 'inline-block';
-            document.getElementById('song-form').scrollIntoView({ behavior: 'smooth' });
+            showInfoModal("No se puede editar el archivo de una canción, solo el título. Si quieres cambiar el audio, bórrala y vuelve a subirla.");
         };
-
-        window.deleteSong = (id) => {
+        
+        window.deleteSong = (songId, fileId) => {
             showConfirmationModal(
                 '¿Seguro que quieres borrar esta canción?',
                 async () => {
                     showLoadingIndicator(true);
-                    const { error } = await supabase.from('songs').delete().eq('id', id);
-                    showLoadingIndicator(false);
-                    if (error) {
-                        showInfoModal('Error borrando canción: ' + error.message);
-                    } else {
+                    try {
+                        // 1. Borrar el documento de la base de datos de Appwrite
+                        await appwriteDatabases.deleteDocument(APPWRITE_DATABASE_ID, APPWRITE_SONGS_COLLECTION_ID, songId);
+                        
+                        // 2. Borrar el archivo de Appwrite Storage
+                        await appwriteStorage.deleteFile(APPWRITE_SONGS_BUCKET_ID, fileId);
+
                         showInfoModal('Canción borrada con éxito.');
                         await loadAllData();
                         await renderAdminLists();
+                    } catch (error) {
+                        showInfoModal('Error borrando canción: ' + error.message);
+                    } finally {
+                        showLoadingIndicator(false);
                     }
                 }
             );
         };
-
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -1279,8 +1377,8 @@
             
             loadSavedTheme();
             initDB().then(() => {
-                console.log('✅ Base de datos inicializada.');
-                loadSupabase();
+                console.log('✅ Base de datos local inicializada.');
+                loadData();
             }).catch(err => {
                 console.error("❌ Error fatal de DB:", err);
                 showInfoModal("La aplicación no puede funcionar sin la base de datos local.");
@@ -1300,4 +1398,4 @@
         }
     </script>
 </body>
-</html�
+</html>
