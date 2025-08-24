@@ -1,1303 +1,935 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>KLMZ MUSIC</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1DB954">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease;}
-        header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
-        .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; }
-        .user-actions { display:flex; align-items: center; gap:.5rem; }
-        .lock-icon { cursor:pointer; font-size:1.4rem; color:#fff; user-select:none; transition: all 0.3s ease; }
-        .lock-icon:hover { opacity:.7;}
-        .theme-selector { display: flex; align-items: center; gap: 0.3rem; margin-right: 0.5rem; }
-        .theme-selector label { font-size: 0.7rem; color: #b3b3b3; }
-        .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease; }
-        .app-container { display: flex; min-height: calc(100vh - 60px);}
-        main { flex:1; padding:1rem; max-width:900px; margin:0 auto;}
-        #search-input { width: 100%; padding: 1rem; background: #242424; border: none; border-radius: 4px; color: #fff; margin-bottom: 2rem; transition: all 0.3s ease; }
-        .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
-        .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
-        .album-card { background:none; padding:0; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition: transform 0.3s;}
-        .album-card:hover { transform:scale(1.05);}
-        .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease; }
-        .album-title { font-size:.98rem; font-weight: bold; margin-bottom: 0.4rem; transition: all 0.3s ease; }
-        .album-artist { font-size: .9rem; color: #b3b3b3; transition: all 0.3s ease; }
-        .song-list { width:100%; margin-top:1rem; padding-bottom: 120px; }
-        .song-list ul { list-style:none; padding:0; margin:0;}
-        .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease;}
-        .song-list li:hover { color:#fff; background: rgba(255,255,255,.05);}
-        .play-icon { font-size: 1.1rem; }
-        .player { position: fixed; bottom: 84px; left: 0; right: 0; background: #212121cc; border-top: 1px solid #282828; z-index: 300; display: flex; align-items: center; padding: 0.8rem 1.2rem; min-height: 56px; cursor: pointer; box-shadow: 0 -2px 10px #0002; transition: all 0.3s ease;}
-        .player-img-mini { width:44px; height:44px; border-radius:100%; object-fit:cover; margin-right:1rem;}
-        .player-info-mini { flex:1; overflow:hidden;}
-        .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
-        .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-        .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
-        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: all 0.3s ease; }
-        .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
-        .full-player-backdrop.active { display: flex;}
-        .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
-        .full-player-title { font-size: 1.8rem; font-weight: bold; margin: 1rem 0 .5rem 0; text-align: center;}
-        .full-player-artist { color: #b3b3b3; font-size: 1.1rem; margin-bottom: 2rem; text-align: center;}
-        .full-player-controls { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%; }
-        .full-control-buttons { display: flex; gap: 3rem; align-items: center; }
-        .full-control-btn { background: none; border: none; color: #fff; font-size: 2rem; padding: 0.6rem; border-radius: 50%; cursor: pointer; transition: all 0.3s ease; }
-        .full-control-btn:hover { background: rgba(255,255,255,0.1); }
-        .full-play-btn { background: #1DB954; color: #fff; border-radius: 50%; font-size: 2.5rem; padding: 0.8rem; transition: all 0.3s ease; }
-        .full-play-btn:hover { background: #1ed760; transform: scale(1.05); }
-        .mode-controls { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; }
-        .mode-btn { background: none; border: 1px solid #444; color: #b3b3b3; padding: 0.5rem; border-radius: 50%; cursor: pointer; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
-        .mode-btn:hover { color: #fff; border-color: #666; }
-        .mode-btn.active { color: #1DB954; border-color: #1DB954; background: rgba(29,185,84,0.1); }
-        .full-progress-bar { flex: 1; height: 8px; background: #4f4f4f; border-radius: 4px; cursor: pointer; position: relative;}
-        .full-progress-fill { height: 100%; background: #1DB954; border-radius: 4px; width: 0%; position: absolute; top: 0; left: 0; transition: all 0.3s ease;}
-        .full-progress-container { width: 90%; max-width: 400px; display: flex; align-items: center; gap: 1rem;}
-        .full-progress-time { font-size: 1rem; color: #b3b3b3; min-width: 50px;}
-        .full-player-volume { margin-top: 1rem;}
-        .full-volume-slider { width: 150px; }
-        .full-player-close { position: absolute; top: 30px; right: 40px; background: none; border: none; font-size: 2.5rem; color: #fff; cursor: pointer; transition: all 0.3s ease; }
-        .full-player-close:hover { color: #ff4757; }
-        .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
-        .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; max-height:90vh; overflow-y:auto; transition: all 0.3s ease; }
-        .modal-content p a { color: #1DB954; text-decoration: none; }
-        .modal-content p { text-align: center; margin-top: 1rem; }
-        .form-group { margin-bottom:1rem;}
-        .form-group label { display:block; margin-bottom:0.5rem;}
-        .form-group input, .form-group select { width:100%; padding:.7rem; background:#404040; border:1px solid #555; border-radius:4px; color:#fff; transition: all 0.3s ease;}
-        .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
-        .btn-primary:hover { background:#1ed760; }
-        .btn-danger { background:#e22134; color:#fff; border:none; padding:.5rem 1rem; border-radius:4px; cursor:pointer; transition: all 0.3s ease; }
-        .btn-danger:hover { background:#ff4757; }
-        .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
-        .user-menu { position: relative; display: inline-block; }
-        .user-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #282828; min-width: 200px; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 1000; border: 1px solid #404040; transition: all 0.3s ease; }
-        .user-dropdown.show { display: block; animation: dropdownFadeIn 0.2s ease; }
-        .user-dropdown-item { padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid #404040; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; transition: all 0.3s ease; }
-        .user-dropdown-item:last-child { border-bottom: none; }
-        .user-dropdown-item:hover { background: #404040; }
-        .user-dropdown-item.logout { color: #ff4757; border-top: 1px solid #404040; margin-top: 0.3rem; }
-        .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; }
-        .user-info strong { color: #fff; font-size: 0.9rem; }
-        .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
-        .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; font-size: 1.14rem; padding: 4px 0 0 0; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
-        .bottom-nav-item.active { color: #1DB954; background: rgba(29,185,84,.09);}
-        .bottom-nav-item:hover {background:rgba(255,255,255,0.05);}
-        .bottom-nav-item .icon { font-size: 1.12rem; }
-        .bottom-nav-item small { font-size: 0.67rem;}
-        .content-section { display: none; }
-        .content-section.active { display: block; }
-        .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: all 0.3s ease; }
-        .back-btn:hover { background: #333; }
-        .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
-        .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
-        .search-song-item { background: #242424; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
-        .search-song-item:hover { background: #333; }
-        .search-song-info { flex: 1; }
-        .search-song-title { font-weight: bold; margin-bottom: 0.2rem; }
-        .search-song-artist { font-size: 0.9rem; color: #b3b3b3; }
-        .favorites-list, .downloads-list { margin-top: 1rem; }
-        .favorite-item, .download-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; transition: all 0.3s ease; }
-        .favorite-item:hover, .download-item:hover { background: #333; }
-        .favorite-info, .download-info { flex: 1; }
-        .favorite-title, .download-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
-        .favorite-artist, .download-artist { font-size: 0.9rem; color: #b3b3b3; }
-        .song-actions { display: flex; gap: 0.8rem; align-items: center; }
-        .download-icon { cursor: pointer; color: #666; font-size: 1.2rem; }
-        .download-icon.downloaded { color: #1DB954; }
-        #album-detail { padding-bottom: 120px; }
+  <meta charset="utf-8" />
+  <title>KLMZ MUSIC</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  
+  <style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#181818;color:#fff;padding:2rem}
+  header{background:#121212;padding:1rem;display:flex;align-items:center;justify-content:space-between;border-radius:12px;margin-bottom:2rem}
+  .logo{font-weight:700;font-size:1.4rem;color:#1DB954}
+  .user-section{display:flex;align-items:center;gap:1rem}
+  .user-info{display:none;align-items:center;gap:0.5rem;background:#333;padding:0.5rem 1rem;border-radius:8px}
+  .user-info.admin{background:#1DB954;animation:adminGlow 2s infinite alternate}
+  @keyframes adminGlow{0%{box-shadow:0 0 5px #1DB954}100%{box-shadow:0 0 20px #1DB954,0 0 30px #1DB954}}
+  .lock-icon{cursor:pointer;font-size:1.4rem;padding:0.5rem;border-radius:8px;background:#333;transition:all 0.2s}
+  .lock-icon:hover{background:#444}
+  .lock-icon.admin{background:#1DB954;animation:crownPulse 1.5s infinite}
+  @keyframes crownPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+  .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
+  .status.success{background:#1a2e1a;color:#51cf66;border-left-color:#51cf66}
+  .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
+  .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
+  .status.admin{background:#1DB954;color:#fff;border-left-color:#fff;font-weight:bold}
+  .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2rem;margin-top:2rem}
+  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px;transition:transform 0.3s;position:relative}
+  .album-card:hover{transform:scale(1.05)}
+  .album-actions{position:absolute;top:0.5rem;right:0.5rem;display:none;gap:0.5rem}
+  .album-card:hover .album-actions{display:flex}
+  .test-buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
+  .btn{padding:0.75rem 1.5rem;background:#1DB954;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:background 0.2s}
+  .btn:hover{background:#1ed760}
+  .btn.secondary{background:#333;color:#fff}
+  .btn.secondary:hover{background:#444}
+  .btn.danger{background:#dc3545}
+  .btn.danger:hover{background:#c82333}
+  .btn.admin{background:linear-gradient(45deg,#1DB954,#1ed760);box-shadow:0 4px 15px rgba(29,185,84,0.3)}
+  .btn.small{padding:0.5rem;font-size:0.8rem;min-width:auto}
+  .empty-state{text-align:center;padding:3rem;color:#666;grid-column:1/-1;background:#222;border-radius:12px}
+  .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
 
-        /* --- Admin Panel Styles --- */
-        .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; }
-        .admin-section h4 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 0.8rem; margin-bottom: 1.5rem; }
-        .admin-form { margin-bottom: 2rem; }
-        .admin-list .admin-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-radius: 4px; margin-bottom: 0.5rem; background: #2c2c2c; }
-        .admin-item-info { flex: 1; }
-        .admin-item-actions button { margin-left: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
-        .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; }
-        .btn-secondary:hover { background: #666; }
+  /* Panel de administración */
+  .admin-panel{display:none;background:#222;border-radius:12px;padding:2rem;margin:2rem 0;border:2px solid #1DB954}
+  .admin-panel.show{display:block}
+  .admin-tabs{display:flex;gap:1rem;margin-bottom:2rem;border-bottom:1px solid #333}
+  .admin-tab{background:none;border:none;color:#999;padding:1rem;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+  .admin-tab.active{color:#1DB954;border-bottom-color:#1DB954}
+  .admin-content{display:none}
+  .admin-content.active{display:block}
+  .form-row{display:flex;gap:1rem;margin-bottom:1rem}
+  .form-group{flex:1;margin-bottom:1.5rem}
+  .form-group label{display:block;margin-bottom:0.5rem;color:#ccc;font-weight:600}
+  .form-group input, .form-group textarea{width:100%;padding:0.75rem;background:#333;border:1px solid #555;border-radius:8px;color:#fff;font-size:1rem;font-family:inherit}
+  .form-group input:focus, .form-group textarea:focus{outline:none;border-color:#1DB954;box-shadow:0 0 0 2px rgba(29,185,84,0.2)}
+  .form-group textarea{resize:vertical;min-height:100px}
+  
+  /* Subida de portada */
+  .cover-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:all 0.2s;cursor:pointer;position:relative;overflow:hidden}
+  .cover-upload:hover{border-color:#1DB954}
+  .cover-upload.has-image{border-color:#1DB954;background-size:cover;background-position:center;background-repeat:no-repeat}
+  .cover-upload-overlay{background:rgba(0,0,0,0.7);padding:1rem;border-radius:4px;position:relative;z-index:2}
+  .cover-preview{width:100px;height:100px;border-radius:8px;object-fit:cover;margin:0 auto 1rem;display:none}
+  
+  .file-upload{border:2px dashed #555;padding:2rem;text-align:center;border-radius:8px;transition:border-color 0.2s}
+  .file-upload:hover{border-color:#1DB954}
+  .file-upload.dragover{border-color:#1DB954;background:#1a2e1a}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+  .stat-card{background:#333;padding:1.5rem;border-radius:8px;text-align:center}
+  .stat-number{font-size:2rem;font-weight:bold;color:#1DB954;margin-bottom:0.5rem}
+  .stat-label{color:#999;font-size:0.9rem}
 
-        /* ✅ TEMAS VISUALES COMPLETOS Y ARREGLADOS */
-        /* � TEMA NEON CYBERPUNK */
-        body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
-        body.theme-neon header { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-bottom: 2px solid #00ff88 !important; box-shadow: 0 4px 20px rgba(0,255,136,0.3) !important; }
-        body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
-        body.theme-neon .album-img { border: 3px solid #ff0080 !important; box-shadow: 0 0 20px rgba(255,0,128,0.6) !important; }
-        body.theme-neon .album-title { color: #00ff88 !important; text-shadow: 0 0 10px rgba(0,255,136,0.5) !important; }
-        body.theme-neon .album-artist { color: #ff0080 !important; }
-        body.theme-neon .section-title { color: #00ff88 !important; text-shadow: 0 0 15px rgba(0,255,136,0.7) !important; }
-        body.theme-neon .btn-primary, body.theme-neon .play-btn-inline, body.theme-neon .full-play-btn { background: linear-gradient(45deg, #00ff88, #00ccff) !important; box-shadow: 0 0 25px rgba(0,255,136,0.5) !important; color: #000 !important;}
-        body.theme-neon .bottom-nav { background: linear-gradient(180deg, rgba(26,26,46,0.95), rgba(10,10,10,0.95)) !important; border-top: 2px solid #00ff88 !important; }
-        body.theme-neon .bottom-nav-item.active { color: #00ff88 !important; background: rgba(0,255,136,0.15) !important; text-shadow: 0 0 10px rgba(0,255,136,0.8) !important; }
-        body.theme-neon .mode-btn.active { color: #00ff88 !important; border-color: #00ff88 !important; background: rgba(0,255,136,0.1) !important; }
-        body.theme-neon .player { background: linear-gradient(135deg, rgba(26,26,46,0.95), rgba(22,33,62,0.95)) !important; border-top: 2px solid #ff0080 !important; }
-        body.theme-neon .user-dropdown { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border: 2px solid #00ff88 !important; box-shadow: 0 8px 32px rgba(0,255,136,0.3) !important; }
-        body.theme-neon .modal-content { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border: 2px solid #00ff88 !important; }
-        body.theme-neon #search-input { background: #1a1a2e !important; border: 1px solid #00ff88 !important; }
-        body.theme-neon .theme-selector select { background: #1a1a2e !important; border: 1px solid #00ff88 !important; }
-        /* ✨ TEMA MINIMAL ELEGANTE */
-        body.theme-minimal { background: linear-gradient(135deg, #0f0f0f 0%, #1c1c1c 50%, #2a2a2a 70%, #0f0f0f 100%) !important; color: #f5f5f5 !important; font-family: 'SF Pro Display', -apple-system, sans-serif !important; }
-        body.theme-minimal header { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; border-bottom: 1px solid rgba(245,245,245,0.1) !important; }
-        body.theme-minimal .logo { color: #f5f5f5 !important; font-weight: 200 !important; letter-spacing: 4px !important; }
-        body.theme-minimal .album-img { border-radius: 12px !important; border: 1px solid rgba(245,245,245,0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;}
-        body.theme-minimal .album-img:hover { transform: translateY(-8px) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important; }
-        body.theme-minimal .album-title { color: #f5f5f5 !important; }
-        body.theme-minimal .album-artist { color: #a0a0a0 !important; }
-        body.theme-minimal .section-title { color: #f5f5f5 !important; font-weight: 200 !important; }
-        body.theme-minimal .btn-primary, body.theme-minimal .play-btn-inline, body.theme-minimal .full-play-btn { background: #f5f5f5 !important; color: #0f0f0f !important; border-radius: 8px !important; }
-        body.theme-minimal .bottom-nav { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; }
-        body.theme-minimal .bottom-nav-item.active { color: #f5f5f5 !important; background: rgba(245,245,245,0.08) !important; }
-        body.theme-minimal .mode-btn.active { color: #f5f5f5 !important; border-color: #f5f5f5 !important; background: rgba(245,245,245,0.1) !important; }
-        body.theme-minimal .user-dropdown { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; border: 1px solid rgba(245,245,245,0.1) !important; }
-        body.theme-minimal .modal-content { background: rgba(28,28,28,0.95) !important; backdrop-filter: blur(20px) !important; border: 1px solid rgba(245,245,245,0.1) !important; }
-        body.theme-minimal #search-input { background: rgba(60,60,60,0.5) !important; border: 1px solid rgba(245,245,245,0.1) !important; }
-        /* 🌅 TEMA SUNSET VIBES */
-        body.theme-sunset { background: linear-gradient(135deg, #2c1810 0%, #4a2c2a 30%, #6d4c41 60%, #1a1a1a 100%) !important; color: #ffab91 !important; }
-        body.theme-sunset header { background: linear-gradient(135deg, #4a2c2a, #6d4c41) !important; border-bottom: 2px solid #ff8a65 !important; box-shadow: 0 4px 20px rgba(255,138,101,0.3) !important; }
-        body.theme-sunset .logo { color: #ff8a65 !important; text-shadow: 0 2px 8px rgba(255,138,101,0.4) !important; }
-        body.theme-sunset .album-img { border: 3px solid #ff8a65 !important; box-shadow: 0 8px 25px rgba(255,138,101,0.4) !important; }
-        body.theme-sunset .album-title { color: #ffab91 !important; }
-        body.theme-sunset .album-artist { color: #ff8a65 !important; }
-        body.theme-sunset .section-title { color: #ff8a65 !important; text-shadow: 0 2px 10px rgba(255,138,101,0.4) !important; }
-        body.theme-sunset .btn-primary, body.theme-sunset .play-btn-inline, body.theme-sunset .full-play-btn { background: linear-gradient(45deg, #ff8a65, #ff6f00) !important; box-shadow: 0 4px 15px rgba(255,138,101,0.4) !important; }
-        body.theme-sunset .bottom-nav { background: linear-gradient(180deg, rgba(76,44,42,0.95), rgba(26,26,26,0.95)) !important; border-top: 2px solid #ff8a65 !important; }
-        body.theme-sunset .bottom-nav-item.active { color: #ff8a65 !important; background: rgba(255,138,101,0.15) !important; }
-        body.theme-sunset .mode-btn.active { color: #ff8a65 !important; border-color: #ff8a65 !important; background: rgba(255,138,101,0.1) !important; }
-        body.theme-sunset .user-dropdown { background: linear-gradient(135deg, #4a2c2a, #6d4c41) !important; border: 2px solid #ff8a65 !important; }
-        body.theme-sunset .modal-content { background: linear-gradient(135deg, #4a2c2a, #6d4c41) !important; border: 2px solid #ff8a65 !important; }
-        body.theme-sunset #search-input { background: #4a2c2a !important; border: 1px solid #ff8a65 !important; }
-        /* 🌸 TEMA PASTEL DREAMS */
-        body.theme-pastel { background: linear-gradient(135deg, #1a1625 0%, #2d2438 50%, #3d2f47 70%, #4a3b5c 100%) !important; color: #d4c5f9 !important; }
-        body.theme-pastel header { background: rgba(139,130,176,0.15) !important; backdrop-filter: blur(20px) !important; border-bottom: 2px solid rgba(184,169,232,0.4) !important; }
-        body.theme-pastel .logo { color: #b8a9e8 !important; text-shadow: 0 2px 12px rgba(184,169,232,0.5) !important; }
-        body.theme-pastel .album-img { border-radius: 20px !important; border: 2px solid rgba(184,169,232,0.5) !important; box-shadow: 0 12px 40px rgba(184,169,232,0.3) !important; }
-        body.theme-pastel .album-title { color: #d4c5f9 !important; }
-        body.theme-pastel .album-artist { color: #b8a9e8 !important; }
-        body.theme-pastel .section-title { color: #b8a9e8 !important; text-shadow: 0 2px 15px rgba(184,169,232,0.5) !important; }
-        body.theme-pastel .btn-primary, body.theme-pastel .play-btn-inline, body.theme-pastel .full-play-btn { background: linear-gradient(45deg, #b8a9e8, #d4c5f9) !important; color: #1a1625 !important; box-shadow: 0 4px 20px rgba(184,169,232,0.4) !important; }
-        body.theme-pastel .bottom-nav { background: rgba(45,36,56,0.9) !important; backdrop-filter: blur(25px) !important; border-top: 2px solid rgba(184,169,232,0.4) !important; }
-        body.theme-pastel .bottom-nav-item.active { color: #d4c5f9 !important; background: rgba(184,169,232,0.15) !important; }
-        body.theme-pastel .mode-btn.active { color: #b8a9e8 !important; border-color: #b8a9e8 !important; background: rgba(184,169,232,0.1) !important; }
-        body.theme-pastel .user-dropdown { background: rgba(45,36,56,0.95) !important; backdrop-filter: blur(25px) !important; border: 2px solid rgba(184,169,232,0.4) !important; }
-        body.theme-pastel .modal-content { background: rgba(45,36,56,0.95) !important; border: 2px solid rgba(184,169,232,0.4) !important; }
-        body.theme-pastel #search-input { background: rgba(45,36,56,0.7) !important; border: 1px solid rgba(184,169,232,0.4) !important; }
-        /* 💎 TEMA LUXURY JEWELS */
-        body.theme-luxury { background: linear-gradient(135deg, #0f1419 0%, #1a252f 50%, #2c3e50 70%, #34495e 100%) !important; color: #f0f8ff !important; }
-        body.theme-luxury header { background: linear-gradient(135deg, #1e3a5f, #34495e) !important; border-bottom: 3px solid #d4af37 !important; box-shadow: 0 4px 20px rgba(212,175,55,0.3) !important; }
-        body.theme-luxury .logo { color: #d4af37 !important; font-weight: 700 !important; text-shadow: 0 3px 10px rgba(212,175,55,0.5) !important; }
-        body.theme-luxury .album-img { border: 3px solid #d4af37 !important; box-shadow: 0 10px 30px rgba(212,175,55,0.4) !important; }
-        body.theme-luxury .album-title { color: #f0f8ff !important; }
-        body.theme-luxury .album-artist { color: #4a9eff !important; }
-        body.theme-luxury .section-title { color: #d4af37 !important; text-shadow: 0 3px 15px rgba(212,175,55,0.5) !important; }
-        body.theme-luxury .btn-primary, body.theme-luxury .play-btn-inline, body.theme-luxury .full-play-btn { background: linear-gradient(45deg, #d4af37, #b8860b) !important; color: #0f1419 !important; box-shadow: 0 4px 20px rgba(212,175,55,0.4) !important; }
-        body.theme-luxury .bottom-nav { background: linear-gradient(180deg, rgba(30,58,95,0.95), rgba(15,20,25,0.95)) !important; border-top: 3px solid #d4af37 !important; }
-        body.theme-luxury .bottom-nav-item.active { color: #d4af37 !important; background: rgba(212,175,55,0.15) !important; }
-        body.theme-luxury .mode-btn.active { color: #d4af37 !important; border-color: #d4af37 !important; background: rgba(212,175,55,0.1) !important; }
-        body.theme-luxury .user-dropdown { background: linear-gradient(135deg, #1e3a5f, #34495e) !important; border: 2px solid #d4af37 !important; box-shadow: 0 8px 32px rgba(212,175,55,0.3) !important; }
-        body.theme-luxury .modal-content { background: linear-gradient(135deg, #1e3a5f, #34495e) !important; border: 2px solid #d4af37 !important; }
-        body.theme-luxury #search-input { background: #1e3a5f !important; border: 1px solid #d4af37 !important; }
-        
-        /* 🌊 TEMA OCEANIC SERENITY */
-        body.theme-oceanic { background: linear-gradient(135deg, #0a192f 0%, #173a5e 50%, #3b6978 70%, #84a9ac 100%) !important; color: #e0e0e0 !important; font-family: 'Inter', -apple-system, sans-serif !important; }
-        body.theme-oceanic header { background: rgba(10, 25, 47, 0.85) !important; backdrop-filter: blur(10px) !important; border-bottom: 1px solid rgba(102, 252, 241, 0.2) !important; }
-        body.theme-oceanic .logo { color: #98ded9 !important; font-weight: 300 !important; text-shadow: 0 1px 5px rgba(152, 222, 217, 0.5) !important; }
-        body.theme-oceanic .album-img { border-radius: 15px !important; border: 2px solid rgba(152, 222, 217, 0.4) !important; box-shadow: 0 10px 30px rgba(23, 58, 94, 0.5) !important; }
-        body.theme-oceanic .album-title { color: #e0e0e0 !important; }
-        body.theme-oceanic .album-artist { color: #98ded9 !important; }
-        body.theme-oceanic .section-title { color: #e0e0e0 !important; font-weight: 300 !important; border-bottom: 1px solid rgba(152, 222, 217, 0.2); padding-bottom: 0.5rem; }
-        body.theme-oceanic .btn-primary, body.theme-oceanic .play-btn-inline, body.theme-oceanic .full-play-btn { background: linear-gradient(45deg, #20c997, #57b894) !important; color: #0a192f !important; box-shadow: 0 4px 15px rgba(87, 184, 148, 0.3) !important; }
-        body.theme-oceanic .bottom-nav { background: rgba(10, 25, 47, 0.85) !important; backdrop-filter: blur(10px) !important; border-top: 1px solid rgba(102, 252, 241, 0.2) !important; }
-        body.theme-oceanic .bottom-nav-item.active { color: #98ded9 !important; background: rgba(152, 222, 217, 0.1) !important; }
-        body.theme-oceanic .mode-btn.active { color: #98ded9 !important; border-color: #98ded9 !important; background: rgba(152, 222, 217, 0.1) !important; }
-        body.theme-oceanic .player { background: rgba(23, 58, 94, 0.9) !important; backdrop-filter: blur(10px) !important; border-top: 1px solid rgba(102, 252, 241, 0.2) !important; }
-        body.theme-oceanic .user-dropdown { background: rgba(23, 58, 94, 0.95) !important; backdrop-filter: blur(15px) !important; border: 1px solid rgba(102, 252, 241, 0.2) !important; }
-        body.theme-oceanic .modal-content { background: linear-gradient(135deg, #173a5e, #3b6978) !important; border: 1px solid rgba(102, 252, 241, 0.3) !important; }
-        body.theme-oceanic #search-input { background: rgba(10, 25, 47, 0.7) !important; border: 1px solid rgba(102, 252, 241, 0.2) !important; }
-        body.theme-oceanic .theme-selector select { background: rgba(10, 25, 47, 0.7) !important; border: 1px solid rgba(102, 252, 241, 0.2) !important; }
-
-        /* Animaciones */
-        @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
-        @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @media (max-width: 768px) { .full-player-cover { width: 150px; height: 150px; } .full-player-title { font-size: 1.4rem; } .album-img { width: 80px; height: 80px; } }
-    </style>
+  /* Modal styles */
+  .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center}
+  .modal.show{display:flex}
+  .modal-content{background:#222;padding:2rem;border-radius:12px;width:90%;max-width:500px;position:relative;max-height:80vh;overflow-y:auto}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+  .modal-title{font-size:1.4rem;color:#1DB954;margin:0}
+  .close-btn{background:none;border:none;color:#999;font-size:1.5rem;cursor:pointer;padding:0}
+  .close-btn:hover{color:#fff}
+  .auth-buttons{display:flex;gap:1rem;margin-top:2rem}
+  .auth-toggle{text-align:center;margin-top:1rem;color:#999}
+  .auth-toggle button{background:none;border:none;color:#1DB954;cursor:pointer;text-decoration:underline}
+  </style>
 </head>
+
 <body>
-    <div class="loading-indicator" id="loading-indicator" style="display:none;">🎵 Cargando...</div>
-
-    <header>
-        <span class="logo">KLMZ MUSIC</span>
-        <div class="user-actions">
-            <div class="theme-selector">
-                <label for="theme-select">Tema:</label>
-                <select id="theme-select" onchange="changeTheme(this.value)">
-                    <option value="default">🎵 Default</option>
-                    <option value="neon">⚡ Neon Cyberpunk</option>
-                    <option value="minimal">✨ Elegancia Minimal</option>
-                    <option value="sunset">🌅 Sunset Vibes</option>
-                    <option value="pastel">🌸 Pastel Dreams</option>
-                    <option value="luxury">💎 Luxury Jewels</option>
-                    <option value="oceanic">🌊 Oceanic Serenity</option>
-                </select>
-            </div>
-            <div class="user-menu">
-                <div class="lock-icon" id="header-lock-icon" onclick="toggleUserMenu()">🔒</div>
-                <div class="user-dropdown" id="user-dropdown">
-                    <div class="user-info" id="user-info-section" style="display: none;">
-                        <div><strong id="user-email-display"></strong></div>
-                        <div id="user-role-display">Usuario</div>
-                    </div>
-                    <div class="user-dropdown-item" id="admin-menu-item" onclick="goToAdmin()" style="display: none;"><span>⚙️</span><span>Panel Admin</span></div>
-                    <div class="user-dropdown-item" onclick="showAuth('register')" id="register-menu-item"><span>📝</span><span>Registrarse</span></div>
-                    <div class="user-dropdown-item" onclick="showAuth('login')" id="login-menu-item"><span>🔐</span><span>Iniciar Sesión</span></div>
-                    <div class="user-dropdown-item logout" onclick="confirmLogout()" id="logout-menu-item" style="display: none;"><span>🚪</span><span>Cerrar Sesión</span></div>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <div class="app-container">
-        <main>
-            <section class="content-section active" id="home-section">
-                <div class="section-title">Albums</div>
-                <div class="album-grid" id="albums"><div style="text-align: center; padding: 2rem;">Cargando álbumes...</div></div>
-                <div id="album-detail" style="display:none;"></div>
-            </section>
-            <section class="content-section" id="search-section">
-                <div class="section-title">Buscar música</div>
-                <input type="text" placeholder="¿Qué quieres escuchar?" id="search-input" onkeyup="searchMusic()">
-                <div id="search-results"></div>
-            </section>
-            <section class="content-section" id="favorites-section">
-                <div class="section-title">❤️ Mis Favoritos</div>
-                <div id="favorites-content"><div style="text-align: center; padding: 2rem;">No tienes favoritos</div></div>
-            </section>
-            <section class="content-section" id="downloads-section">
-                <div class="section-title">↓ Mis Descargas</div>
-                <div id="downloads-content"><div style="text-align: center; padding: 2rem;">No tienes canciones descargadas</div></div>
-            </section>
-            <section class="content-section" id="admin-section">
-                <div class="section-title">Panel de Administración</div>
-                <div id="admin-content">
-                    <!-- Admin content will be rendered here by JavaScript -->
-                </div>
-            </section>
-        </main>
+  <header>
+    <span class="logo">🎵 KLMZ MUSIC</span>
+    <div class="user-section">
+      <div id="userInfo" class="user-info">
+        <span id="userName"></span>
+        <button class="btn danger" onclick="logout()">Salir</button>
+      </div>
+      <div id="lockIcon" class="lock-icon" onclick="openAuthModal()">🔒</div>
     </div>
-
-    <nav class="bottom-nav">
-        <div class="bottom-nav-item active" onclick="showSection('home')" id="nav-home"><span class="icon">⌂</span><small>Inicio</small></div>
-        <div class="bottom-nav-item" onclick="showSection('search')" id="nav-search"><span class="icon">⌕</span><small>Buscar</small></div>
-        <div class="bottom-nav-item" onclick="showSection('downloads')" id="nav-downloads"><span class="icon">↓</span><small>Descargas</small></div>
-        <div class="bottom-nav-item" onclick="showSection('favorites')" id="nav-favs"><span class="icon">♡</span><small>Favoritos</small></div>
-    </nav>
-
-    <div class="player" id="mini-player" style="display:none;">
-        <img class="player-img-mini" id="mini-player-img" alt="cover">
-        <div class="player-info-mini">
-            <div class="player-title-mini" id="mini-player-title"></div>
-            <div class="player-artist-mini" id="mini-player-artist"></div>
-        </div>
-        <div class="player-controls-inline" onclick="event.stopPropagation()">
-            <button class="play-btn-inline" id="mini-play-btn" onclick="togglePlay()">▶</button>
-        </div>
-    </div>
-
-    <div class="full-player-backdrop" id="full-player">
-        <button class="full-player-close" onclick="closeFullPlayer()">&times;</button>
-        <img id="full-player-cover" class="full-player-cover" src="" alt="full-cover">
-        <div class="full-player-title" id="full-player-title"></div>
-        <div class="full-player-artist" id="full-player-artist"></div>
-        <div class="full-player-controls">
-            <div class="full-control-buttons">
-                <button class="full-control-btn" onclick="previousSong()">⏮</button>
-                <button class="full-control-btn full-play-btn" id="full-play-btn" onclick="togglePlay()">▶</button>
-                <button class="full-control-btn" onclick="nextSong()">⏭</button>
-            </div>
-            <div class="mode-controls">
-                <button class="mode-btn" id="repeat-btn" onclick="toggleRepeatMode()">🔁</button>
-                <button class="mode-btn" id="shuffle-btn" onclick="toggleShuffleMode()">🔀</button>
-            </div>
-            <div class="full-progress-container">
-                <span class="full-progress-time" id="full-current-time">0:00</span>
-                <div class="full-progress-bar" onclick="seekToFull(event)"><div class="full-progress-fill" id="full-progress-fill"></div></div>
-                <span class="full-progress-time" id="full-total-time">0:00</span>
-            </div>
-            <div class="full-player-volume"><input type="range" class="full-volume-slider" min="0" max="100" value="70" oninput="setVolume(this.value)"></div>
-        </div>
-    </div>
-
-    <div class="modal" id="auth-modal">
-        <div class="modal-content">
-            <button class="close-modal" onclick="closeAuth()">&times;</button>
-            <div id="login-form">
-                <h2>Iniciar sesión</h2>
-                <form onsubmit="login(event)">
-                    <div class="form-group"><label>Email:</label><input type="email" id="login-email" required></div>
-                    <div class="form-group"><label>Contraseña:</label><input type="password" id="login-password" required></div>
-                    <button type="submit" class="btn-primary">Iniciar sesión</button>
-                </form>
-                <p>¿No tienes cuenta? <a href="#" onclick="showAuth('register')">Regístrate</a></p>
-            </div>
-            <div id="register-form" style="display: none;">
-                <h2>Registrarse</h2>
-                <form onsubmit="register(event)">
-                    <div class="form-group"><label>Email:</label><input type="email" id="register-email" required></div>
-                    <div class="form-group"><label>Contraseña:</label><input type="password" id="register-password" required></div>
-                    <div class="form-group"><label>Confirmar contraseña:</label><input type="password" id="register-confirm" required></div>
-                    <button type="submit" class="btn-primary">Registrarse</button>
-                </form>
-                <p>¿Ya tienes cuenta? <a href="#" onclick="showAuth('login')">Inicia sesión</a></p>
-            </div>
-        </div>
-    </div>
-
-    <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
-    <audio id="audio-player" preload="metadata"></audio>
-
-    <script>
-        // --- INICIO DEL SCRIPT ---
-
-        // Variables globales
-        let supabase = null;
-        let currentSong = null;
-        let currentAlbum = null;
-        let currentPlaylist = [];
-        let currentIndex = 0;
-        let isPlaying = false;
-        let allAlbums = [];
-        let allSongs = [];
-        let currentUser = null;
-        let songsWithAlbumInfo = [];
-        let repeatMode = 'off';
-        let shuffleMode = false;
-        let originalPlaylist = [];
-        let db;
-
-        const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
-        const ADMIN_EMAIL = 'klmzr@gmail.com';
-
-        // --- Base de Datos (IndexedDB) para descargas ---
-        function initDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open('KLMZMusicDB', 2);
-                request.onerror = event => reject('Error al abrir IndexedDB');
-                request.onsuccess = event => {
-                    db = event.target.result;
-                    resolve(db);
-                };
-                request.onupgradeneeded = event => {
-                    let db = event.target.result;
-                    if (!db.objectStoreNames.contains('songs')) {
-                        db.createObjectStore('songs', { keyPath: 'id' });
-                    }
-                };
-            });
-        }
-        
-        async function saveSongToDB(songData) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['songs'], 'readwrite');
-                const store = transaction.objectStore('songs');
-                const request = store.put(songData);
-                request.onsuccess = () => resolve();
-                request.onerror = event => reject('Error al guardar la canción: ' + event.target.error);
-            });
-        }
-
-        async function getSongFromDB(songId) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['songs'], 'readonly');
-                const store = transaction.objectStore('songs');
-                const request = store.get(songId);
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = event => reject('Error al obtener la canción: ' + event.target.error);
-            });
-        }
-
-        async function getAllDownloadedSongs() {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['songs'], 'readonly');
-                const store = transaction.objectStore('songs');
-                const request = store.getAll();
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = event => reject('Error al obtener todas las canciones: ' + event.target.error);
-            });
-        }
-        
-        // --- Descarga de canciones ---
-        window.downloadSong = async function(songId, element) {
-            if (element.classList.contains('downloaded')) {
-                showInfoModal('Esta canción ya está descargada.');
-                return;
-            }
-
-            try {
-                const song = songsWithAlbumInfo.find(s => s.id === songId);
-                if (!song) throw new Error('Canción no encontrada');
-
-                element.textContent = '...';
-                const response = await fetch(song.song_url);
-                if (!response.ok) throw new Error('Error en la red');
-                const audioBlob = await response.blob();
-                
-                const coverResponse = await fetch(song.albums.cover_url);
-                const coverBlob = await coverResponse.blob();
-
-                const songData = {
-                    id: song.id,
-                    metadata: song,
-                    audio: audioBlob,
-                    cover: coverBlob
-                };
-                
-                await saveSongToDB(songData);
-                showInfoModal(`${song.title} descargada con éxito.`);
-                element.textContent = '↓';
-                element.classList.add('downloaded');
-
-            } catch (error) {
-                console.error('Error al descargar:', error);
-                showInfoModal('No se pudo descargar la canción.');
-                element.textContent = '↓';
-            }
-        };
-
-        // --- Carga de la sección de descargas ---
-        async function loadDownloads() {
-            const content = document.getElementById('downloads-content');
-            try {
-                const downloadedSongs = await getAllDownloadedSongs();
-                if (downloadedSongs.length === 0) {
-                    content.innerHTML = `<div style="text-align: center; padding: 2rem;">No tienes canciones descargadas</div>`;
-                    return;
-                }
-                
-                let html = '<div class="downloads-list">';
-                downloadedSongs.forEach(songItem => {
-                    const song = songItem.metadata;
-                    html += `
-                        <div class="download-item" onclick="playDownloadedSong('${song.id}')">
-                            <div class="download-info">
-                                <div class="download-title">${song.title}</div>
-                                <div class="download-artist">${song.albums.artist} • ${song.albums.title}</div>
-                            </div>
-                            <span style="font-size: 1.1rem;">▶</span>
-                        </div>`;
-                });
-                html += '</div>';
-                content.innerHTML = html;
-            } catch (error) {
-                console.error(error);
-                content.innerHTML = 'Error al cargar las descargas.';
-            }
-        }
-        
-        window.playDownloadedSong = async (songId) => {
-            const songData = await getSongFromDB(songId);
-            if (songData) {
-                currentPlaylist = [songData.metadata];
-                currentIndex = 0;
-                playSong(songData.metadata, songData.metadata.albums);
-            }
-        };
-
-
-        // --- Funcionalidad del Reproductor (Modificada para Offline) ---
-        window.playSong = async function(song, album, playlist = [song], index = 0) {
-            currentSong = song;
-            currentAlbum = album;
-            currentPlaylist = playlist;
-            currentIndex = index;
-            
-            const audio = document.getElementById('audio-player');
-            
-            // Stop any existing playback and update UI to loading state
-            audio.pause();
-            updateAllPlayers(); // This updates song info
-            
-            // The 'play' and 'pause' event listeners will handle the isPlaying state and button updates.
-
-            // Define a one-time listener for when the audio is ready to play
-            const onCanPlay = () => {
-                audio.play().catch(error => {
-                    console.error("Error al reproducir:", error);
-                    // Avoid alerting for the common AbortError, which is the error we are fixing.
-                    if (error.name !== 'AbortError') {
-                        showInfoModal('No se pudo reproducir la canción.');
-                    }
-                });
-                // Remove listener so it doesn't fire again for the same track
-                audio.removeEventListener('canplay', onCanPlay);
-            };
-            audio.addEventListener('canplay', onCanPlay);
-            
-            try {
-                const downloadedSong = await getSongFromDB(song.id);
-                if (downloadedSong && downloadedSong.audio) {
-                    console.log(`Reproduciendo "${song.title}" desde descargas.`);
-                    const audioURL = URL.createObjectURL(downloadedSong.audio);
-                    audio.src = audioURL;
-                } else {
-                    console.log(`Reproduciendo "${song.title}" desde la red.`);
-                    audio.src = song.song_url;
-                }
-            } catch (error) {
-                console.error("Error al buscar canción en DB, reproduciendo desde red:", error);
-                audio.src = song.song_url;
-            }
-            
-            // Explicitly load the new source. The 'canplay' event will trigger playback.
-            audio.load();
-        }
-        
-        // --- Resto del código (sin cambios mayores) ---
-        
-        window.changeTheme = function(theme) {
-            const body = document.body;
-            body.classList.remove('theme-neon', 'theme-minimal', 'theme-sunset', 'theme-pastel', 'theme-luxury', 'theme-oceanic');
-            if (theme && theme !== 'default') {
-                body.classList.add('theme-' + theme);
-            }
-            localStorage.setItem('klmz_theme', theme);
-        }
-
-        function loadSavedTheme() {
-            const savedTheme = localStorage.getItem('klmz_theme') || 'default';
-            document.querySelector('.theme-selector select').value = savedTheme;
-            changeTheme(savedTheme);
-        }
-
-        async function loadSupabase() {
-            showLoadingIndicator(true);
-            try {
-                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-                supabase = createClient(supabaseUrl, supabaseKey);
-                
-                supabase.auth.onAuthStateChange((event, session) => {
-                    currentUser = session?.user || null;
-                    updateAuthUI();
-                });
-
-                const { data: { session } } = await supabase.auth.getSession();
-                currentUser = session?.user || null;
-                updateAuthUI();
-                await loadAllData();
-            } catch (error) {
-                console.error('Error conectando a Supabase:', error);
-                showErrorMessage('Error de conexión. Revisa tu internet.');
-            } finally {
-                showLoadingIndicator(false);
-            }
-        }
-
-        async function loadAllData() {
-            try {
-                const [{ data: albums }, { data: songs }] = await Promise.all([
-                    supabase.from('albums').select('*'),
-                    supabase.from('songs').select('*, albums:album_id(*)')
-                ]);
-                allAlbums = albums || [];
-                allSongs = songs || [];
-                songsWithAlbumInfo = songs || [];
-                displayAlbums(allAlbums);
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-                showErrorMessage('No se pudieron cargar los álbumes');
-            }
-        }
-
-        function displayAlbums(albums) {
-            const container = document.getElementById('albums');
-            if (!albums || albums.length === 0) {
-                container.innerHTML = '<h2>No hay álbumes disponibles</h2>';
-                return;
-            }
-            container.innerHTML = albums.map(album => `
-                <div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'>
-                    <img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy">
-                    <div class="album-title">${album.title}</div>
-                    <div class="album-artist">${album.artist}</div>
-                </div>
-            `).join('');
-        }
-        
-        async function showAlbumDetail(album) {
-            currentAlbum = album;
-            document.getElementById('albums').style.display = 'none';
-            const detailView = document.getElementById('album-detail');
-            detailView.style.display = 'block';
-            detailView.innerHTML = `
-                <button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
-                <div style="text-align: center; margin-bottom: 2rem;">
-                    <img class="album-img" src="${album.cover_url}" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem;">
-                    <div class="album-title" style="font-size: 1.5rem;">${album.title}</div>
-                    <div class="album-artist" style="font-size: 1.1rem; color: #b3b3b3;">${album.artist}</div>
-                </div>
-                <div class="song-list" id="detail-song-list">Cargando...</div>
-            `;
-            
-            const { data: songs } = await supabase.from('songs').select('*').eq('album_id', album.id);
-            const listDiv = document.getElementById('detail-song-list');
-            if (!songs || songs.length === 0) { listDiv.innerHTML = 'No hay canciones en este álbum.'; return; }
-            currentPlaylist = songs;
-            originalPlaylist = [...songs];
-            const favorites = getLocalFavorites();
-            const downloaded = await getAllDownloadedSongs();
-            const downloadedIds = downloaded.map(s => s.id);
-
-            listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `
-                <li>
-                    <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
-                    <div class="song-actions">
-                        <span onclick="toggleFavorite('${song.id}', this)" style="cursor: pointer; color: ${favorites.includes(song.id) ? '#1DB954' : '#666'};">${favorites.includes(song.id) ? '❤️' : '🤍'}</span>
-                        <span class="download-icon ${downloadedIds.includes(song.id) ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.id}', this)">↓</span>
-                        <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
-                    </div>
-                </li>
-            `).join('') + '</ul>';
-        }
-
-        function updateAllPlayers() {
-            updateMiniPlayer();
-            updateFullPlayer();
-            updatePlayButtons();
-        }
-
-        async function updateMiniPlayer() {
-            document.getElementById('mini-player').style.display = 'flex';
-            const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null);
-            let coverUrl = currentAlbum?.cover_url || '';
-            if (downloadedSong && downloadedSong.cover) {
-                coverUrl = URL.createObjectURL(downloadedSong.cover);
-            }
-            document.getElementById('mini-player-img').src = coverUrl;
-            document.getElementById('mini-player-title').textContent = currentSong?.title || 'Sin título';
-            document.getElementById('mini-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
-        }
-
-        async function updateFullPlayer() {
-            const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null);
-            let coverUrl = currentAlbum?.cover_url || '';
-            if (downloadedSong && downloadedSong.cover) {
-                coverUrl = URL.createObjectURL(downloadedSong.cover);
-            }
-            document.getElementById('full-player-cover').src = coverUrl;
-            document.getElementById('full-player-title').textContent = currentSong?.title || 'Sin título';
-            document.getElementById('full-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
-        }
-        
-        function updatePlayButtons() {
-            const playText = isPlaying ? '⏸' : '▶';
-            ['mini-play-btn', 'full-play-btn'].forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) btn.textContent = playText;
-            });
-        }
-
-        window.togglePlay = function() {
-            const audio = document.getElementById('audio-player');
-            if (isPlaying) audio.pause();
-            else audio.play();
-        }
-
-        window.nextSong = function() {
-            if (currentPlaylist.length === 0) return;
-            currentIndex = (currentIndex + 1) % currentPlaylist.length;
-            playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
-        }
-
-        window.previousSong = function() {
-            if (currentPlaylist.length === 0) return;
-            currentIndex = (currentIndex > 0) ? currentIndex - 1 : currentPlaylist.length - 1;
-            playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
-        }
-
-        function handleSongEnded() {
-            if (repeatMode === 'all' || currentIndex < currentPlaylist.length - 1) nextSong();
-            else { isPlaying = false; updatePlayButtons(); }
-        }
-
-        window.setVolume = (value) => { document.getElementById('audio-player').volume = value / 100; }
-
-        function updateProgressBar() {
-            const audio = document.getElementById('audio-player');
-            if (!audio.duration) return;
-            const progress = (audio.currentTime / audio.duration) * 100;
-            document.getElementById('full-progress-fill').style.width = `${progress}%`;
-            document.getElementById('full-current-time').textContent = formatTime(audio.currentTime);
-            document.getElementById('full-total-time').textContent = formatTime(audio.duration);
-        }
-
-        function formatTime(seconds) {
-            const min = Math.floor(seconds / 60);
-            const sec = Math.floor(seconds % 60).toString().padStart(2, '0');
-            return `${min}:${sec}`;
-        }
-
-        window.seekToFull = (event) => {
-            const audio = document.getElementById('audio-player');
-            const rect = event.currentTarget.getBoundingClientRect();
-            audio.currentTime = ((event.clientX - rect.left) / rect.width) * audio.duration;
-        }
-
-        function openFullPlayer() { document.getElementById('full-player').classList.add('active'); }
-        window.closeFullPlayer = function() { document.getElementById('full-player').classList.remove('active'); }
-
-        window.toggleRepeatMode = function() {
-            repeatMode = (repeatMode === 'all') ? 'off' : 'all';
-            updateModeButtonsUI();
-        }
-
-        window.toggleShuffleMode = function() {
-            shuffleMode = !shuffleMode;
-            updateModeButtonsUI();
-        }
-
-        function updateModeButtonsUI() {
-            document.getElementById('repeat-btn').classList.toggle('active', repeatMode === 'all');
-            document.getElementById('shuffle-btn').classList.toggle('active', shuffleMode);
-        }
-
-        window.toggleUserMenu = function() {
-            const dropdown = document.getElementById('user-dropdown');
-            dropdown.classList.toggle('show');
-            if (dropdown.classList.contains('show')) {
-                setTimeout(() => { document.addEventListener('click', closeUserMenuOutside); }, 100);
-            }
-        }
-
-        function closeUserMenuOutside(event) {
-            const userMenu = document.querySelector('.user-menu');
-            if (!userMenu.contains(event.target)) {
-                document.getElementById('user-dropdown').classList.remove('show');
-                document.removeEventListener('click', closeUserMenuOutside);
-            }
-        }
-
-        function goToAdmin() {
-            document.getElementById('user-dropdown').classList.remove('show');
-            showSection('admin');
-        }
-
-        function confirmLogout() {
-            showConfirmationModal('¿Estás seguro de que quieres cerrar sesión?', logout);
-        }
-
-        async function logout() {
-            try {
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
-                currentUser = null;
-                updateAuthUI();
-                showInfoModal('Sesión cerrada correctamente');
-            } catch (error) {
-                console.error('Error logout:', error);
-                showInfoModal('Error cerrando sesión');
-            }
-        }
-
-        function updateAuthUI() {
-            const [headerLockIcon, userInfo, userEmail, adminMenu, loginMenu, registerMenu, logoutMenu] = [
-                'header-lock-icon', 'user-info-section', 'user-email-display', 'admin-menu-item',
-                'login-menu-item', 'register-menu-item', 'logout-menu-item'
-            ].map(id => document.getElementById(id));
-            
-            if (currentUser) {
-                userInfo.style.display = 'block';
-                userEmail.textContent = currentUser.email;
-                loginMenu.style.display = 'none';
-                registerMenu.style.display = 'none';
-                logoutMenu.style.display = 'flex';
-                
-                if (isAdmin()) {
-                    headerLockIcon.innerHTML = '⚙️';
-                    adminMenu.style.display = 'flex';
-                } else {
-                    headerLockIcon.innerHTML = '👤';
-                    adminMenu.style.display = 'none';
-                }
-            } else {
-                headerLockIcon.innerHTML = '🔒';
-                userInfo.style.display = 'none';
-                adminMenu.style.display = 'none';
-                loginMenu.style.display = 'flex';
-                registerMenu.style.display = 'flex';
-                logoutMenu.style.display = 'none';
-            }
-        }
-
-        function isAdmin() { return currentUser && currentUser.email === ADMIN_EMAIL; }
-
-        window.login = async function(event) {
-            event.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            try {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                showInfoModal('¡Bienvenido!');
-                closeAuth();
-            } catch (error) { showInfoModal('Error de login: ' + error.message); }
-        }
-
-        window.register = async function(event) {
-            event.preventDefault();
-            const email = document.getElementById('register-email').value;
-            const password = document.getElementById('register-password').value;
-            if (password !== document.getElementById('register-confirm').value) return showInfoModal('Las contraseñas no coinciden');
-            try {
-                const { error } = await supabase.auth.signUp({ email, password });
-                if (error) throw error;
-                showInfoModal('Registro exitoso. Revisa tu correo.');
-                closeAuth();
-            } catch (error) { showInfoModal('Error de registro: ' + error.message); }
-        }
-
-        window.showAuth = function(type) {
-            document.getElementById('user-dropdown').classList.remove('show');
-            document.getElementById('login-form').style.display = (type === 'login') ? 'block' : 'none';
-            document.getElementById('register-form').style.display = (type === 'register') ? 'block' : 'none';
-            document.getElementById('auth-modal').style.display = 'flex';
-        }
-
-        window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
-
-        const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
-        const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
-
-        window.toggleFavorite = function(songId, el) {
-            let favorites = getLocalFavorites();
-            const isFavorite = favorites.includes(songId);
-            if (isFavorite) favorites = favorites.filter(id => id !== songId);
-            else favorites.push(songId);
-            saveLocalFavorites(favorites);
-            if (el) {
-                el.style.color = isFavorite ? '#666' : '#1DB954';
-                el.innerHTML = isFavorite ? '🤍' : '❤️';
-            }
-            if (document.getElementById('favorites-section').classList.contains('active')) loadFavorites();
-        }
-
-        async function loadFavorites() {
-            const content = document.getElementById('favorites-content');
-            const favorites = getLocalFavorites();
-            if (favorites.length === 0) {
-                content.innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>No tienes favoritos</h2></div>`;
-                return;
-            }
-            const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites);
-            if (error) { content.innerHTML = `Error cargando favoritos.`; return; }
-            let html = '<div class="favorites-list">';
-            songs.forEach(song => {
-                html += `<div class="favorite-item" onclick="playSongFromFavorites('${song.id}')">
-                    <div class="favorite-info">
-                        <div class="favorite-title">${song.title}</div>
-                        <div class="favorite-artist">${song.albums.artist} • ${song.albums.title}</div>
-                    </div>
-                    <div class="song-actions">
-                        <span onclick="event.stopPropagation(); toggleFavorite('${song.id}', this);" style="cursor: pointer; color: #1DB954; font-size: 1.2rem;">❤️</span>
-                        <span style="font-size: 1.1rem;">▶</span>
-                    </div>
-                </div>`;
-            });
-            content.innerHTML = html + '</div>';
-        }
-
-        window.playSongFromFavorites = async function(songId) {
-            const song = songsWithAlbumInfo.find(s => s.id === songId);
-            if (song) playSong(song, song.albums, [song], 0);
-        }
-
-        window.showSection = function(section) {
-            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-            document.getElementById(`${section}-section`).classList.add('active');
-            document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
-            const navIdMap = { home: 'home', search: 'search', downloads: 'downloads', favorites: 'favs' };
-            const navItem = document.getElementById(`nav-${navIdMap[section]}`);
-            if(navItem) navItem.classList.add('active');
-            
-            // If the home section is selected, always ensure the album grid is visible
-            if (section === 'home') {
-                showAlbumsGrid();
-            }
-            
-            if (section === 'favorites') loadFavorites();
-            if (section === 'downloads') loadDownloads();
-            if (section === 'admin') {
-                if (!isAdmin()) {
-                    showInfoModal('Acceso denegado. Solo para administradores.');
-                    showSection('home');
-                    return;
-                }
-                renderAdminPanel();
-            }
-        }
-
-        window.showAlbumsGrid = function() {
-            document.getElementById('album-detail').style.display = 'none';
-            document.getElementById('albums').style.display = 'grid';
-        }
-
-        window.playSongFromPlaylist = function(index) {
-            playSong(currentPlaylist[index], currentAlbum, currentPlaylist, index);
-        }
-
-        window.searchMusic = function() {
-            const query = document.getElementById('search-input').value.toLowerCase().trim();
-            const results = document.getElementById('search-results');
-            if (!query) { results.innerHTML = ''; return; }
-            
-            const foundAlbums = allAlbums.filter(a => a.title.toLowerCase().includes(query) || a.artist.toLowerCase().includes(query));
-            const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.albums.artist.toLowerCase().includes(query));
-            
-            let html = '';
-            if (foundAlbums.length) {
-                html += '<h3>📀 Álbumes</h3><div class="album-grid">' + foundAlbums.map(album => `
-                    <div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'>
-                        <img class="album-img" src="${album.cover_url}"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div>
-                    </div>`).join('') + '</div>';
-            }
-            if (foundSongs.length) {
-                html += '<h3>🎵 Canciones</h3>' + foundSongs.map(song => `
-                    <div class="search-song-item" onclick="playSongFromSearch('${song.id}')">
-                        <div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums.artist}</div></div>
-                        <div style="font-size: 1.1rem;">▶</div>
-                    </div>`).join('');
-            }
-            results.innerHTML = (html || '<h3>No se encontraron resultados</h3>');
-        }
-
-        window.playSongFromSearch = async function(songId) {
-            const song = songsWithAlbumInfo.find(s => s.id === songId);
-            if (song) playSong(song, song.albums, [song], 0);
-        }
-
-        function showLoadingIndicator(show) { document.getElementById('loading-indicator').style.display = show ? 'block' : 'none'; }
-        function showErrorMessage(message) {
-            document.getElementById('albums').innerHTML = `
-                <div style="text-align: center; padding: 3rem;">
-                    <h2>${message}</h2>
-                    <p>Puedes acceder a tu música descargada.</p>
-                    <button onclick="showSection('downloads')" style="background: #1DB954; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-top: 1rem;">Ir a Descargas</button>
-                </div>`;
-        }
-
-        // --- CUSTOM MODAL FUNCTIONS ---
-        function showInfoModal(message) {
-            const existingModal = document.getElementById('info-modal-backdrop');
-            if (existingModal) return;
-
-            const modalBackdrop = document.createElement('div');
-            modalBackdrop.id = 'info-modal-backdrop';
-            modalBackdrop.className = 'modal';
-            modalBackdrop.style.display = 'flex';
-
-            const modalContent = document.createElement('div');
-            modalContent.className = 'modal-content';
-
-            const messageP = document.createElement('p');
-            messageP.textContent = message;
-            messageP.style.marginBottom = '1.5rem';
-            messageP.style.textAlign = 'center';
-            messageP.style.fontSize = '1.1rem';
-            
-            const okBtn = document.createElement('button');
-            okBtn.textContent = 'OK';
-            okBtn.className = 'btn-primary';
-            okBtn.onclick = () => {
-                document.body.removeChild(modalBackdrop);
-            };
-
-            modalContent.appendChild(messageP);
-            modalContent.appendChild(okBtn);
-            modalBackdrop.appendChild(modalContent);
-            document.body.appendChild(modalBackdrop);
-        }
-
-        function showConfirmationModal(message, onConfirm) {
-            const existingModal = document.getElementById('confirm-modal-backdrop');
-            if (existingModal) return;
-
-            const modalBackdrop = document.createElement('div');
-            modalBackdrop.id = 'confirm-modal-backdrop';
-            modalBackdrop.className = 'modal';
-            modalBackdrop.style.display = 'flex';
-
-            const modalContent = document.createElement('div');
-            modalContent.className = 'modal-content';
-
-            const messageP = document.createElement('p');
-            messageP.textContent = message;
-            messageP.style.marginBottom = '1.5rem';
-            messageP.style.textAlign = 'center';
-            messageP.style.fontSize = '1.1rem';
-
-            const buttonContainer = document.createElement('div');
-            buttonContainer.style.display = 'flex';
-            buttonContainer.style.gap = '1rem';
-            buttonContainer.style.justifyContent = 'center';
-
-            const confirmBtn = document.createElement('button');
-            confirmBtn.textContent = 'Confirmar';
-            confirmBtn.className = 'btn-danger';
-            confirmBtn.style.width = 'auto';
-            confirmBtn.onclick = () => {
-                onConfirm();
-                document.body.removeChild(modalBackdrop);
-            };
-
-            const cancelBtn = document.createElement('button');
-            cancelBtn.textContent = 'Cancelar';
-            cancelBtn.className = 'btn-secondary';
-            cancelBtn.style.width = 'auto';
-            cancelBtn.onclick = () => {
-                document.body.removeChild(modalBackdrop);
-            };
-
-            buttonContainer.appendChild(cancelBtn);
-            buttonContainer.appendChild(confirmBtn);
-            modalContent.appendChild(messageP);
-            modalContent.appendChild(buttonContainer);
-            modalBackdrop.appendChild(modalContent);
-            document.body.appendChild(modalBackdrop);
-        }
-        
-        // --- ADMIN PANEL FUNCTIONS ---
-        async function renderAdminPanel() {
-            const adminContent = document.getElementById('admin-content');
-            adminContent.innerHTML = `
-                <div class="admin-section">
-                    <h4>Gestión de Álbumes</h4>
-                    <form id="album-form" class="admin-form">
-                        <input type="hidden" id="album-id">
-                        <div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div>
-                        <div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div>
-                        <div class="form-group"><input type="url" id="album-cover" placeholder="URL de la Portada" required></div>
-                        <button type="submit" class="btn-primary">Guardar Álbum</button>
-                        <button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button>
-                    </form>
-                    <div id="admin-album-list" class="admin-list">Cargando álbumes...</div>
-                </div>
-                <div class="admin-section">
-                    <h4>Gestión de Canciones</h4>
-                    <form id="song-form" class="admin-form">
-                        <input type="hidden" id="song-id">
-                        <div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div>
-                        <div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div>
-                        <div class="form-group"><input type="url" id="song-url" placeholder="URL de la Canción" required></div>
-                        <button type="submit" class="btn-primary">Guardar Canción</button>
-                        <button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button>
-                    </form>
-                    <div id="admin-song-list" class="admin-list">Cargando canciones...</div>
-                </div>
-            `;
-            
-            await renderAdminLists();
-            setupAdminForms();
-        }
-
-        async function renderAdminLists() {
-            const { data: albums } = await supabase.from('albums').select('*');
-            const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)');
-
-            // Render Album List
-            const albumList = document.getElementById('admin-album-list');
-            albumList.innerHTML = albums.map(album => `
-                <div class="admin-item">
-                    <div class="admin-item-info"><strong>${album.title}</strong><br><small>${album.artist}</small></div>
-                    <div class="admin-item-actions">
-                        <button class="btn-secondary" onclick="editAlbum('${album.id}', '${album.title}', '${album.artist}', '${album.cover_url}')">Editar</button>
-                        <button class="btn-danger" onclick="deleteAlbum('${album.id}')">Borrar</button>
-                    </div>
-                </div>
-            `).join('');
-
-            // Render Song List
-            const songList = document.getElementById('admin-song-list');
-            songList.innerHTML = songs.map(song => `
-                <div class="admin-item">
-                    <div class="admin-item-info"><strong>${song.title}</strong><br><small>${song.albums.title}</small></div>
-                    <div class="admin-item-actions">
-                        <button class="btn-secondary" onclick="editSong('${song.id}', '${song.title}', '${song.album_id}', '${song.song_url}')">Editar</button>
-                        <button class="btn-danger" onclick="deleteSong('${song.id}')">Borrar</button>
-                    </div>
-                </div>
-            `).join('');
-
-            // Populate album select in song form
-            const albumSelect = document.getElementById('song-album-select');
-            albumSelect.innerHTML = `<option value="">-- Seleccionar Álbum --</option>` + albums.map(album => `<option value="${album.id}">${album.title}</option>`).join('');
-        }
-
-        function setupAdminForms() {
-            // Album form
-            const albumForm = document.getElementById('album-form');
-            albumForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const id = document.getElementById('album-id').value;
-                const title = document.getElementById('album-title').value;
-                const artist = document.getElementById('album-artist').value;
-                const cover_url = document.getElementById('album-cover').value;
-                
-                showLoadingIndicator(true);
-                const { error } = id
-                    ? await supabase.from('albums').update({ title, artist, cover_url }).eq('id', id)
-                    : await supabase.from('albums').insert([{ title, artist, cover_url }]);
-                
-                showLoadingIndicator(false);
-                if (error) {
-                    showInfoModal('Error guardando álbum: ' + error.message);
-                } else {
-                    showInfoModal('Álbum guardado con éxito.');
-                    albumForm.reset();
-                    document.getElementById('album-id').value = '';
-                    document.getElementById('cancel-album-edit').style.display = 'none';
-                    await loadAllData();
-                    await renderAdminLists();
-                }
-            });
-            document.getElementById('cancel-album-edit').addEventListener('click', () => {
-                albumForm.reset();
-                document.getElementById('album-id').value = '';
-                document.getElementById('cancel-album-edit').style.display = 'none';
-            });
-
-            // Song form
-            const songForm = document.getElementById('song-form');
-            songForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const id = document.getElementById('song-id').value;
-                const title = document.getElementById('song-title').value;
-                const album_id = document.getElementById('song-album-select').value;
-                const song_url = document.getElementById('song-url').value;
-
-                showLoadingIndicator(true);
-                const { error } = id
-                    ? await supabase.from('songs').update({ title, album_id, song_url }).eq('id', id)
-                    : await supabase.from('songs').insert([{ title, album_id, song_url }]);
-                
-                showLoadingIndicator(false);
-                if (error) {
-                    showInfoModal('Error guardando canción: ' + error.message);
-                } else {
-                    showInfoModal('Canción guardada con éxito.');
-                    songForm.reset();
-                    document.getElementById('song-id').value = '';
-                    document.getElementById('cancel-song-edit').style.display = 'none';
-                    await loadAllData();
-                    await renderAdminLists();
-                }
-            });
-            document.getElementById('cancel-song-edit').addEventListener('click', () => {
-                songForm.reset();
-                document.getElementById('song-id').value = '';
-                document.getElementById('cancel-song-edit').style.display = 'none';
-            });
-        }
-
-        window.editAlbum = (id, title, artist, cover_url) => {
-            document.getElementById('album-id').value = id;
-            document.getElementById('album-title').value = title;
-            document.getElementById('album-artist').value = artist;
-            document.getElementById('album-cover').value = cover_url;
-            document.getElementById('cancel-album-edit').style.display = 'inline-block';
-            document.getElementById('album-form').scrollIntoView({ behavior: 'smooth' });
-        };
-
-        window.deleteAlbum = (id) => {
-            showConfirmationModal(
-                '¿Seguro que quieres borrar este álbum? Esto también borrará todas sus canciones.',
-                async () => {
-                    showLoadingIndicator(true);
-                    // First delete songs of the album
-                    const { error: songsError } = await supabase.from('songs').delete().eq('album_id', id);
-                    if (songsError) {
-                        showLoadingIndicator(false);
-                        showInfoModal('Error borrando las canciones del álbum: ' + songsError.message);
-                        return;
-                    }
-                    
-                    // Then delete the album
-                    const { error } = await supabase.from('albums').delete().eq('id', id);
-                    showLoadingIndicator(false);
-                    if (error) {
-                        showInfoModal('Error borrando álbum: ' + error.message);
-                    } else {
-                        showInfoModal('Álbum borrado con éxito.');
-                        await loadAllData();
-                        await renderAdminLists();
-                    }
-                }
-            );
-        };
-
-        window.editSong = (id, title, album_id, song_url) => {
-            document.getElementById('song-id').value = id;
-            document.getElementById('song-title').value = title;
-            document.getElementById('song-album-select').value = album_id;
-            document.getElementById('song-url').value = song_url;
-            document.getElementById('cancel-song-edit').style.display = 'inline-block';
-            document.getElementById('song-form').scrollIntoView({ behavior: 'smooth' });
-        };
-
-        window.deleteSong = (id) => {
-            showConfirmationModal(
-                '¿Seguro que quieres borrar esta canción?',
-                async () => {
-                    showLoadingIndicator(true);
-                    const { error } = await supabase.from('songs').delete().eq('id', id);
-                    showLoadingIndicator(false);
-                    if (error) {
-                        showInfoModal('Error borrando canción: ' + error.message);
-                    } else {
-                        showInfoModal('Canción borrada con éxito.');
-                        await loadAllData();
-                        await renderAdminLists();
-                    }
-                }
-            );
-        };
-
-
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando...');
-            const audio = document.getElementById('audio-player');
-            audio.addEventListener('ended', handleSongEnded);
-            audio.addEventListener('timeupdate', updateProgressBar);
-            audio.addEventListener('play', () => { isPlaying = true; updatePlayButtons(); });
-            audio.addEventListener('pause', () => { isPlaying = false; updatePlayButtons(); });
-            
-            document.getElementById('mini-player').addEventListener('click', (e) => {
-                if (!e.target.closest('.player-controls-inline')) openFullPlayer();
-            });
-            
-            loadSavedTheme();
-            initDB().then(() => {
-                console.log('✅ Base de datos inicializada.');
-                loadSupabase();
-            }).catch(err => {
-                console.error("❌ Error fatal de DB:", err);
-                showInfoModal("La aplicación no puede funcionar sin la base de datos local.");
-            });
-            
-            console.log('✅ KLMZ MUSIC inicializado.');
-        });
-    </script>
+  </header>
+
+  <main>
+    <h1>Álbumes</h1>
+    <div id="status" class="status info">🔄 Inicializando conexión directa...</div>
     
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(registration => console.log('✅ Service Worker registrado:', registration.scope))
-                    .catch(error => console.log('❌ Fallo en registro de SW:', error));
-            });
+    <div class="test-buttons">
+      <button class="btn" onclick="testConnection()">🔍 Probar Conexión</button>
+      <button class="btn secondary" onclick="addTestAlbum()" id="addAlbumBtn">➕ Agregar Álbum de Prueba</button>
+      <button class="btn secondary" onclick="loadAlbums()">📀 Cargar Álbumes</button>
+      <button class="btn admin" onclick="toggleAdminPanel()" id="adminPanelBtn" style="display:none">👑 Panel Admin</button>
+    </div>
+    
+    <!-- Panel de administración -->
+    <div id="adminPanel" class="admin-panel">
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchAdminTab('albums')">📀 Crear Álbum</button>
+        <button class="admin-tab" onclick="switchAdminTab('upload')">📤 Subir Archivos</button>
+        <button class="admin-tab" onclick="switchAdminTab('stats')">📊 Estadísticas</button>
+        <button class="admin-tab" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
+      </div>
+      
+      <!-- Tab: Crear Álbum -->
+      <div id="adminTabAlbums" class="admin-content active">
+        <h3>🎵 Crear Nuevo Álbum</h3>
+        <form id="albumForm" onsubmit="createAlbumWithCover(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="albumName">Nombre del Álbum: *</label>
+              <input type="text" id="albumName" required placeholder="Ej: KLMZ Hits Vol. 1">
+            </div>
+            <div class="form-group">
+              <label for="artistName">Artista: *</label>
+              <input type="text" id="artistName" required placeholder="Ej: Freddy Granados">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Portada del Álbum: *</label>
+            <div id="coverUpload" class="cover-upload" onclick="$('coverInput').click()">
+              <div class="cover-upload-overlay">
+                <img id="coverPreview" class="cover-preview" alt="Preview">
+                <div id="coverUploadText">
+                  <p>📸 Haz clic para subir portada</p>
+                  <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
+                </div>
+              </div>
+            </div>
+            <input type="file" id="coverInput" accept=".jpg,.jpeg,.png" style="display:none" onchange="handleCoverUpload(event)">
+          </div>
+          
+          <button type="submit" class="btn admin" id="createAlbumBtn">➕ Crear Álbum</button>
+        </form>
+      </div>
+      
+      <!-- Tab: Subir Archivos -->
+      <div id="adminTabUpload" class="admin-content">
+        <h3>📤 Subir Archivos de Audio</h3>
+        <div class="file-upload" id="fileUpload">
+          <p>🎵 Arrastra archivos de música aquí o haz clic para seleccionar</p>
+          <p style="color:#999;font-size:0.9rem;">Soporta: MP3, WAV, FLAC</p>
+          <input type="file" id="fileInput" multiple accept=".mp3,.wav,.flac" style="display:none">
+        </div>
+        <div id="uploadProgress" style="display:none;margin-top:1rem;">
+          <div style="background:#333;border-radius:8px;overflow:hidden;">
+            <div id="progressBar" style="background:#1DB954;height:20px;width:0%;transition:width 0.3s;"></div>
+          </div>
+          <p id="uploadStatus" style="margin-top:0.5rem;text-align:center;"></p>
+        </div>
+      </div>
+      
+      <!-- Tab: Estadísticas -->
+      <div id="adminTabStats" class="admin-content">
+        <h3>📊 Estadísticas del Sistema</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="statAlbums">-</div>
+            <div class="stat-label">Álbumes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statSongs">-</div>
+            <div class="stat-label">Canciones</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statStorage">-</div>
+            <div class="stat-label">Archivos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statUsers">1</div>
+            <div class="stat-label">Usuarios</div>
+          </div>
+        </div>
+        <button class="btn" onclick="refreshStats()">🔄 Actualizar Estadísticas</button>
+      </div>
+      
+      <!-- Tab: Configuración -->
+      <div id="adminTabSettings" class="admin-content">
+        <h3>⚙️ Configuración del Sistema</h3>
+        <div class="form-group">
+          <label>Estado del Sistema:</label>
+          <p style="color:#51cf66;">✅ Todos los servicios funcionando correctamente</p>
+        </div>
+        <div class="form-group">
+          <label>Información del Proyecto:</label>
+          <p style="color:#999;font-family:monospace;font-size:0.9rem;">
+            Project ID: 68ab0cf2000365979a71<br>
+            Database ID: 68ab0d9b00124af501a5<br>
+            Endpoint: https://nyc.cloud.appwrite.io/v1
+          </p>
+        </div>
+        <button class="btn secondary" onclick="testAllServices()">🔍 Probar Todos los Servicios</button>
+        <button class="btn danger" onclick="clearAllData()" style="margin-left:1rem;">🗑️ Limpiar Datos de Prueba</button>
+      </div>
+    </div>
+    
+    <div id="albums" class="album-grid"></div>
+  </main>
+
+  <!-- Modal de autenticación -->
+  <div id="authModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle" class="modal-title">Iniciar Sesión</h2>
+        <button class="close-btn" onclick="closeAuthModal()">&times;</button>
+      </div>
+      
+      <form id="authForm" onsubmit="handleAuth(event)">
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Contraseña:</label>
+          <input type="password" id="password" required>
+        </div>
+        
+        <div id="nameGroup" class="form-group" style="display:none">
+          <label for="name">Nombre:</label>
+          <input type="text" id="name">
+        </div>
+        
+        <div class="auth-buttons">
+          <button type="submit" class="btn" id="authSubmitBtn">Iniciar Sesión</button>
+          <button type="button" class="btn secondary" onclick="closeAuthModal()">Cancelar</button>
+        </div>
+      </form>
+      
+      <div class="auth-toggle">
+        <span id="toggleText">¿No tienes cuenta?</span>
+        <button type="button" onclick="toggleAuthMode()" id="toggleBtn">Registrarse</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuración
+    const CONFIG = {
+      endpoint: 'https://nyc.cloud.appwrite.io/v1',
+      projectId: '68ab0cf2000365979a71',
+      databaseId: '68ab0d9b00124af501a5',
+      albumsCollectionId: '68ab0dd00024ddeb51fd',
+      songsCollectionId: '68ab0f0e002d9f334b0d',
+      bucketId: '68ab1101001cff947e6b'
+    };
+
+    const $ = id => document.getElementById(id);
+    let isLoginMode = true;
+    let currentUser = null;
+    let isAdmin = false;
+    let currentAlbums = [];
+    let selectedCoverFile = null;
+
+    function setStatus(message, type = 'info') {
+      const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'admin' ? '👑' : '🔄';
+      $('status').innerHTML = `${emoji} ${message}`;
+      $('status').className = `status ${type}`;
+    }
+
+    // Función para verificar si el usuario es admin
+    function checkUserAdmin(user) {
+      if (user.labels) {
+        if (Array.isArray(user.labels)) {
+          return user.labels.includes('admin');
+        } else if (typeof user.labels === 'object') {
+          return user.labels.admin === true || user.labels.admin === 'true';
         }
-    </script>
+      }
+      const adminEmails = ['klmzr230@gmail.com'];
+      return adminEmails.includes(user.email.toLowerCase());
+    }
+
+    // Cliente Appwrite extendido
+    class SimpleAppwriteClient {
+      constructor(endpoint, projectId) {
+        this.endpoint = endpoint;
+        this.projectId = projectId;
+        this.headers = {
+          'X-Appwrite-Project': projectId,
+          'Content-Type': 'application/json'
+        };
+      }
+
+      async request(method, path, params = {}) {
+        let url = `${this.endpoint}${path}`;
+        const options = {
+          method,
+          headers: { ...this.headers },
+          credentials: 'include'
+        };
+
+        if (method === 'GET' && Object.keys(params).length > 0) {
+          const queryString = new URLSearchParams(params).toString();
+          url = `${url}?${queryString}`;
+        } else if (method !== 'GET') {
+          options.body = JSON.stringify(params);
+        }
+
+        const response = await fetch(url, options);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        return data;
+      }
+
+      async getAccount() {
+        return this.request('GET', '/account');
+      }
+
+      async createUser(email, password, name) {
+        return this.request('POST', '/account', {
+          userId: 'unique()',
+          email,
+          password,
+          name
+        });
+      }
+
+      async createSession(email, password) {
+        return this.request('POST', '/account/sessions/email', {
+          email,
+          password
+        });
+      }
+
+      async deleteSession() {
+        return this.request('DELETE', '/account/sessions/current');
+      }
+
+      async listDocuments(databaseId, collectionId, queries = []) {
+        return this.request('GET', `/databases/${databaseId}/collections/${collectionId}/documents`, { queries });
+      }
+
+      async createDocument(databaseId, collectionId, documentId, data) {
+        return this.request('POST', `/databases/${databaseId}/collections/${collectionId}/documents`, {
+          documentId,
+          data
+        });
+      }
+
+      async deleteDocument(databaseId, collectionId, documentId) {
+        return this.request('DELETE', `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`);
+      }
+
+      async createFile(bucketId, fileId, file) {
+        const formData = new FormData();
+        formData.append('fileId', fileId);
+        formData.append('file', file);
+
+        const options = {
+          method: 'POST',
+          headers: {
+            'X-Appwrite-Project': this.projectId,
+          },
+          credentials: 'include',
+          body: formData
+        };
+
+        const response = await fetch(`${this.endpoint}/storage/buckets/${bucketId}/files`, options);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        return data;
+      }
+
+      async listFiles(bucketId) {
+        return this.request('GET', `/storage/buckets/${bucketId}/files`);
+      }
+
+      getFilePreview(bucketId, fileId, width = 300, height = 300) {
+        return `${this.endpoint}/storage/buckets/${bucketId}/files/${fileId}/preview?width=${width}&height=${height}&project=${this.projectId}`;
+      }
+    }
+
+    const client = new SimpleAppwriteClient(CONFIG.endpoint, CONFIG.projectId);
+
+    // Manejar subida de portada
+    function handleCoverUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Validar tamaño
+      if (file.size > 5 * 1024 * 1024) {
+        setStatus('❌ La imagen debe ser menor a 5MB', 'error');
+        return;
+      }
+
+      // Validar tipo
+      if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+        setStatus('❌ Solo se permiten imágenes JPG y PNG', 'error');
+        return;
+      }
+
+      selectedCoverFile = file;
+
+      // Mostrar preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const coverUpload = $('coverUpload');
+        const coverPreview = $('coverPreview');
+        const coverUploadText = $('coverUploadText');
+
+        coverPreview.src = e.target.result;
+        coverPreview.style.display = 'block';
+        coverUploadText.innerHTML = `
+          <p>✅ ${file.name}</p>
+          <p style="color:#1DB954;font-size:0.9rem;">Haz clic para cambiar</p>
+        `;
+        coverUpload.classList.add('has-image');
+        coverUpload.style.backgroundImage = `url(${e.target.result})`;
+      };
+      reader.readAsDataURL(file);
+
+      setStatus(`✅ Portada seleccionada: ${file.name}`, 'success');
+    }
+
+    // Crear álbum con portada (SIN descripción)
+    async function createAlbumWithCover(event) {
+      event.preventDefault();
+      
+      if (!isAdmin) {
+        setStatus('Solo los administradores pueden crear álbumes', 'error');
+        return;
+      }
+
+      const name = $('albumName').value;
+      const artist = $('artistName').value;
+
+      if (!selectedCoverFile) {
+        setStatus('❌ Debes subir una portada para el álbum', 'error');
+        return;
+      }
+
+      setStatus('👑 Creando álbum...', 'admin');
+      $('createAlbumBtn').disabled = true;
+      $('createAlbumBtn').textContent = 'Creando...';
+
+      try {
+        // 1. Subir la portada primero
+        setStatus('📸 Subiendo portada...', 'admin');
+        const coverId = 'cover-' + Date.now();
+        const coverFile = await client.createFile(CONFIG.bucketId, coverId, selectedCoverFile);
+        
+        // 2. Crear el álbum con la ID de la portada (SIN description)
+        setStatus('💽 Creando álbum en la base de datos...', 'admin');
+        const albumData = {
+          name,
+          artistName: artist,
+          coverStorageId: coverFile.$id
+        };
+
+        await client.createDocument(
+          CONFIG.databaseId,
+          CONFIG.albumsCollectionId,
+          'album-' + Date.now(),
+          albumData
+        );
+
+        setStatus(`👑 ¡Álbum "${name}" creado exitosamente!`, 'admin');
+        
+        // Limpiar formulario
+        $('albumForm').reset();
+        selectedCoverFile = null;
+        $('coverPreview').style.display = 'none';
+        $('coverUpload').classList.remove('has-image');
+        $('coverUpload').style.backgroundImage = '';
+        $('coverUploadText').innerHTML = `
+          <p>📸 Haz clic para subir portada</p>
+          <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
+        `;
+        
+        // Recargar álbumes
+        setTimeout(loadAlbums, 1000);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus(`❌ Error creando álbum: ${error.message}`, 'error');
+      }
+
+      $('createAlbumBtn').disabled = false;
+      $('createAlbumBtn').textContent = '➕ Crear Álbum';
+    }
+
+    // Funciones de autenticación
+    function openAuthModal() {
+      $('authModal').classList.add('show');
+    }
+
+    function closeAuthModal() {
+      $('authModal').classList.remove('show');
+      resetAuthForm();
+    }
+
+    function toggleAuthMode() {
+      isLoginMode = !isLoginMode;
+      
+      if (isLoginMode) {
+        $('modalTitle').textContent = 'Iniciar Sesión';
+        $('authSubmitBtn').textContent = 'Iniciar Sesión';
+        $('toggleText').textContent = '¿No tienes cuenta?';
+        $('toggleBtn').textContent = 'Registrarse';
+        $('nameGroup').style.display = 'none';
+        $('name').required = false;
+      } else {
+        $('modalTitle').textContent = 'Crear Cuenta';
+        $('authSubmitBtn').textContent = 'Registrarse';
+        $('toggleText').textContent = '¿Ya tienes cuenta?';
+        $('toggleBtn').textContent = 'Iniciar Sesión';
+        $('nameGroup').style.display = 'block';
+        $('name').required = true;
+      }
+    }
+
+    function resetAuthForm() {
+      $('authForm').reset();
+      isLoginMode = true;
+      toggleAuthMode();
+      toggleAuthMode();
+    }
+
+    async function handleAuth(event) {
+      event.preventDefault();
+      
+      const email = $('email').value;
+      const password = $('password').value;
+      const name = $('name').value;
+
+      try {
+        if (isLoginMode) {
+          setStatus('Iniciando sesión...');
+          await client.createSession(email, password);
+          const user = await client.getAccount();
+          
+          currentUser = user;
+          isAdmin = checkUserAdmin(user);
+          
+          updateUserInterface(user);
+          closeAuthModal();
+          
+          if (isAdmin) {
+            setStatus(`¡Bienvenido ADMIN ${user.name}! Panel de administración disponible.`, 'admin');
+          } else {
+            setStatus(`¡Bienvenido, ${user.name}!`, 'success');
+          }
+          
+        } else {
+          setStatus('Creando cuenta...');
+          await client.createUser(email, password, name);
+          await client.createSession(email, password);
+          const user = await client.getAccount();
+          
+          currentUser = user;
+          isAdmin = checkUserAdmin(user);
+          
+          updateUserInterface(user);
+          closeAuthModal();
+          setStatus(`¡Cuenta creada! Bienvenido, ${user.name}!`, 'success');
+        }
+        
+      } catch (error) {
+        console.error('Error de autenticación:', error);
+        setStatus(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    function updateUserInterface(user) {
+      if (isAdmin) {
+        $('lockIcon').textContent = '👑';
+        $('lockIcon').classList.add('admin');
+        $('userName').innerHTML = `${user.name}<span class="admin-badge">ADMIN</span>`;
+        $('userInfo').classList.add('admin');
+        $('adminPanelBtn').style.display = 'inline-block';
+      } else {
+        $('lockIcon').textContent = '👤';
+        $('userName').textContent = user.name;
+      }
+      $('userInfo').style.display = 'flex';
+    }
+
+    async function logout() {
+      try {
+        setStatus('Cerrando sesión...');
+        await client.deleteSession();
+        
+        currentUser = null;
+        isAdmin = false;
+        $('lockIcon').textContent = '🔒';
+        $('lockIcon').classList.remove('admin');
+        $('userInfo').style.display = 'none';
+        $('userInfo').classList.remove('admin');
+        $('adminPanelBtn').style.display = 'none';
+        $('adminPanel').classList.remove('show');
+        setStatus('Sesión cerrada correctamente', 'success');
+        
+      } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+        setStatus(`Error cerrando sesión: ${error.message}`, 'error');
+      }
+    }
+
+    async function testConnection() {
+      setStatus('Probando conexión...');
+      
+      try {
+        const user = await client.getAccount();
+        currentUser = user;
+        isAdmin = checkUserAdmin(user);
+        
+        updateUserInterface(user);
+        
+        if (isAdmin) {
+          setStatus(`✅ Conectado como ADMINISTRADOR: ${user.name}`, 'admin');
+        } else {
+          setStatus(`✅ Conectado como usuario: ${user.name}`, 'success');
+        }
+      } catch (error) {
+        if (error.message.includes('401') || 
+            error.message.includes('missing scope') || 
+            error.message.includes('guests') ||
+            error.message.includes('Unauthorized')) {
+          setStatus('✅ Conectado como visitante - CORS OK', 'success');
+        } else {
+          setStatus(`❌ Error: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function loadAlbums() {
+      setStatus('Cargando álbumes...');
+      
+      try {
+        const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        currentAlbums = response.documents;
+        
+        if (response.documents.length === 0) {
+          $('albums').innerHTML = `
+            <div class="empty-state">
+              <h2>🎵 Conexión exitosa</h2>
+              <p>No hay álbumes en la base de datos.<br>Usa el panel admin para crear álbumes con portadas.</p>
+            </div>
+          `;
+          setStatus('✅ Conexión exitosa - Base de datos vacía', 'success');
+        } else {
+          displayAlbums(response.documents);
+          setStatus(`✅ ${response.documents.length} álbum(es) cargados`, 'success');
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        let errorMsg = error.message;
+        
+        if (error.message.includes('401')) {
+          errorMsg = 'Sin permisos de lectura. Configura permisos públicos en la Collection.';
+        } else if (error.message.includes('404')) {
+          errorMsg = 'Collection no encontrada. Verifica los IDs de configuración.';
+        }
+        
+        setStatus(`❌ ${errorMsg}`, 'error');
+      }
+    }
+
+    async function addTestAlbum() {
+      if (!currentUser) {
+        setStatus('Debes iniciar sesión para agregar álbumes', 'error');
+        openAuthModal();
+        return;
+      }
+
+      setStatus('Agregando álbum de prueba...');
+      
+      try {
+        const albumData = {
+          name: `Álbum ${isAdmin ? 'ADMIN' : 'Usuario'} - ${new Date().toLocaleTimeString()}`,
+          artistName: isAdmin ? 'Admin Freddy' : 'Usuario Demo',
+          coverStorageId: 'test-cover-' + Date.now()
+        };
+
+        await client.createDocument(
+          CONFIG.databaseId,
+          CONFIG.albumsCollectionId,
+          'album-' + Date.now(),
+          albumData
+        );
+
+        if (isAdmin) {
+          setStatus('👑 Álbum agregado por ADMINISTRADOR', 'admin');
+        } else {
+          setStatus('✅ Álbum agregado correctamente', 'success');
+        }
+        
+        setTimeout(loadAlbums, 1000);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus(`❌ ${error.message}`, 'error');
+      }
+    }
+
+    // Funciones del Panel de Administración
+    function toggleAdminPanel() {
+      if (!isAdmin) return;
+      
+      const panel = $('adminPanel');
+      if (panel.classList.contains('show')) {
+        panel.classList.remove('show');
+      } else {
+        panel.classList.add('show');
+        refreshStats();
+      }
+    }
+
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.admin-content').forEach(content => content.classList.remove('active'));
+      
+      document.querySelector(`[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
+      $(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+    }
+
+    async function deleteAlbum(albumId, albumName) {
+      if (!isAdmin) return;
+      
+      if (!confirm(`¿Estás seguro de eliminar el álbum "${albumName}"?`)) return;
+
+      setStatus('Eliminando álbum...');
+
+      try {
+        await client.deleteDocument(CONFIG.databaseId, CONFIG.albumsCollectionId, albumId);
+        setStatus(`👑 Álbum "${albumName}" eliminado`, 'admin');
+        setTimeout(loadAlbums, 500);
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus(`❌ Error eliminando álbum: ${error.message}`, 'error');
+      }
+    }
+
+    async function refreshStats() {
+      if (!isAdmin) return;
+
+      try {
+        const albums = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        const songs = await client.listDocuments(CONFIG.databaseId, CONFIG.songsCollectionId);
+        const files = await client.listFiles(CONFIG.bucketId);
+
+        $('statAlbums').textContent = albums.total || albums.documents.length;
+        $('statSongs').textContent = songs.total || songs.documents.length;
+        $('statStorage').textContent = files.total || files.files?.length || 0;
+
+      } catch (error) {
+        console.log('Error obteniendo estadísticas:', error);
+        $('statAlbums').textContent = currentAlbums.length;
+        $('statSongs').textContent = '0';
+        $('statStorage').textContent = '0';
+      }
+    }
+
+    async function testAllServices() {
+      if (!isAdmin) return;
+      
+      setStatus('👑 Probando todos los servicios...', 'admin');
+      
+      try {
+        await client.getAccount();
+        console.log('✅ Account service OK');
+        
+        await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        console.log('✅ Database service OK');
+        
+        await client.listFiles(CONFIG.bucketId);
+        console.log('✅ Storage service OK');
+        
+        setStatus('👑 Todos los servicios funcionan correctamente', 'admin');
+        
+      } catch (error) {
+        setStatus(`❌ Error en servicios: ${error.message}`, 'error');
+      }
+    }
+
+    async function clearAllData() {
+      if (!isAdmin) return;
+      
+      if (!confirm('⚠️ PELIGRO: ¿Eliminar TODOS los álbumes de prueba? Esta acción no se puede deshacer.')) return;
+
+      setStatus('🗑️ Eliminando datos de prueba...');
+
+      try {
+        const response = await client.listDocuments(CONFIG.databaseId, CONFIG.albumsCollectionId);
+        let deleted = 0;
+        
+        for (const album of response.documents) {
+          if (album.name.includes('Prueba') || album.name.includes('Demo') || album.name.includes('Test') || album.name.includes('ADMIN')) {
+            await client.deleteDocument(CONFIG.databaseId, CONFIG.albumsCollectionId, album.$id);
+            deleted++;
+          }
+        }
+        
+        setStatus(`👑 ${deleted} álbum(es) de prueba eliminados`, 'admin');
+        setTimeout(loadAlbums, 1000);
+        
+      } catch (error) {
+        setStatus(`❌ Error limpiando datos: ${error.message}`, 'error');
+      }
+    }
+
+    // Setup file upload para archivos de audio
+    document.addEventListener('DOMContentLoaded', () => {
+      const fileUpload = $('fileUpload');
+      const fileInput = $('fileInput');
+      
+      fileUpload.addEventListener('click', () => fileInput.click());
+      
+      fileUpload.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUpload.classList.add('dragover');
+      });
+      
+      fileUpload.addEventListener('dragleave', () => {
+        fileUpload.classList.remove('dragover');
+      });
+      
+      fileUpload.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUpload.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+      });
+      
+      fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+      });
+    });
+
+    async function handleFiles(files) {
+      if (!isAdmin) {
+        setStatus('Solo los administradores pueden subir archivos', 'error');
+        return;
+      }
+
+      const uploadProgress = $('uploadProgress');
+      const progressBar = $('progressBar');
+      const uploadStatus = $('uploadStatus');
+      
+      uploadProgress.style.display = 'block';
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const progress = ((i + 1) / files.length) * 100;
+        
+        progressBar.style.width = progress + '%';
+        uploadStatus.textContent = `Subiendo ${file.name} (${i + 1}/${files.length})...`;
+        
+        try {
+          const fileId = 'upload-' + Date.now() + '-' + i;
+          await client.createFile(CONFIG.bucketId, fileId, file);
+          console.log(`✅ Archivo ${file.name} subido`);
+        } catch (error) {
+          console.error(`❌ Error subiendo ${file.name}:`, error);
+        }
+      }
+      
+      uploadStatus.textContent = `✅ ${files.length} archivo(s) subido(s) correctamente`;
+      setStatus(`👑 ${files.length} archivo(s) subido(s) al Storage`, 'admin');
+      
+      setTimeout(() => {
+        uploadProgress.style.display = 'none';
+        progressBar.style.width = '0%';
+      }, 3000);
+    }
+
+    function displayAlbums(albums) {
+      $('albums').innerHTML = albums.map((album, index) => {
+        let coverUrl;
+        try {
+          coverUrl = client.getFilePreview(CONFIG.bucketId, album.coverStorageId);
+        } catch (error) {
+          coverUrl = '';
+        }
+
+        return `
+          <div class="album-card">
+            ${isAdmin ? `
+              <div class="album-actions">
+                <button class="btn danger small" onclick="deleteAlbum('${album.$id}', '${album.name}')" title="Eliminar">🗑️</button>
+              </div>
+            ` : ''}
+            <div style="width:140px;height:140px;border-radius:12px;margin:0 auto 1rem;overflow:hidden;">
+              ${coverUrl ? 
+                `<img src="${coverUrl}" alt="${album.name}" style="width:100%;height:100%;object-fit:cover;">` :
+                `<div style="width:100%;height:100%;background:linear-gradient(135deg, #1DB954, #1ed760);display:flex;align-items:center;justify-content:center;font-size:3rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>`
+              }
+            </div>
+            <h3 style="margin:0.5rem 0;font-size:1.1rem;">${album.name}</h3>
+            <p style="color:#999;margin:0;font-size:0.9rem;">${album.artistName}</p>
+            <p style="color:#666;font-size:0.8rem;margin-top:0.5rem;">ID: ${album.$id.slice(-8)}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Auto-test al cargar
+    document.addEventListener('DOMContentLoaded', () => {
+      setStatus('Página cargada - Probando conexión automáticamente...');
+      setTimeout(testConnection, 500);
+    });
+
+    // Cerrar modal al hacer clic fuera
+    window.addEventListener('click', (event) => {
+      if (event.target === $('authModal')) {
+        closeAuthModal();
+      }
+    });
+  </script>
 </body>
-</html�
+</html>
