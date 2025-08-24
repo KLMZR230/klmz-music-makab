@@ -15,11 +15,14 @@
   .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
   .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
   .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2rem;margin-top:2rem}
-  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px}
+  .album-card{text-align:center;padding:2rem;background:#282828;border-radius:12px;transition:transform 0.3s}
+  .album-card:hover{transform:scale(1.05)}
   .test-buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
-  .btn{padding:0.75rem 1.5rem;background:#1DB954;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem}
+  .btn{padding:0.75rem 1.5rem;background:#1DB954;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:background 0.2s}
   .btn:hover{background:#1ed760}
   .btn.secondary{background:#333;color:#fff}
+  .btn.secondary:hover{background:#444}
+  .empty-state{text-align:center;padding:3rem;color:#666;grid-column:1/-1;background:#222;border-radius:12px}
   </style>
 </head>
 
@@ -73,7 +76,7 @@
       }
 
       async request(method, path, params = {}) {
-        const url = `${this.endpoint}${path}`;
+        let url = `${this.endpoint}${path}`;
         const options = {
           method,
           headers: { ...this.headers }
@@ -123,7 +126,10 @@
         await client.getAccount();
         setStatus('✅ Conectado con sesión activa', 'success');
       } catch (error) {
-        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        if (error.message.includes('401') || 
+            error.message.includes('missing scope') || 
+            error.message.includes('guests') ||
+            error.message.includes('Unauthorized')) {
           setStatus('✅ Conectado como visitante - CORS OK', 'success');
         } else {
           setStatus(`❌ Error: ${error.message}`, 'error');
@@ -139,7 +145,7 @@
         
         if (response.documents.length === 0) {
           $('albums').innerHTML = `
-            <div style="text-align:center;padding:3rem;color:#666;grid-column:1/-1">
+            <div class="empty-state">
               <h2>🎵 Conexión exitosa</h2>
               <p>No hay álbumes en la base de datos.<br>Usa el botón "Agregar Álbum de Prueba".</p>
             </div>
@@ -152,7 +158,21 @@
         
       } catch (error) {
         console.error('Error:', error);
-        setStatus(`❌ Error: ${error.message}`, 'error');
+        let errorMsg = error.message;
+        
+        if (error.message.includes('401')) {
+          errorMsg = 'Sin permisos de lectura. Configura permisos públicos en la Collection.';
+        } else if (error.message.includes('404')) {
+          errorMsg = 'Collection no encontrada. Verifica los IDs de configuración.';
+        }
+        
+        setStatus(`❌ ${errorMsg}`, 'error');
+        $('albums').innerHTML = `
+          <div class="empty-state">
+            <h2>❌ Error al cargar álbumes</h2>
+            <p>${errorMsg}</p>
+          </div>
+        `;
       }
     }
 
@@ -161,9 +181,9 @@
       
       try {
         const albumData = {
-          name: 'Álbum de Prueba',
+          name: 'Álbum de Prueba ' + new Date().getHours() + ':' + new Date().getMinutes(),
           artistName: 'Artista Demo',
-          coverStorageId: 'test-cover-id'
+          coverStorageId: 'test-cover-id-' + Date.now()
         };
 
         await client.createDocument(
@@ -173,27 +193,36 @@
           albumData
         );
 
-        setStatus('✅ Álbum de prueba agregado', 'success');
+        setStatus('✅ Álbum de prueba agregado correctamente', 'success');
         setTimeout(loadAlbums, 1000);
         
       } catch (error) {
-        setStatus(`❌ Error agregando álbum: ${error.message}`, 'error');
+        console.error('Error:', error);
+        let errorMsg = error.message;
+        
+        if (error.message.includes('401')) {
+          errorMsg = 'Sin permisos de escritura. Agrega permisos de "create" para role:users.';
+        }
+        
+        setStatus(`❌ ${errorMsg}`, 'error');
       }
     }
 
     function displayAlbums(albums) {
-      $('albums').innerHTML = albums.map(album => `
+      $('albums').innerHTML = albums.map((album, index) => `
         <div class="album-card">
-          <div style="width:120px;height:120px;background:#444;border-radius:8px;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:3rem;">🎵</div>
-          <h3>${album.name}</h3>
-          <p style="color:#999;">${album.artistName}</p>
+          <div style="width:140px;height:140px;background:linear-gradient(135deg, #1DB954, #1ed760);border-radius:12px;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:3rem;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎵</div>
+          <h3 style="margin:0.5rem 0;font-size:1.1rem;">${album.name}</h3>
+          <p style="color:#999;margin:0;font-size:0.9rem;">${album.artistName}</p>
+          <p style="color:#666;font-size:0.8rem;margin-top:0.5rem;">ID: ${album.$id.slice(-8)}</p>
         </div>
       `).join('');
     }
 
     // Auto-test al cargar
     document.addEventListener('DOMContentLoaded', () => {
-      testConnection();
+      setStatus('Página cargada - Probando conexión automáticamente...');
+      setTimeout(testConnection, 500);
     });
   </script>
 </body>
