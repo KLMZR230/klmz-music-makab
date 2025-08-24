@@ -115,6 +115,7 @@
     .btn.admin{background:linear-gradient(45deg,#1DB954,#1ed760);box-shadow:0 4px 15px rgba(29,185,84,0.3);}
     .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
     .user-info { display: none; }
+    .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
 
     /* Status y elementos específicos de KLMZ */
     .status{padding:1.5rem;border-radius:12px;font-family:monospace;margin:2rem 0;border-left:4px solid #1DB954}
@@ -122,7 +123,6 @@
     .status.error{background:#2d1517;color:#ff6b6b;border-left-color:#ff6b6b}
     .status.info{background:#1e2833;color:#74c0fc;border-left-color:#74c0fc}
     .status.admin{background:#1DB954;color:#fff;border-left-color:#fff;font-weight:bold}
-    .admin-badge{background:linear-gradient(45deg,#1DB954,#1ed760);color:#fff;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:bold;margin-left:0.5rem}
     .admin-panel{display:none;background:#242424;border-radius:12px;padding:2rem;margin:2rem 0;border:2px solid #1DB954}
     .admin-panel.show{display:block}
     .admin-tabs{display:flex;gap:1rem;margin-bottom:2rem;border-bottom:1px solid #333}
@@ -147,6 +147,8 @@
 
     /* ✅ TEMAS VISUALES */
     body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0a0a0a 100%) !important; color: #00ff88 !important; }
+    body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
+    body.theme-neon .section-title { color: #00ff88 !important; text-shadow: 0 0 15px rgba(0,255,136,0.7) !important; }
     body.theme-neon .bottom-nav { background: linear-gradient(180deg, rgba(26,26,46,0.95), rgba(10,10,10,0.95)) !important; border-top: 2px solid #00ff88 !important; }
     body.theme-neon .bottom-nav-item.active { color: #00ff88 !important; background: rgba(0,255,136,0.15) !important; }
     body.theme-minimal { background: linear-gradient(135deg, #0f0f0f 0%, #1c1c1c 50%, #2a2a2a 70%, #0f0f0f 100%) !important; color: #f5f5f5 !important; }
@@ -161,6 +163,7 @@
     body.theme-oceanic { background: linear-gradient(135deg, #0a192f 0%, #173a5e 50%, #3b6978 70%, #84a9ac 100%) !important; color: #e0e0e0 !important; }
     body.theme-oceanic .bottom-nav-item.active { color: #98ded9 !important; background: rgba(152, 222, 217, 0.1) !important; }
 
+    @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
     @media (max-width: 768px) { .album-img { width: 80px; height: 80px; } }
   </style>
 </head>
@@ -430,22 +433,19 @@
       $('status').className = `status ${type}`;
     }
 
-    // ✅ FUNCIÓN DE NAVEGACIÓN (CORREGIDA)
+    // ✅ FUNCIÓN DE NAVEGACIÓN
     function showSection(section) {
       console.log('Cambiando a sección:', section);
       
-      // Ocultar todas las secciones
       document.querySelectorAll('.content-section').forEach(sec => {
         sec.classList.remove('active');
       });
       
-      // Mostrar sección seleccionada
       const targetSection = document.getElementById(section + 'Section');
       if (targetSection) {
         targetSection.classList.add('active');
       }
       
-      // Actualizar navegación
       document.querySelectorAll('.bottom-nav-item').forEach(item => {
         item.classList.remove('active');
       });
@@ -455,7 +455,6 @@
         activeNavItem.classList.add('active');
       }
 
-      // Acciones específicas
       if (section === 'home') {
         loadAlbums();
       } else if (section === 'search') {
@@ -463,6 +462,8 @@
           const searchInput = document.getElementById('searchInput');
           if (searchInput) searchInput.focus();
         }, 100);
+      } else if (section === 'profile') {
+        updateProfileSection();
       }
     }
 
@@ -562,7 +563,6 @@
         return this.request('DELETE', `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`);
       }
 
-      // ✅ FUNCIÓN PARA SUBIR ARCHIVOS
       async createFile(bucketId, fileId, file) {
         const formData = new FormData();
         formData.append('fileId', fileId);
@@ -657,12 +657,10 @@
       $('createAlbumBtn').textContent = 'Creando...';
 
       try {
-        // 1. Subir la portada primero
         setStatus('📸 Subiendo portada...', 'admin');
         const coverId = 'cover-' + Date.now();
         const coverFile = await client.createFile(CONFIG.bucketId, coverId, selectedCoverFile);
         
-        // 2. Crear el álbum con permisos de propietario (✅ FORMATO CORRECTO)
         setStatus('💽 Creando álbum en la base de datos...', 'admin');
         const albumData = {
           name,
@@ -670,11 +668,11 @@
           coverStorageId: coverFile.$id
         };
 
-        // ✅ FORMATO CORRECTO DE PERMISOS (SIN "role:")
+        // ✅ FORMATO CORRECTO DE PERMISOS (SIN PARÉNTESIS)
         const permissions = [
-          'read("any()")',                         // Todos pueden ver
-          `write("user(${currentUser.$id})")`,     // Solo tú puedes editar  
-          `delete("user(${currentUser.$id})")`     // Solo tú puedes eliminar
+          'read("any")',                           // Todos pueden ver
+          `write("user:${currentUser.$id}")`,      // Solo tú puedes editar  
+          `delete("user:${currentUser.$id}")`      // Solo tú puedes eliminar
         ];
 
         await client.createDocument(
@@ -698,7 +696,6 @@
           <p style="color:#999;font-size:0.9rem;">JPG, PNG (máx. 5MB)</p>
         `;
         
-        // Recargar álbumes
         setTimeout(loadAlbums, 1000);
         
       } catch (error) {
@@ -709,7 +706,6 @@
       $('createAlbumBtn').disabled = false;
       $('createAlbumBtn').textContent = '➕ Crear Álbum';
     }
-
     // ✅ FUNCIONES PANEL ADMIN
     function toggleAdminPanel() {
       if (!isAdmin) return;
@@ -831,6 +827,7 @@
         progressBar.style.width = '0%';
       }, 3000);
     }
+
     // ✅ FUNCIONES BÁSICAS
     async function testConnection() {
       setStatus('Probando conexión...');
@@ -890,7 +887,7 @@
       container.innerHTML = albums.map(album => {
         let coverUrl;
         try {
-          if (album.coverStorageId && album.coverStorageId !== 'test-cover-' + album.coverStorageId) {
+          if (album.coverStorageId && !album.coverStorageId.startsWith('test-cover-')) {
             coverUrl = client.getFilePreview(CONFIG.bucketId, album.coverStorageId);
           }
         } catch (error) {
@@ -932,6 +929,7 @@
       }
     }
 
+    // ✅ AGREGAR ÁLBUM DE PRUEBA (PERMISOS CORREGIDOS)
     async function addTestAlbum() {
       if (!currentUser) {
         setStatus('Inicia sesión primero', 'error');
@@ -946,10 +944,11 @@
           coverStorageId: 'test-cover-' + Date.now()
         };
 
+        // ✅ FORMATO CORRECTO DE PERMISOS (SIN PARÉNTESIS)
         const permissions = [
-          'read("any()")',
-          `write("user(${currentUser.$id})")`,
-          `delete("user(${currentUser.$id})")`
+          'read("any")',
+          `write("user:${currentUser.$id}")`,
+          `delete("user:${currentUser.$id}")`
         ];
 
         await client.createDocument(
@@ -1083,6 +1082,7 @@
               <h2>${currentUser.name}</h2>
               <p style="color:#999;">${currentUser.email}</p>
               ${isAdmin ? '<p style="color:#1DB954;font-weight:bold;">🎵 ADMINISTRADOR KLMZ MUSIC</p>' : ''}
+              ${isAdmin ? '<p style="color:#666;font-size:0.9rem;">Desarrollado por Freddy Granados</p>' : ''}
             </div>
             
             <div class="form-group">
@@ -1179,18 +1179,11 @@
       }
     });
 
-    // ✅ FUNCIÓN PARA ACTUALIZAR PERFIL EN NAVEGACIÓN
-    function updateProfileNavigation() {
-      const profileNavItem = document.getElementById('profileNavItem');
-      if (profileNavItem && isAdmin) {
-        profileNavItem.querySelector('.icon').textContent = '👑';
-      }
-    }
-
     // Log de inicialización
     console.log('🎵 KLMZ MUSIC - Sistema cargado');
     console.log('👑 Desarrollado por: Freddy Granados');
     console.log('🚀 Powered by: Appwrite');
+    console.log('✅ Permisos corregidos - Formato: read("any"), write("user:id"), delete("user:id")');
 
   </script>
 </body>
