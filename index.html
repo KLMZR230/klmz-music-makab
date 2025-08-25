@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-R">
+    <meta charset="UTF-8">
     <title>KLMZ MUSIC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1DB954">
@@ -355,9 +355,7 @@
     </div>
 
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
-    <audio id="audio-player" preload="metadata"></audio>
-
-    <script>
+    <audio id="audio-player" preload="metadata"></audio><script>
         // --- INICIO DEL SCRIPT ---
 
         // Variables globales
@@ -546,8 +544,6 @@
             
             audio.load();
         }
-        
-        // --- Resto del código (sin cambios mayores) ---
         
         window.changeTheme = function(theme) {
             const body = document.body;
@@ -830,11 +826,21 @@
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             try {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
+
+                // --- LÍNEAS DE DEPURACIÓN AÑADIDAS ---
+                // Justo después del login, preguntamos a Supabase "¿quién es el usuario actual?"
+                const { data: { user } } = await supabase.auth.getUser();
+                alert("Usuario reconocido por Supabase: " + (user ? user.email : "NINGUNO"));
+                // ------------------------------------
+
                 showInfoModal('¡Bienvenido!');
                 closeAuth();
-            } catch (error) { showInfoModal('Error de login: ' + error.message); }
+            } catch (error) { 
+                alert("Ocurrió un error en el login: " + error.message); // Alerta adicional para errores
+                showInfoModal('Error de login: ' + error.message); 
+            }
         }
 
         window.register = async function(event) {
@@ -978,7 +984,6 @@
                 </div>`;
         }
 
-        // --- CUSTOM MODAL FUNCTIONS ---
         function showInfoModal(message) {
             const existingModal = document.getElementById('info-modal-backdrop');
             if (existingModal) {
@@ -1061,14 +1066,6 @@
             document.body.appendChild(modalBackdrop);
         }
         
-        // --- ADMIN PANEL FUNCTIONS ---
-
-        /**
-         * Sube un archivo a un bucket de Supabase Storage.
-         * @param {string} bucketName - El nombre del bucket ('album-covers', 'songs').
-         * @param {File} file - El objeto de archivo para subir.
-         * @returns {Promise<string>} La URL pública del archivo subido.
-         */
         async function uploadFile(bucketName, file) {
             const filePath = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
             showLoadingIndicator(true);
