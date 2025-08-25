@@ -826,19 +826,15 @@
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             try {
-                const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
 
-                // --- LÍNEAS DE DEPURACIÓN AÑADIDAS ---
-                // Justo después del login, preguntamos a Supabase "¿quién es el usuario actual?"
-                const { data: { user } } = await supabase.auth.getUser();
-                alert("Usuario reconocido por Supabase: " + (user ? user.email : "NINGUNO"));
-                // ------------------------------------
+                // En lugar de solo mostrar un modal, recargamos la página para sincronizar la sesión.
+                alert('¡Bienvenido! La página se recargará para actualizar tu sesión.');
+                location.reload(); // Esta es la línea clave que fuerza la sincronización.
 
-                showInfoModal('¡Bienvenido!');
-                closeAuth();
             } catch (error) { 
-                alert("Ocurrió un error en el login: " + error.message); // Alerta adicional para errores
+                alert("Ocurrió un error en el login: " + error.message);
                 showInfoModal('Error de login: ' + error.message); 
             }
         }
