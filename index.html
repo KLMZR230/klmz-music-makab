@@ -40,7 +40,7 @@
         .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
         .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
         .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
-        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: all 0.3s ease; }
+        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor: pointer; transition: all 0.3s ease; }
         .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
         .full-player-backdrop.active { display: flex;}
         .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
@@ -277,7 +277,7 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
         
-        // ✅ FUNCIÓN UPLOADFILE SEGURA (SIN CONTRASEÑAS)
+        // ✅ FUNCIÓN UPLOADFILE CON FIX PARA URL UNDEFINED
         async function uploadFile(file) {
             console.log("🔐 Subiendo con permisos públicos seguros...");
             showLoadingIndicator(true);
@@ -308,18 +308,59 @@
                     secureUpload: true
                 });
                 
+                // ✅ SUBIR ARCHIVO
                 const response = await storage.createFile(bucketId, Appwrite.ID.unique(), file);
                 const fileId = response.$id;
-                const publicUrl = storage.getFileView(bucketId, fileId);
+                
+                // ✅ FIX PARA URL UNDEFINED - MÚLTIPLES MÉTODOS
+                console.log('🔍 Generando URL pública...');
+                const publicUrlObject = storage.getFileView(bucketId, fileId);
+                
+                // ✅ DEBUGGING DETALLADO DEL OBJETO URL
+                console.log('🔍 Objeto URL completo:', publicUrlObject);
+                console.log('🔍 Tipo de objeto:', typeof publicUrlObject);
+                console.log('🔍 Constructor:', publicUrlObject.constructor.name);
+                
+                // ✅ MÚLTIPLES FORMAS DE OBTENER LA URL
+                let finalUrl;
+                
+                // Método 1: Conversión directa a string
+                try {
+                    finalUrl = publicUrlObject.toString();
+                    console.log('✅ Método 1 - toString():', finalUrl);
+                } catch (e) {
+                    console.log('⚠️ Método 1 falló');
+                }
+                
+                // Método 2: Acceso a href si toString falló
+                if (!finalUrl || finalUrl === '[object Object]') {
+                    try {
+                        finalUrl = publicUrlObject.href;
+                        console.log('✅ Método 2 - .href:', finalUrl);
+                    } catch (e) {
+                        console.log('⚠️ Método 2 falló');
+                    }
+                }
+                
+                // Método 3: Construcción manual de URL si los anteriores fallaron
+                if (!finalUrl || finalUrl === '[object Object]' || finalUrl === 'undefined') {
+                    finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
+                    console.log('✅ Método 3 - URL manual:', finalUrl);
+                }
+                
+                // ✅ VERIFICACIÓN FINAL
+                if (!finalUrl || finalUrl.includes('undefined')) {
+                    throw new Error('No se pudo generar URL válida');
+                }
                 
                 console.log("✅ ÉXITO - Archivo subido:", {
                     fileId: fileId,
-                    publicUrl: publicUrl.href,
-                    method: 'Permisos públicos seguros'
+                    publicUrl: finalUrl,
+                    method: 'URL corregida'
                 });
                 
                 showInfoModal('🎵 ¡Archivo subido correctamente! ✅');
-                return publicUrl.href;
+                return finalUrl;
                 
             } catch (error) {
                 console.error('❌ Error completo:', error);
@@ -333,9 +374,7 @@
 3. Settings → Permissions
 4. Configura:
    - Any: CREATE ✅ + READ ✅
-   - File Security: OFF ❌
-
-🔧 Esta configuración permite subidas públicas controladas por Supabase`);
+   - File Security: OFF ❌`);
                 }
                 
                 throw new Error(`❌ Error: ${error.message}`);
@@ -635,11 +674,17 @@
         // ✅ FUNCIÓN RENDERADMINPANEL CON DEBUGGING MEJORADO
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin DEBUGGING</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Con debugging detallado para detectar archivos</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
+            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin - FIX URL</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Con FIX para URL undefined resuelto</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
             await renderAdminLists(); 
             setupAdminForms(); 
         }
         
+        async function renderAdminLists() { 
+            const { data: albums } = await supabase.from('albums').select('*'); 
+            const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)'); 
+            const albumList = document.getElementById('admin-album-list'); 
+            albumList.innerHTML = albums.map(album => `<div class="admin-item
+        // ✅ CONTINUACIÓN DE renderAdminLists()
         async function renderAdminLists() { 
             const { data: albums } = await supabase.from('albums').select('*'); 
             const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)'); 
@@ -672,7 +717,7 @@
                 const title = document.getElementById('album-title').value; 
                 const artist = document.getElementById('album-artist').value; 
                 
-                // ✅ DEBUGGING DETALLADO DE ARCHIVO
+                // ✅ DEBUGGING DETALLADO DE ARCHIVO CON FIX URL
                 const coverInput = document.getElementById('album-cover');
                 const coverFile = coverInput?.files?.[0];
                 let cover_url = document.getElementById('album-cover-url').value; 
@@ -692,7 +737,7 @@
                 });
                 
                 try { 
-                    // ✅ VALIDACIÓN Y SUBIDA DE ARCHIVO MEJORADA
+                    // ✅ VALIDACIÓN Y SUBIDA DE ARCHIVO CON FIX URL
                     if (coverFile && coverFile.size > 0) { 
                         console.log('✅ Archivo válido detectado:', {
                             name: coverFile.name,
@@ -701,19 +746,19 @@
                         });
                         showInfoModal('🔐 Subiendo portada de forma segura...'); 
                         cover_url = await uploadFile(coverFile); 
-                        console.log('✅ URL obtenida:', cover_url);
+                        console.log('✅ URL obtenida después del fix:', cover_url);
                     } else {
                         console.log('⚠️ No se detectó archivo válido');
                     }
                     
                     // ✅ VALIDACIÓN FINAL
-                    if (!cover_url || cover_url.trim() === '') { 
-                        console.error('❌ No hay cover_url disponible');
+                    if (!cover_url || cover_url.trim() === '' || cover_url === 'undefined') { 
+                        console.error('❌ No hay cover_url disponible:', cover_url);
                         showInfoModal('Por favor, selecciona una imagen de portada.'); 
                         return; 
                     } 
                     
-                    console.log('✅ Procediendo a guardar álbum con cover_url:', cover_url);
+                    console.log('✅ Procediendo a guardar álbum con cover_url válida:', cover_url);
                     showLoadingIndicator(true); 
                     
                     const { error } = id ? 
@@ -758,7 +803,7 @@
                 document.getElementById('cancel-album-edit').style.display = 'none'; 
             }); 
             
-            // ✅ FORMULARIO DE CANCIONES CON DEBUGGING SIMILAR
+            // ✅ FORMULARIO DE CANCIONES CON DEBUGGING SIMILAR Y FIX URL
             const songForm = document.getElementById('song-form'); 
             songForm.addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
@@ -790,9 +835,10 @@
                         console.log('✅ Archivo de canción válido:', songFile.name);
                         showInfoModal('🔐 Subiendo canción de forma segura...'); 
                         song_url = await uploadFile(songFile); 
+                        console.log('✅ URL de canción obtenida después del fix:', song_url);
                     } 
                     
-                    if (!song_url || song_url.trim() === '') { 
+                    if (!song_url || song_url.trim() === '' || song_url === 'undefined') { 
                         showInfoModal('Por favor, selecciona un archivo de audio.'); 
                         return; 
                     } 
@@ -829,6 +875,7 @@
             }); 
         }
         
+        // ✅ FUNCIONES DE GESTIÓN ADMIN
         window.editAlbum = (id, title, artist, cover_url) => { 
             document.getElementById('album-id').value = id; 
             document.getElementById('album-title').value = title; 
@@ -887,9 +934,9 @@
             }); 
         };
         
-        // ✅ INICIALIZACIÓN COMPLETA
+        // ✅ INICIALIZACIÓN COMPLETA CON FIX URL
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con debugging mejorado...');
+            console.log('🚀 KLMZ MUSIC iniciando con FIX para URL undefined...');
             
             if (typeof Appwrite !== 'undefined') {
                 console.log('✅ Appwrite SDK cargado correctamente');
@@ -897,11 +944,12 @@
                 console.error('❌ Appwrite SDK NO se pudo cargar');
             }
             
-            console.log('🔧 Configuración con debugging:', {
+            console.log('🔧 Configuración con FIX URL:', {
                 adminEmail: ADMIN_EMAIL,
                 bucketId: '68ad019f00207b1df467',
                 projectId: '68ab0cf2000365979a71',
                 endpoint: 'https://nyc.cloud.appwrite.io/v1',
+                urlFixImplemented: true,
                 debuggingEnabled: true
             });
             
@@ -918,11 +966,12 @@
                 console.log('✅ IndexedDB inicializada correctamente');
                 return loadSupabase();
             }).then(() => {
-                console.log('✅ KLMZ MUSIC inicializado con debugging completo');
+                console.log('✅ KLMZ MUSIC inicializado con FIX URL completo');
                 console.log('🔍 Funciones disponibles:');
                 console.log('  - debugUserSession() - Verificar sesión');
-                console.log('  - uploadFile() - Upload con debugging');
+                console.log('  - uploadFile() - Con FIX para URL undefined ✅');
                 console.log('  - Debugging automático en formularios');
+                console.log('  - Múltiples métodos para obtener URL válida');
             }).catch(err => {
                 console.error("❌ Error crítico:", err);
                 showInfoModal("Error inicializando la aplicación");
