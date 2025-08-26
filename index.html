@@ -276,20 +276,52 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
         
-        // ✅ FUNCIÓN UPLOADFILE CON FIX
+        // ✅ FUNCIÓN UPLOADFILE CORREGIDA PARA "FILE NOT FOUND IN PAYLOAD"
         async function uploadFile(file) {
-            console.log("🔐 Subiendo archivo...");
+            console.log("🔐 Iniciando upload con validación robusta...");
             showLoadingIndicator(true);
             
+            // ✅ VALIDACIÓN DE USUARIO ADMIN
             if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
                 throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
             }
             
+            // ✅ VALIDACIÓN DE APPWRITE SDK
             if (typeof Appwrite === 'undefined') {
                 throw new Error('❌ Appwrite SDK no está cargado');
             }
             
+            // ✅ VALIDACIÓN ROBUSTA DEL ARCHIVO
+            console.log('🔍 Validando archivo:', {
+                file: file,
+                fileName: file?.name,
+                fileSize: file?.size,
+                fileType: file?.type,
+                isFileInstance: file instanceof File,
+                hasContent: file?.size > 0
+            });
+            
+            // ✅ VERIFICACIONES CRÍTICAS
+            if (!file) {
+                throw new Error('❌ No se proporcionó ningún archivo');
+            }
+            
+            if (!(file instanceof File)) {
+                throw new Error('❌ El objeto proporcionado no es un archivo válido');
+            }
+            
+            if (file.size === 0) {
+                throw new Error('❌ El archivo está vacío (0 bytes)');
+            }
+            
+            if (file.size > 50 * 1024 * 1024) { // 50MB límite
+                throw new Error('❌ El archivo es demasiado grande (máximo 50MB)');
+            }
+            
+            console.log('✅ Archivo válido confirmado:', file.name, `(${file.size} bytes)`);
+            
             try {
+                // ✅ CONFIGURACIÓN DE APPWRITE
                 const client = new Appwrite.Client();
                 const storage = new Appwrite.Storage(client);
                 const bucketId = '68ad019f00207b1df467';
@@ -298,40 +330,88 @@
                 
                 client.setEndpoint(endpoint).setProject(projectId);
                 
-                const response = await storage.createFile(bucketId, Appwrite.ID.unique(), file);
-                const fileId = response.$id;
+                console.log('🔧 Configuración Appwrite:', {
+                    endpoint: endpoint,
+                    projectId: projectId,
+                    bucketId: bucketId,
+                    clientConfigured: true
+                });
                 
-                // ✅ FIX PARA URL
-                const publicUrlObject = storage.getFileView(bucketId, fileId);
+                // ✅ GENERAR ID ÚNICO PARA EL ARCHIVO
+                const fileId = Appwrite.ID.unique();
+                console.log('🆔 ID generado para archivo:', fileId);
+                
+                // ✅ UPLOAD DEL ARCHIVO CON DEBUGGING
+                console.log('📤 Enviando archivo a Appwrite...');
+                console.log('📋 Parámetros del upload:', {
+                    bucketId: bucketId,
+                    fileId: fileId,
+                    file: file.name,
+                    size: file.size
+                });
+                
+                const response = await storage.createFile(bucketId, fileId, file);
+                
+                console.log('✅ Respuesta de Appwrite:', response);
+                
+                if (!response || !response.$id) {
+                    throw new Error('❌ Respuesta inválida de Appwrite');
+                }
+                
+                // ✅ GENERAR URL PÚBLICA
+                console.log('🔍 Generando URL pública...');
+                const publicUrlObject = storage.getFileView(bucketId, response.$id);
+                
                 let finalUrl;
-                
                 try {
                     finalUrl = publicUrlObject.toString();
+                    console.log('✅ URL generada (método 1):', finalUrl);
                 } catch (e) {
                     try {
                         finalUrl = publicUrlObject.href;
+                        console.log('✅ URL generada (método 2):', finalUrl);
                     } catch (e2) {
-                        finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
+                        finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${response.$id}/view?project=${projectId}`;
+                        console.log('✅ URL generada (método 3):', finalUrl);
                     }
                 }
                 
                 if (!finalUrl || finalUrl.includes('undefined')) {
-                    throw new Error('No se pudo generar URL válida');
+                    throw new Error('❌ No se pudo generar URL válida');
                 }
                 
-                console.log("✅ Archivo subido:", finalUrl);
-                showInfoModal('🎵 ¡Archivo subido correctamente!');
+                console.log("✅ UPLOAD EXITOSO:", {
+                    fileId: response.$id,
+                    originalName: file.name,
+                    size: file.size,
+                    url: finalUrl
+                });
+                
+                alert('🎵 ¡Archivo subido correctamente! ✅');
                 return finalUrl;
                 
             } catch (error) {
-                console.error('❌ Error:', error);
-                throw new Error(`❌ Error: ${error.message}`);
+                console.error('❌ Error completo en upload:', error);
+                
+                // ✅ MANEJO ESPECÍFICO DE ERRORES
+                let errorMessage = error.message || 'Error desconocido';
+                
+                if (errorMessage.includes('File not found in payload')) {
+                    errorMessage = '📁 Error: El archivo no se detectó correctamente. Asegúrate de seleccionar un archivo válido.';
+                } else if (errorMessage.includes('unauthorized')) {
+                    errorMessage = '🔐 Error de permisos: Verifica la configuración del bucket en Appwrite Console.';
+                } else if (errorMessage.includes('network')) {
+                    errorMessage = '🌐 Error de red: Verifica tu conexión a internet.';
+                } else if (errorMessage.includes('bucket')) {
+                    errorMessage = '🪣 Error de bucket: Verifica que el bucket existe en Appwrite.';
+                }
+                
+                throw new Error(errorMessage);
             } finally {
                 showLoadingIndicator(false);
             }
         }
         
-        // ✅ FUNCIÓN LOADALLDATA CON DEBUGGING
         async function loadAllData() {
             console.log('🔍 Cargando datos...');
             showLoadingIndicator(true);
@@ -393,7 +473,6 @@
             }
         }
         
-        // IndexedDB
         function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('KLMZMusicDB', 2);
@@ -441,7 +520,6 @@
             });
         }
         
-        // ✅ FUNCIÓN LOADSUPABASE
         async function loadSupabase() {
             console.log('🔄 Inicializando Supabase...');
             showLoadingIndicator(true);
@@ -533,7 +611,6 @@
             }
         }
         
-        // Player functions
         window.playSong = async function(song, album, playlist = [song], index = 0) {
             currentSong = song;
             currentAlbum = album;
@@ -662,7 +739,6 @@
             document.getElementById('shuffle-btn').classList.toggle('active', shuffleMode);
         }
         
-        // Theme functions
         window.changeTheme = function(theme) {
             const body = document.body;
             body.classList.remove('theme-neon', 'theme-minimal', 'theme-sunset', 'theme-pastel', 'theme-luxury', 'theme-oceanic');
@@ -678,7 +754,6 @@
             changeTheme(savedTheme);
         }
         
-        // Auth functions
         function updateAuthUI() {
             const headerLockIcon = document.getElementById('header-lock-icon');
             const userInfo = document.getElementById('user-info-section');
@@ -755,7 +830,6 @@
             }
         }
         
-        // UI functions
         window.toggleUserMenu = function() {
             document.getElementById('user-dropdown').classList.toggle('show');
         }
@@ -802,7 +876,6 @@
             playSong(currentPlaylist[index], currentAlbum, currentPlaylist, index);
         }
         
-        // Favorites
         const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
         const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
         
@@ -842,7 +915,6 @@
             `).join('') + '</div>';
         }
         
-        // Downloads
         window.downloadSong = async function(songId, element) {
             if (element.classList.contains('downloaded')) return;
             
@@ -898,7 +970,6 @@
             }
         }
         
-        // Search
         window.searchMusic = function() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             const results = document.getElementById('search-results');
@@ -942,10 +1013,14 @@
             results.innerHTML = html || '<h3>No encontrado</h3>';
         }
         
-        // Admin
+        // ✅ ADMIN PANEL CON VALIDACIÓN MEJORADA
         async function renderAdminPanel() {
             const adminContent = document.getElementById('admin-content');
             adminContent.innerHTML = `
+                <div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin - FIX "File not found"</h3>
+                    <p style="margin: 0; color: #b3b3b3;">Con validación robusta de archivos ✅</p>
+                </div>
                 <div class="admin-section">
                     <h4>🎵 Gestión de Álbumes</h4>
                     <form id="album-form" class="admin-form">
@@ -966,7 +1041,6 @@
                 </div>
             `;
             
-            // Load album options
             const albumSelect = document.getElementById('song-album-select');
             albumSelect.innerHTML = '<option value="">Seleccionar Álbum</option>' + 
                 allAlbums.map(album => `<option value="${album.id}">${album.title}</option>`).join('');
@@ -974,61 +1048,111 @@
             setupAdminForms();
         }
         
+        // ✅ FORMULARIOS ADMIN CON VALIDACIÓN ROBUSTA
         function setupAdminForms() {
             document.getElementById('album-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                
                 if (currentUser?.email !== ADMIN_EMAIL) {
-                    alert('Solo admin puede subir');
+                    alert('❌ Solo admin puede subir');
                     return;
                 }
                 
                 const title = document.getElementById('album-title').value;
                 const artist = document.getElementById('album-artist').value;
-                const coverFile = document.getElementById('album-cover').files;
+                const coverInput = document.getElementById('album-cover');
+                
+                // ✅ VALIDACIÓN MEJORADA DEL INPUT FILE
+                console.log('🔍 Validando input de portada:', {
+                    input: coverInput,
+                    files: coverInput?.files,
+                    filesLength: coverInput?.files?.length,
+                    firstFile: coverInput?.files?.[0]?.name
+                });
+                
+                if (!coverInput || !coverInput.files || coverInput.files.length === 0) {
+                    alert('❌ Por favor, selecciona una imagen de portada');
+                    return;
+                }
+                
+                const coverFile = coverInput.files[0];
+                
+                if (!coverFile || coverFile.size === 0) {
+                    alert('❌ El archivo de portada está vacío o es inválido');
+                    return;
+                }
+                
+                if (!coverFile.type.startsWith('image/')) {
+                    alert('❌ Por favor, selecciona solo archivos de imagen');
+                    return;
+                }
+                
+                console.log('✅ Archivo de portada válido:', {
+                    name: coverFile.name,
+                    size: coverFile.size,
+                    type: coverFile.type
+                });
                 
                 try {
                     const cover_url = await uploadFile(coverFile);
                     const { error } = await supabase.from('albums').insert([{ title, artist, cover_url }]);
                     if (error) throw error;
-                    alert('Álbum guardado');
+                    
+                    alert('✅ Álbum guardado exitosamente');
                     e.target.reset();
                     await loadAllData();
                 } catch (err) {
-                    alert('Error: ' + err.message);
+                    console.error('❌ Error guardando álbum:', err);
+                    alert('❌ Error: ' + err.message);
                 }
             });
             
             document.getElementById('song-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                
                 if (currentUser?.email !== ADMIN_EMAIL) {
-                    alert('Solo admin puede subir');
+                    alert('❌ Solo admin puede subir');
                     return;
                 }
                 
                 const title = document.getElementById('song-title').value;
                 const album_id = document.getElementById('song-album-select').value;
-                const songFile = document.getElementById('song-url').files;
+                const songInput = document.getElementById('song-url');
+                
+                if (!songInput || !songInput.files || songInput.files.length === 0) {
+                    alert('❌ Por favor, selecciona un archivo de audio');
+                    return;
+                }
+                
+                const songFile = songInput.files[0];
+                
+                if (!songFile || songFile.size === 0) {
+                    alert('❌ El archivo de audio está vacío o es inválido');
+                    return;
+                }
+                
+                if (!songFile.type.startsWith('audio/')) {
+                    alert('❌ Por favor, selecciona solo archivos de audio');
+                    return;
+                }
                 
                 try {
                     const song_url = await uploadFile(songFile);
                     const { error } = await supabase.from('songs').insert([{ title, album_id, song_url }]);
                     if (error) throw error;
-                    alert('Canción guardada');
+                    
+                    alert('✅ Canción guardada exitosamente');
                     e.target.reset();
                     await loadAllData();
                 } catch (err) {
-                    alert('Error: ' + err.message);
+                    console.error('❌ Error guardando canción:', err);
+                    alert('❌ Error: ' + err.message);
                 }
             });
         }
         
-        // Utils
         function showLoadingIndicator(show) {
             document.getElementById('loading-indicator').style.display = show ? 'block' : 'none';
-        }
-        
-        function showInfoModal(message) {
-            alert(message);
         }
         
         function goToAdmin() {
@@ -1065,7 +1189,6 @@
             });
         });
         
-        // Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
