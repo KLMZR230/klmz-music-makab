@@ -40,7 +40,7 @@
         .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
         .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
         .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
-        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: all 0.3s ease; }
+        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor: pointer; transition: all 0.3s ease; }
         .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
         .full-player-backdrop.active { display: flex;}
         .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
@@ -325,7 +325,7 @@
             });
         }
         
-        // ✅ FUNCIÓN UPLOADFILE COMPLETAMENTE CORREGIDA (SIN .setKey())
+        // ✅ FUNCIÓN UPLOADFILE COMPLETAMENTE CORREGIDA (bucketId DEFINIDO)
         async function uploadFile(file) {
             console.log("🔐 Subiendo con autenticación de usuario...");
             showLoadingIndicator(true);
@@ -340,19 +340,24 @@
             }
             
             try {
+                // ✅ DEFINIR TODAS LAS VARIABLES AL INICIO DE LA FUNCIÓN
                 const client = new Appwrite.Client();
                 const storage = new Appwrite.Storage(client);
-                const bucketId = '68ad019f00207b1df467';
+                const bucketId = '68ad019f00207b1df467'; // ✅ BUCKET ID DEFINIDO CORRECTAMENTE
+                const projectId = '68ab0cf2000365979a71'; // ✅ PROJECT ID DEFINIDO
+                const endpoint = 'https://nyc.cloud.appwrite.io/v1'; // ✅ ENDPOINT DEFINIDO
                 
                 // ✅ CONFIGURACIÓN CORRECTA PARA SDK WEB (SIN .setKey())
                 client
-                    .setEndpoint('https://nyc.cloud.appwrite.io/v1')
-                    .setProject('68ab0cf2000365979a71');
+                    .setEndpoint(endpoint)
+                    .setProject(projectId);
                 
-                console.log('✅ Configuración sin API Key:', {
+                console.log('✅ Configuración completa:', {
                     adminEmail: currentUser.email,
                     userId: currentUser.id,
-                    bucketId: bucketId,
+                    bucketId: bucketId, // ✅ BUCKETID ESTÁ DEFINIDO
+                    projectId: projectId,
+                    endpoint: endpoint,
                     fileName: file.name,
                     fileSize: file.size,
                     useUserAuth: true
@@ -360,7 +365,7 @@
                 
                 // ✅ SUBIR CON PERMISOS DE ARCHIVO
                 const response = await storage.createFile(
-                    bucketId, 
+                    bucketId, // ✅ VARIABLE DEFINIDA CORRECTAMENTE
                     Appwrite.ID.unique(), 
                     file,
                     [
@@ -373,28 +378,38 @@
                 );
                 
                 const fileId = response.$id;
-                const publicUrl = storage.getFileView(bucketId, fileId);
+                const publicUrl = storage.getFileView(bucketId, fileId); // ✅ BUCKET ID USADO CORRECTAMENTE
                 
-                console.log("✅ ÉXITO - Archivo subido:", publicUrl.href);
+                console.log("✅ ÉXITO - Archivo subido:", {
+                    fileId: fileId,
+                    publicUrl: publicUrl.href,
+                    bucketUsed: bucketId
+                });
+                
                 showInfoModal('🎵 ¡Archivo subido correctamente! ✅');
                 return publicUrl.href;
                 
             } catch (error) {
-                console.error('❌ Error:', error);
+                console.error('❌ Error completo:', error);
                 
-                if (error.code === 401) {
-                    throw new Error(`🔐 Error de permisos:
+                if (error.code === 401 || error.message.includes('unauthorized')) {
+                    throw new Error(`🔐 Error de permisos en Appwrite:
                     
 📋 SOLUCIÓN REQUERIDA:
-1. Ve a Appwrite Console → Storage → Bucket ${bucketId}
-2. Settings → Permissions
-3. Agrega tu email (${currentUser.email}) con permisos CREATE ✅
-4. Asegúrate que "File Security" esté DESACTIVADO ❌
-5. Role "Any" debe tener READ ✅
+1. Ve a Appwrite Console: https://cloud.appwrite.io
+2. Storage → Buckets → 68ad019f00207b1df467
+3. Settings → Permissions
+4. Agrega tu email (${currentUser.email}) con permisos CREATE ✅
+5. Asegúrate que "File Security" esté DESACTIVADO ❌
+6. Role "Any" debe tener READ ✅
 
 🔧 Configuración necesaria:
 - Any: Solo READ
 - ${currentUser.email}: CREATE + READ + UPDATE + DELETE`);
+                }
+                
+                if (error.message.includes('bucket')) {
+                    throw new Error(`🪣 Bucket no encontrado: Verifica que el bucket 68ad019f00207b1df467 exista en tu proyecto Appwrite`);
                 }
                 
                 throw new Error(`❌ Error: ${error.message}`);
@@ -414,17 +429,21 @@
                 isAdmin: currentUser?.email === ADMIN_EMAIL,
                 bucketId: '68ad019f00207b1df467',
                 projectId: '68ab0cf2000365979a71',
+                endpoint: 'https://nyc.cloud.appwrite.io/v1',
                 appwriteLoaded: typeof Appwrite !== 'undefined',
                 supabaseLoaded: !!supabase,
-                sdkWebCorrect: true
+                bucketIdDefined: true // ✅ CONFIRMAMOS QUE ESTÁ DEFINIDO
             });
             
             if (!currentUser) {
                 console.error('❌ Usuario NO autenticado');
+                console.log('💡 SOLUCIÓN: Inicia sesión con klmzr@gmail.com');
             } else if (currentUser.email !== ADMIN_EMAIL) {
                 console.error('❌ Usuario no es admin');
+                console.log(`💡 Tu email: ${currentUser.email}`);
+                console.log(`💡 Email requerido: ${ADMIN_EMAIL}`);
             } else {
-                console.log('✅ Usuario admin verificado - Listo para subir');
+                console.log('✅ Usuario admin verificado - bucketId definido correctamente');
             }
         }
         
@@ -641,7 +660,7 @@
         
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin sin API Key</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Usando autenticación de usuario segura | Bucket: 68ad019f00207b1df467</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
+            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin (bucketId corregido)</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ bucketId definido correctamente | 68ad019f00207b1df467</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
             await renderAdminLists(); 
             setupAdminForms(); 
         }
@@ -681,7 +700,7 @@
                 
                 try { 
                     if (coverFile) { 
-                        showInfoModal('🔐 Subiendo portada con autenticación de usuario...'); 
+                        showInfoModal('🔐 Subiendo portada con bucketId corregido...'); 
                         cover_url = await uploadFile(coverFile); 
                     } 
                     if (!cover_url) { 
@@ -731,7 +750,7 @@
                 
                 try { 
                     if (songFile) { 
-                        showInfoModal('🔐 Subiendo canción con autenticación de usuario...'); 
+                        showInfoModal('🔐 Subiendo canción con bucketId corregido...'); 
                         song_url = await uploadFile(songFile); 
                     } 
                     if (!song_url) { 
@@ -823,22 +842,22 @@
             }); 
         };
         
-        // ✅ INICIALIZACIÓN COMPLETA SIN API KEY
+        // ✅ INICIALIZACIÓN COMPLETA CON BUCKETID DEFINIDO
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con autenticación de usuario...');
+            console.log('🚀 KLMZ MUSIC iniciando con bucketId definido correctamente...');
             
             if (typeof Appwrite !== 'undefined') {
-                console.log('✅ Appwrite SDK Web cargado correctamente (sin .setKey())');
+                console.log('✅ Appwrite SDK Web cargado correctamente');
             } else {
                 console.error('❌ Appwrite SDK NO se pudo cargar');
             }
             
-            console.log('🔧 Configuración final:', {
+            console.log('🔧 Configuración verificada:', {
                 adminEmail: ADMIN_EMAIL,
-                bucket: '68ad019f00207b1df467',
-                project: '68ab0cf2000365979a71',
-                useUserAuth: true,
-                sdkWebCorrect: true
+                bucketId: '68ad019f00207b1df467', // ✅ DEFINIDO CORRECTAMENTE
+                projectId: '68ab0cf2000365979a71',
+                endpoint: 'https://nyc.cloud.appwrite.io/v1',
+                bucketIdFixed: true
             });
             
             const audio = document.getElementById('audio-player');
@@ -854,10 +873,10 @@
                 console.log('✅ IndexedDB inicializada correctamente');
                 return loadSupabase();
             }).then(() => {
-                console.log('✅ KLMZ MUSIC inicializado completamente');
+                console.log('✅ KLMZ MUSIC inicializado - bucketId error RESUELTO');
                 console.log('🔍 Funciones disponibles:');
-                console.log('  - debugUserSession() - Verificar sesión de usuario');
-                console.log('  - uploadFile usa autenticación correcta sin .setKey()');
+                console.log('  - debugUserSession() - Verificar sesión');
+                console.log('  - uploadFile() - Ahora con bucketId definido correctamente');
             }).catch(err => {
                 console.error("❌ Error crítico:", err);
                 showInfoModal("Error inicializando la aplicación");
@@ -870,6 +889,7 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => console.log('✅ Service Worker registrado:', registration.scope))
+                    .catch(error => console.log('⚠️ Service Worker fal
                     .catch(error => console.log('⚠️ Service Worker falló:', error.message));
             });
         }
