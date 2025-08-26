@@ -71,7 +71,7 @@
         .form-group { margin-bottom:1rem;}
         .form-group label { display:block; margin-bottom:0.5rem;}
         .form-group input, .form-group select { width:100%; padding:.7rem; background:#404040; border:1px solid #555; border-radius:4px; color:#fff; transition: all 0.3s ease;}
-        .btn-primary { background:#1DB954; color:#fff; border: none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
+        .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
         .btn-primary:hover { background:#1ed760; }
         .btn-danger { background:#e22134; color:#fff; border:none; padding:.5rem 1rem; border-radius:4px; cursor:pointer; transition: all 0.3s ease; }
         .btn-danger:hover { background:#ff4757; }
@@ -277,12 +277,11 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
         
-        // ✅ FUNCIÓN UPLOADFILE SEGURA Y CORREGIDA (SIN CONTRASEÑAS)
+        // ✅ FUNCIÓN UPLOADFILE SEGURA (SIN CONTRASEÑAS)
         async function uploadFile(file) {
             console.log("🔐 Subiendo con permisos públicos seguros...");
             showLoadingIndicator(true);
             
-            // ✅ VERIFICAR AUTENTICACIÓN SUPABASE
             if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
                 throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
             }
@@ -292,33 +291,28 @@
             }
             
             try {
-                // ✅ CONFIGURAR CLIENTE APPWRITE
                 const client = new Appwrite.Client();
                 const storage = new Appwrite.Storage(client);
                 const bucketId = '68ad019f00207b1df467';
                 const projectId = '68ab0cf2000365979a71';
                 const endpoint = 'https://nyc.cloud.appwrite.io/v1';
                 
-                client
-                    .setEndpoint(endpoint)
-                    .setProject(projectId);
+                client.setEndpoint(endpoint).setProject(projectId);
                 
                 console.log('✅ Configuración segura:', {
                     adminEmail: currentUser.email,
                     userId: currentUser.id,
                     bucketId: bucketId,
-                    projectId: projectId,
                     fileName: file.name,
                     fileSize: file.size,
                     secureUpload: true
                 });
                 
-                // ✅ SUBIDA DIRECTA CON PERMISOS DEL BUCKET (SIN CONTRASEÑAS)
                 const response = await storage.createFile(bucketId, Appwrite.ID.unique(), file);
                 const fileId = response.$id;
                 const publicUrl = storage.getFileView(bucketId, fileId);
                 
-                console.log("✅ ÉXITO - Archivo subido de forma segura:", {
+                console.log("✅ ÉXITO - Archivo subido:", {
                     fileId: fileId,
                     publicUrl: publicUrl.href,
                     method: 'Permisos públicos seguros'
@@ -342,10 +336,6 @@
    - File Security: OFF ❌
 
 🔧 Esta configuración permite subidas públicas controladas por Supabase`);
-                }
-                
-                if (error.message.includes('bucket')) {
-                    throw new Error(`🪣 Bucket no encontrado: Verifica que 68ad019f00207b1df467 existe`);
                 }
                 
                 throw new Error(`❌ Error: ${error.message}`);
@@ -402,7 +392,6 @@
             });
         }
         
-        // ✅ FUNCIÓN DEBUG
         function debugUserSession() {
             console.log('🔍 Debug completo de sesión:', {
                 currentUser: currentUser,
@@ -434,7 +423,6 @@
         
         window.debugUserSession = debugUserSession;
         
-        // [RESTO DEL CÓDIGO JAVASCRIPT - FUNCIONES EXISTENTES]
         window.downloadSong = async function(songId, element) {
             if (element.classList.contains('downloaded')) {
                 showInfoModal('Esta canción ya está descargada.');
@@ -644,9 +632,10 @@
         function showInfoModal(message) { const existingModal = document.getElementById('info-modal-backdrop'); if (existingModal) { existingModal.querySelector('p').textContent = message; return; }; const modalBackdrop = document.createElement('div'); modalBackdrop.id = 'info-modal-backdrop'; modalBackdrop.className = 'modal'; modalBackdrop.style.display = 'flex'; const modalContent = document.createElement('div'); modalContent.className = 'modal-content'; const messageP = document.createElement('p'); messageP.textContent = message; messageP.style.cssText = 'margin-bottom: 1.5rem; text-align: center; font-size: 1.1rem;'; const okBtn = document.createElement('button'); okBtn.textContent = 'OK'; okBtn.className = 'btn-primary'; okBtn.onclick = () => { document.body.removeChild(modalBackdrop); }; modalContent.appendChild(messageP); modalContent.appendChild(okBtn); modalBackdrop.appendChild(modalContent); document.body.appendChild(modalBackdrop); }
         function showConfirmationModal(message, onConfirm) { const existingModal = document.getElementById('confirm-modal-backdrop'); if (existingModal) return; const modalBackdrop = document.createElement('div'); modalBackdrop.id = 'confirm-modal-backdrop'; modalBackdrop.className = 'modal'; modalBackdrop.style.display = 'flex'; const modalContent = document.createElement('div'); modalContent.className = 'modal-content'; const messageP = document.createElement('p'); messageP.textContent = message; messageP.style.cssText = 'margin-bottom: 1.5rem; text-align: center; font-size: 1.1rem;'; const buttonContainer = document.createElement('div'); buttonContainer.style.cssText = 'display: flex; gap: 1rem; justify-content: center;'; const confirmBtn = document.createElement('button'); confirmBtn.textContent = 'Confirmar'; confirmBtn.className = 'btn-danger'; confirmBtn.style.width = 'auto'; confirmBtn.onclick = () => { onConfirm(); document.body.removeChild(modalBackdrop); }; const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancelar'; cancelBtn.className = 'btn-secondary'; cancelBtn.style.width = 'auto'; cancelBtn.onclick = () => { document.body.removeChild(modalBackdrop); }; buttonContainer.appendChild(cancelBtn); buttonContainer.appendChild(confirmBtn); modalContent.appendChild(messageP); modalContent.appendChild(buttonContainer); modalBackdrop.appendChild(modalContent); document.body.appendChild(modalBackdrop); }
         
+        // ✅ FUNCIÓN RENDERADMINPANEL CON DEBUGGING MEJORADO
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin SEGURO</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Supabase (autenticación) + Appwrite (storage público) | SIN contraseñas</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
+            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin DEBUGGING</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Con debugging detallado para detectar archivos</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
             await renderAdminLists(); 
             setupAdminForms(); 
         }
@@ -662,6 +651,7 @@
             albumSelect.innerHTML = `<option value="">-- Seleccionar Álbum --</option>` + albums.map(album => `<option value="${album.id}">${album.title}</option>`).join(''); 
         }
         
+        // ✅ FUNCIÓN SETUPADMINFORMS CON DEBUGGING DE ARCHIVOS MEJORADO
         function setupAdminForms() { 
             const albumForm = document.getElementById('album-form'); 
             albumForm.addEventListener('submit', async (e) => { 
@@ -681,22 +671,58 @@
                 const id = document.getElementById('album-id').value; 
                 const title = document.getElementById('album-title').value; 
                 const artist = document.getElementById('album-artist').value; 
-                const coverFile = document.getElementById('album-cover').files[0]; 
+                
+                // ✅ DEBUGGING DETALLADO DE ARCHIVO
+                const coverInput = document.getElementById('album-cover');
+                const coverFile = coverInput?.files?.[0];
                 let cover_url = document.getElementById('album-cover-url').value; 
                 
+                console.log('🔍 DEBUG DETALLADO - Formulario álbum:', {
+                    coverInputElement: !!coverInput,
+                    coverInputTagName: coverInput?.tagName,
+                    coverInputType: coverInput?.type,
+                    filesProperty: !!coverInput?.files,
+                    filesLength: coverInput?.files?.length || 0,
+                    coverFile: !!coverFile,
+                    fileName: coverFile?.name || 'Sin archivo',
+                    fileSize: coverFile?.size || 0,
+                    fileType: coverFile?.type || 'Sin tipo',
+                    currentCoverUrl: cover_url,
+                    isEditing: !!id
+                });
+                
                 try { 
-                    if (coverFile) { 
+                    // ✅ VALIDACIÓN Y SUBIDA DE ARCHIVO MEJORADA
+                    if (coverFile && coverFile.size > 0) { 
+                        console.log('✅ Archivo válido detectado:', {
+                            name: coverFile.name,
+                            size: coverFile.size,
+                            type: coverFile.type
+                        });
                         showInfoModal('🔐 Subiendo portada de forma segura...'); 
                         cover_url = await uploadFile(coverFile); 
-                    } 
-                    if (!cover_url) { 
+                        console.log('✅ URL obtenida:', cover_url);
+                    } else {
+                        console.log('⚠️ No se detectó archivo válido');
+                    }
+                    
+                    // ✅ VALIDACIÓN FINAL
+                    if (!cover_url || cover_url.trim() === '') { 
+                        console.error('❌ No hay cover_url disponible');
                         showInfoModal('Por favor, selecciona una imagen de portada.'); 
                         return; 
                     } 
+                    
+                    console.log('✅ Procediendo a guardar álbum con cover_url:', cover_url);
                     showLoadingIndicator(true); 
-                    const { error } = id ? await supabase.from('albums').update({ title, artist, cover_url }).eq('id', id) : await supabase.from('albums').insert([{ title, artist, cover_url }]); 
+                    
+                    const { error } = id ? 
+                        await supabase.from('albums').update({ title, artist, cover_url }).eq('id', id) : 
+                        await supabase.from('albums').insert([{ title, artist, cover_url }]); 
+                        
                     showLoadingIndicator(false); 
                     if (error) throw error; 
+                    
                     showInfoModal('✅ Álbum guardado exitosamente'); 
                     albumForm.reset(); 
                     document.getElementById('album-id').value = ''; 
@@ -707,9 +733,22 @@
                     await renderAdminLists(); 
                 } catch (err) { 
                     showLoadingIndicator(false); 
+                    console.error('❌ Error completo en formulario:', err);
                     showInfoModal('❌ Error guardando álbum: ' + err.message); 
                 } 
             }); 
+            
+            // ✅ LISTENER PARA DEBUGGING EN TIEMPO REAL
+            const coverInput = document.getElementById('album-cover');
+            if (coverInput) {
+                coverInput.addEventListener('change', (e) => {
+                    console.log('🔍 ARCHIVO SELECCIONADO:', {
+                        files: e.target.files,
+                        filesLength: e.target.files.length,
+                        firstFile: e.target.files[0]?.name || 'None'
+                    });
+                });
+            }
             
             document.getElementById('cancel-album-edit').addEventListener('click', () => { 
                 albumForm.reset(); 
@@ -719,6 +758,7 @@
                 document.getElementById('cancel-album-edit').style.display = 'none'; 
             }); 
             
+            // ✅ FORMULARIO DE CANCIONES CON DEBUGGING SIMILAR
             const songForm = document.getElementById('song-form'); 
             songForm.addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
@@ -731,22 +771,40 @@
                 const id = document.getElementById('song-id').value; 
                 const title = document.getElementById('song-title').value; 
                 const album_id = document.getElementById('song-album-select').value; 
-                const songFile = document.getElementById('song-url').files[0]; 
+                
+                const songInput = document.getElementById('song-url');
+                const songFile = songInput?.files?.[0];
                 let song_url = document.getElementById('song-url-hidden').value; 
                 
+                console.log('🔍 DEBUG DETALLADO - Formulario canción:', {
+                    songInputElement: !!songInput,
+                    filesLength: songInput?.files?.length || 0,
+                    songFile: !!songFile,
+                    fileName: songFile?.name || 'Sin archivo',
+                    fileSize: songFile?.size || 0,
+                    currentSongUrl: song_url
+                });
+                
                 try { 
-                    if (songFile) { 
+                    if (songFile && songFile.size > 0) { 
+                        console.log('✅ Archivo de canción válido:', songFile.name);
                         showInfoModal('🔐 Subiendo canción de forma segura...'); 
                         song_url = await uploadFile(songFile); 
                     } 
-                    if (!song_url) { 
+                    
+                    if (!song_url || song_url.trim() === '') { 
                         showInfoModal('Por favor, selecciona un archivo de audio.'); 
                         return; 
                     } 
+                    
                     showLoadingIndicator(true); 
-                    const { error } = id ? await supabase.from('songs').update({ title, album_id, song_url }).eq('id', id) : await supabase.from('songs').insert([{ title, album_id, song_url }]); 
+                    const { error } = id ? 
+                        await supabase.from('songs').update({ title, album_id, song_url }).eq('id', id) : 
+                        await supabase.from('songs').insert([{ title, album_id, song_url }]); 
+                        
                     showLoadingIndicator(false); 
                     if (error) throw error; 
+                    
                     showInfoModal('✅ Canción guardada exitosamente'); 
                     songForm.reset(); 
                     document.getElementById('song-id').value = ''; 
@@ -757,6 +815,7 @@
                     await renderAdminLists(); 
                 } catch(err) { 
                     showLoadingIndicator(false); 
+                    console.error('❌ Error en canción:', err);
                     showInfoModal('❌ Error guardando canción: ' + err.message); 
                 } 
             }); 
@@ -828,9 +887,9 @@
             }); 
         };
         
-        // ✅ INICIALIZACIÓN COMPLETA SEGURA
+        // ✅ INICIALIZACIÓN COMPLETA
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con método seguro...');
+            console.log('🚀 KLMZ MUSIC iniciando con debugging mejorado...');
             
             if (typeof Appwrite !== 'undefined') {
                 console.log('✅ Appwrite SDK cargado correctamente');
@@ -838,14 +897,12 @@
                 console.error('❌ Appwrite SDK NO se pudo cargar');
             }
             
-            console.log('🔧 Configuración segura final:', {
+            console.log('🔧 Configuración con debugging:', {
                 adminEmail: ADMIN_EMAIL,
-                supabaseUrl: supabaseUrl,
-                appwriteEndpoint: 'https://nyc.cloud.appwrite.io/v1',
-                appwriteProject: '68ab0cf2000365979a71',
                 bucketId: '68ad019f00207b1df467',
-                securityMethod: 'Supabase Auth + Appwrite Public Storage',
-                noPasswordsStored: true
+                projectId: '68ab0cf2000365979a71',
+                endpoint: 'https://nyc.cloud.appwrite.io/v1',
+                debuggingEnabled: true
             });
             
             const audio = document.getElementById('audio-player');
@@ -861,11 +918,11 @@
                 console.log('✅ IndexedDB inicializada correctamente');
                 return loadSupabase();
             }).then(() => {
-                console.log('✅ KLMZ MUSIC inicializado de forma SEGURA');
+                console.log('✅ KLMZ MUSIC inicializado con debugging completo');
                 console.log('🔍 Funciones disponibles:');
                 console.log('  - debugUserSession() - Verificar sesión');
-                console.log('  - uploadFile() - Upload seguro sin contraseñas');
-                console.log('  - Método: Supabase valida admin + Appwrite storage público');
+                console.log('  - uploadFile() - Upload con debugging');
+                console.log('  - Debugging automático en formularios');
             }).catch(err => {
                 console.error("❌ Error crítico:", err);
                 showInfoModal("Error inicializando la aplicación");
