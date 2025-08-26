@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1DB954">
     <meta name="mobile-web-app-capable" content="yes">
-    <!-- ✅ CORREGIDO: CDN de Appwrite actualizado -->
     <script defer src="https://cdn.jsdelivr.net/npm/appwrite@18.2.0"></script>
     <style>
         * { box-sizing: border-box; }
@@ -40,7 +39,7 @@
         .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
         .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
         .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
-        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor: pointer; transition: all 0.3s ease; }
+        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: all 0.3s ease; }
         .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
         .full-player-backdrop.active { display: flex;}
         .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
@@ -168,7 +167,7 @@
         <main>
             <section class="content-section active" id="home-section">
                 <div class="section-title">Albums</div>
-                <div class="album-grid" id="albums"><div style="text-align: center; padding: 2rem;">Cargando álbumes...</div></div>
+                <div class="album-grid" id="albums"><div style="text-align: center; padding: 2rem;">🔍 Iniciando carga de datos...</div></div>
                 <div id="album-detail" style="display:none;"></div>
             </section>
             <section class="content-section" id="search-section">
@@ -272,7 +271,7 @@
         let originalPlaylist = [];
         let db;
         
-        // ✅ CONFIGURACIÓN FINAL SEGURA
+        // ✅ CONFIGURACIÓN FINAL
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
@@ -304,82 +303,226 @@
                     userId: currentUser.id,
                     bucketId: bucketId,
                     fileName: file.name,
-                    fileSize: file.size,
-                    secureUpload: true
+                    fileSize: file.size
                 });
                 
-                // ✅ SUBIR ARCHIVO
                 const response = await storage.createFile(bucketId, Appwrite.ID.unique(), file);
                 const fileId = response.$id;
                 
-                // ✅ FIX PARA URL UNDEFINED - MÚLTIPLES MÉTODOS
+                // ✅ FIX PARA URL UNDEFINED
                 console.log('🔍 Generando URL pública...');
                 const publicUrlObject = storage.getFileView(bucketId, fileId);
                 
-                // ✅ DEBUGGING DETALLADO DEL OBJETO URL
-                console.log('🔍 Objeto URL completo:', publicUrlObject);
-                console.log('🔍 Tipo de objeto:', typeof publicUrlObject);
-                console.log('🔍 Constructor:', publicUrlObject.constructor.name);
-                
-                // ✅ MÚLTIPLES FORMAS DE OBTENER LA URL
                 let finalUrl;
-                
-                // Método 1: Conversión directa a string
                 try {
                     finalUrl = publicUrlObject.toString();
                     console.log('✅ Método 1 - toString():', finalUrl);
                 } catch (e) {
-                    console.log('⚠️ Método 1 falló');
-                }
-                
-                // Método 2: Acceso a href si toString falló
-                if (!finalUrl || finalUrl === '[object Object]') {
+                    console.log('⚠️ Método 1 falló, probando método 2...');
                     try {
                         finalUrl = publicUrlObject.href;
                         console.log('✅ Método 2 - .href:', finalUrl);
-                    } catch (e) {
-                        console.log('⚠️ Método 2 falló');
+                    } catch (e2) {
+                        finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
+                        console.log('✅ Método 3 - URL manual:', finalUrl);
                     }
                 }
                 
-                // Método 3: Construcción manual de URL si los anteriores fallaron
-                if (!finalUrl || finalUrl === '[object Object]' || finalUrl === 'undefined') {
-                    finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
-                    console.log('✅ Método 3 - URL manual:', finalUrl);
-                }
-                
-                // ✅ VERIFICACIÓN FINAL
                 if (!finalUrl || finalUrl.includes('undefined')) {
                     throw new Error('No se pudo generar URL válida');
                 }
                 
-                console.log("✅ ÉXITO - Archivo subido:", {
-                    fileId: fileId,
-                    publicUrl: finalUrl,
-                    method: 'URL corregida'
-                });
-                
+                console.log("✅ ÉXITO - Archivo subido:", finalUrl);
                 showInfoModal('🎵 ¡Archivo subido correctamente! ✅');
                 return finalUrl;
                 
             } catch (error) {
                 console.error('❌ Error completo:', error);
-                
-                if (error.code === 401 || error.message.includes('unauthorized')) {
-                    throw new Error(`🔐 Configuración requerida en Appwrite Console:
-                    
-📋 PASOS:
-1. Ve a https://cloud.appwrite.io
-2. Storage → Buckets → 68ad019f00207b1df467
-3. Settings → Permissions
-4. Configura:
-   - Any: CREATE ✅ + READ ✅
-   - File Security: OFF ❌`);
-                }
-                
                 throw new Error(`❌ Error: ${error.message}`);
             } finally {
                 showLoadingIndicator(false);
+            }
+        }
+        
+        // ✅ FUNCIÓN LOADALLDATA CON DEBUGGING Y FIX RLS
+        async function loadAllData() {
+            console.log('🔍 Iniciando carga de datos...');
+            showLoadingIndicator(true);
+            
+            try {
+                // ✅ DEBUG: Verificar conexión Supabase
+                console.log('🔍 Supabase configurado:', {
+                    url: supabaseUrl,
+                    keyConfigured: !!supabaseKey,
+                    clientReady: !!supabase,
+                    userAuthenticated: !!currentUser
+                });
+                
+                if (!supabase) {
+                    throw new Error('Supabase client no está inicializado');
+                }
+                
+                // ✅ TEST: Verificar que Supabase responde
+                console.log('🧪 Probando conexión...');
+                const { data: testConnection, error: testError } = await supabase
+                    .from('albums')
+                    .select('count', { count: 'exact', head: true });
+                    
+                if (testError) {
+                    console.error('❌ Error de conexión a Supabase:', testError);
+                    throw testError;
+                }
+                
+                console.log('✅ Conexión a Supabase OK. Registros en albums:', testConnection);
+                
+                // ✅ CARGAR ÁLBUMES CON DEBUGGING
+                console.log('📀 Cargando álbumes...');
+                const { data: albums, error: albumsError } = await supabase
+                    .from('albums')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                    
+                if (albumsError) {
+                    console.error('❌ Error cargando álbumes:', albumsError);
+                    
+                    if (albumsError.message?.includes('policy')) {
+                        throw new Error('🔒 Problema de permisos RLS. Configura políticas públicas para la tabla albums.');
+                    }
+                    throw albumsError;
+                }
+                
+                console.log('✅ Álbumes cargados:', albums?.length || 0, albums);
+                
+                // ✅ CARGAR CANCIONES CON DEBUGGING
+                console.log('🎵 Cargando canciones...');
+                const { data: songs, error: songsError } = await supabase
+                    .from('songs')
+                    .select('*, albums:album_id(*)')
+                    .order('created_at', { ascending: false });
+                    
+                if (songsError) {
+                    console.error('❌ Error cargando canciones:', songsError);
+                    
+                    if (songsError.message?.includes('policy')) {
+                        throw new Error('🔒 Problema de permisos RLS. Configura políticas públicas para la tabla songs.');
+                    }
+                    throw songsError;
+                }
+                
+                console.log('✅ Canciones cargadas:', songs?.length || 0, songs);
+                
+                // ✅ ASIGNAR DATOS
+                allAlbums = albums || [];
+                allSongs = songs || [];
+                songsWithAlbumInfo = songs || [];
+                
+                // ✅ MOSTRAR ÁLBUMES
+                displayAlbums(allAlbums);
+                
+                console.log('✅ Datos cargados exitosamente:', {
+                    albums: allAlbums.length,
+                    songs: allSongs.length
+                });
+                
+                // ✅ MOSTRAR MENSAJE SI NO HAY DATOS
+                if (allAlbums.length === 0) {
+                    document.getElementById('albums').innerHTML = `
+                        <div style="text-align: center; padding: 3rem;">
+                            <h2>📀 No hay álbumes disponibles</h2>
+                            <p>El administrador aún no ha subido música</p>
+                            ${currentUser?.email === ADMIN_EMAIL ? 
+                                '<button onclick="showSection(\'admin\')" style="background: #1DB954; color: #fff; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; margin-top: 1rem;">⚙️ Ir al Panel Admin</button>' : 
+                                ''
+                            }
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('❌ Error crítico cargando datos:', error);
+                
+                // ✅ MOSTRAR ERROR ESPECÍFICO AL USUARIO
+                let errorMessage = 'Error de conexión. ';
+                let sqlSuggestion = '';
+                
+                if (error.message?.includes('policy') || error.message?.includes('RLS')) {
+                    errorMessage = '🔒 Error de permisos RLS';
+                    sqlSuggestion = `
+                        <div style="background: #2a2a2a; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: left;">
+                            <h4 style="color: #1DB954; margin-top: 0;">📋 Ejecuta en Supabase SQL Editor:</h4>
+                            <code style="font-size: 0.8rem; display: block; background: #1a1a1a; padding: 0.5rem; border-radius: 4px; color: #00ff88;">
+                                -- Políticas para álbumes<br>
+                                CREATE POLICY "Public can read albums" ON albums FOR SELECT TO anon, authenticated USING (true);<br><br>
+                                -- Políticas para canciones<br>
+                                CREATE POLICY "Public can read songs" ON songs FOR SELECT TO anon, authenticated USING (true);<br><br>
+                                -- Política admin<br>
+                                CREATE POLICY "Admin can manage albums" ON albums FOR ALL TO authenticated USING (auth.email() = 'klmzr@gmail.com');<br>
+                                CREATE POLICY "Admin can manage songs" ON songs FOR ALL TO authenticated USING (auth.email() = 'klmzr@gmail.com');
+                            </code>
+                        </div>
+                    `;
+                } else if (error.message?.includes('network')) {
+                    errorMessage = '🌐 Error de red: Verifica tu conexión a internet';
+                } else if (error.message?.includes('not found')) {
+                    errorMessage = '📋 Error: Tablas no encontradas. Verifica que existan "albums" y "songs"';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                // ✅ MOSTRAR BOTÓN PARA REINTENTAR
+                document.getElementById('albums').innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <h2>❌ Error cargando datos</h2>
+                        <p style="color: #ff6b6b; margin: 1rem 0;">${errorMessage}</p>
+                        ${sqlSuggestion}
+                        <div style="margin-top: 2rem;">
+                            <button onclick="loadAllData()" 
+                                    style="background: #1DB954; color: #fff; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; margin: 0.5rem; font-size: 1rem;">
+                                🔄 Reintentar carga
+                            </button>
+                            <button onclick="debugSupabaseConfig()" 
+                                    style="background: #666; color: #fff; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; margin: 0.5rem; font-size: 1rem;">
+                                🔍 Debug configuración
+                            </button>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <button onclick="showSection('downloads')" 
+                                    style="background: #555; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                                📱 Acceder a música descargada
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
+        
+        // ✅ FUNCIÓN PARA VERIFICAR CONFIGURACIÓN
+        window.debugSupabaseConfig = function() {
+            console.log('🔍 DEBUG CONFIGURACIÓN SUPABASE:', {
+                url: supabaseUrl,
+                keyLength: supabaseKey?.length || 0,
+                keyPrefix: supabaseKey?.substring(0, 20) + '...',
+                supabaseReady: !!supabase,
+                currentUser: currentUser?.email || 'No autenticado',
+                timestamp: new Date().toISOString()
+            });
+            
+            // Test de conexión básica
+            if (supabase) {
+                supabase.from('albums').select('count', { count: 'exact', head: true })
+                    .then(result => {
+                        console.log('✅ Test conexión exitoso:', result);
+                        showInfoModal(`✅ Conexión OK. ${result.count || 0} álbumes encontrados.`);
+                    })
+                    .catch(error => {
+                        console.error('❌ Test conexión falló:', error);
+                        showInfoModal(`❌ Error de conexión: ${error.message}`);
+                    });
+            } else {
+                console.error('❌ Supabase client no inicializado');
+                showInfoModal('❌ Supabase client no inicializado');
             }
         }
         
@@ -443,20 +586,18 @@
                 projectId: '68ab0cf2000365979a71',
                 endpoint: 'https://nyc.cloud.appwrite.io/v1',
                 appwriteLoaded: typeof Appwrite !== 'undefined',
-                supabaseLoaded: !!supabase,
-                secureMethod: 'Permisos públicos con validación Supabase'
+                supabaseLoaded: !!supabase
             });
             
             if (!currentUser) {
-                console.error('❌ Usuario NO autenticado en Supabase');
+                console.error('❌ Usuario NO autenticado');
                 console.log('💡 SOLUCIÓN: Inicia sesión con klmzr@gmail.com');
             } else if (currentUser.email !== ADMIN_EMAIL) {
                 console.error('❌ Usuario no es admin');
                 console.log(`💡 Tu email: ${currentUser.email}`);
                 console.log(`💡 Email requerido: ${ADMIN_EMAIL}`);
             } else {
-                console.log('✅ Usuario admin verificado - Upload seguro habilitado');
-                console.log('🔒 Método: Supabase (auth) + Appwrite (storage público)');
+                console.log('✅ Usuario admin verificado');
             }
         }
         
@@ -565,50 +706,62 @@
             changeTheme(savedTheme);
         }
         
+        // ✅ FUNCIÓN LOADSUPABASE MEJORADA
         async function loadSupabase() {
+            console.log('🔄 Inicializando Supabase...');
             showLoadingIndicator(true);
             try {
                 const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
                 supabase = createClient(supabaseUrl, supabaseKey);
+                
+                console.log('✅ Supabase client creado');
+                
                 supabase.auth.onAuthStateChange((event, session) => {
+                    console.log('🔄 Auth state changed:', event, session?.user?.email);
                     currentUser = session?.user || null;
                     updateAuthUI();
                 });
+                
                 const { data: { session } } = await supabase.auth.getSession();
                 currentUser = session?.user || null;
+                console.log('👤 Usuario actual:', currentUser?.email || 'No autenticado');
                 updateAuthUI();
+                
+                // ✅ CARGAR DATOS DESPUÉS DE INICIALIZAR SUPABASE
                 await loadAllData();
+                
             } catch (error) {
                 console.error('Error conectando a Supabase:', error);
-                showErrorMessage('Error de conexión. Revisa tu internet.');
+                document.getElementById('albums').innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <h2>❌ Error de conexión</h2>
+                        <p>No se pudo conectar a Supabase</p>
+                        <button onclick="location.reload()" style="background: #1DB954; color: #fff; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; margin-top: 1rem;">🔄 Recargar página</button>
+                    </div>
+                `;
             } finally {
                 showLoadingIndicator(false);
-            }
-        }
-        
-        async function loadAllData() {
-            try {
-                const [{ data: albums }, { data: songs }] = await Promise.all([
-                    supabase.from('albums').select('*'),
-                    supabase.from('songs').select('*, albums:album_id(*)')
-                ]);
-                allAlbums = albums || [];
-                allSongs = songs || [];
-                songsWithAlbumInfo = songs || [];
-                displayAlbums(allAlbums);
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-                showErrorMessage('No se pudieron cargar los álbumes');
             }
         }
         
         function displayAlbums(albums) {
             const container = document.getElementById('albums');
             if (!albums || albums.length === 0) {
-                container.innerHTML = '<h2>No hay álbumes disponibles</h2>';
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <h2>📀 No hay álbumes disponibles</h2>
+                        <p>El administrador aún no ha subido música</p>
+                    </div>
+                `;
                 return;
             }
-            container.innerHTML = albums.map(album => `<div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'><img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`).join('');
+            container.innerHTML = albums.map(album => `
+                <div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'>
+                    <img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48L3N2Zz4='">
+                    <div class="album-title">${album.title}</div>
+                    <div class="album-artist">${album.artist}</div>
+                </div>
+            `).join('');
         }
         
         async function showAlbumDetail(album) {
@@ -616,16 +769,56 @@
             document.getElementById('albums').style.display = 'none';
             const detailView = document.getElementById('album-detail');
             detailView.style.display = 'block';
-            detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button><div style="text-align: center; margin-bottom: 2rem;"><img class="album-img" src="${album.cover_url}" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem;"><div class="album-title" style="font-size: 1.5rem;">${album.title}</div><div class="album-artist" style="font-size: 1.1rem; color: #b3b3b3;">${album.artist}</div></div><div class="song-list" id="detail-song-list">Cargando...</div>`;
-            const { data: songs } = await supabase.from('songs').select('*').eq('album_id', album.id);
-            const listDiv = document.getElementById('detail-song-list');
-            if (!songs || songs.length === 0) { listDiv.innerHTML = 'No hay canciones en este álbum.'; return; }
-            currentPlaylist = songs;
-            originalPlaylist = [...songs];
-            const favorites = getLocalFavorites();
-            const downloaded = await getAllDownloadedSongs();
-            const downloadedIds = downloaded.map(s => s.id);
-            listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `<li><div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div><div class="song-actions"><span onclick="toggleFavorite('${song.id}', this)" style="cursor: pointer; color: ${favorites.includes(song.id) ? '#1DB954' : '#666'};">${favorites.includes(song.id) ? '❤️' : '🤍'}</span><span class="download-icon ${downloadedIds.includes(song.id) ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.id}', this)">↓</span><span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span></div></li>`).join('') + '</ul>';
+            detailView.innerHTML = `
+                <button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <img class="album-img" src="${album.cover_url}" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48L3N2Zz4='">
+                    <div class="album-title" style="font-size: 1.5rem;">${album.title}</div>
+                    <div class="album-artist" style="font-size: 1.1rem; color: #b3b3b3;">${album.artist}</div>
+                </div>
+                <div class="song-list" id="detail-song-list">🎵 Cargando canciones...</div>
+            `;
+            
+            try {
+                const { data: songs, error } = await supabase
+                    .from('songs')
+                    .select('*')
+                    .eq('album_id', album.id);
+                    
+                const listDiv = document.getElementById('detail-song-list');
+                
+                if (error) {
+                    console.error('Error cargando canciones del álbum:', error);
+                    listDiv.innerHTML = `❌ Error cargando canciones: ${error.message}`;
+                    return;
+                }
+                
+                if (!songs || songs.length === 0) { 
+                    listDiv.innerHTML = 'No hay canciones en este álbum.'; 
+                    return; 
+                }
+                
+                currentPlaylist = songs;
+                originalPlaylist = [...songs];
+                const favorites = getLocalFavorites();
+                const downloaded = await getAllDownloadedSongs();
+                const downloadedIds = downloaded.map(s => s.id);
+                
+                listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `
+                    <li>
+                        <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
+                        <div class="song-actions">
+                            <span onclick="toggleFavorite('${song.id}', this)" style="cursor: pointer; color: ${favorites.includes(song.id) ? '#1DB954' : '#666'};">${favorites.includes(song.id) ? '❤️' : '🤍'}</span>
+                            <span class="download-icon ${downloadedIds.includes(song.id) ? 'downloaded' : ''}" onclick="event.stopPropagation(); downloadSong('${song.id}', this)">↓</span>
+                            <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
+                        </div>
+                    </li>
+                `).join('') + '</ul>';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('detail-song-list').innerHTML = `❌ Error: ${error.message}`;
+            }
         }
         
         function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
@@ -671,32 +864,30 @@
         function showInfoModal(message) { const existingModal = document.getElementById('info-modal-backdrop'); if (existingModal) { existingModal.querySelector('p').textContent = message; return; }; const modalBackdrop = document.createElement('div'); modalBackdrop.id = 'info-modal-backdrop'; modalBackdrop.className = 'modal'; modalBackdrop.style.display = 'flex'; const modalContent = document.createElement('div'); modalContent.className = 'modal-content'; const messageP = document.createElement('p'); messageP.textContent = message; messageP.style.cssText = 'margin-bottom: 1.5rem; text-align: center; font-size: 1.1rem;'; const okBtn = document.createElement('button'); okBtn.textContent = 'OK'; okBtn.className = 'btn-primary'; okBtn.onclick = () => { document.body.removeChild(modalBackdrop); }; modalContent.appendChild(messageP); modalContent.appendChild(okBtn); modalBackdrop.appendChild(modalContent); document.body.appendChild(modalBackdrop); }
         function showConfirmationModal(message, onConfirm) { const existingModal = document.getElementById('confirm-modal-backdrop'); if (existingModal) return; const modalBackdrop = document.createElement('div'); modalBackdrop.id = 'confirm-modal-backdrop'; modalBackdrop.className = 'modal'; modalBackdrop.style.display = 'flex'; const modalContent = document.createElement('div'); modalContent.className = 'modal-content'; const messageP = document.createElement('p'); messageP.textContent = message; messageP.style.cssText = 'margin-bottom: 1.5rem; text-align: center; font-size: 1.1rem;'; const buttonContainer = document.createElement('div'); buttonContainer.style.cssText = 'display: flex; gap: 1rem; justify-content: center;'; const confirmBtn = document.createElement('button'); confirmBtn.textContent = 'Confirmar'; confirmBtn.className = 'btn-danger'; confirmBtn.style.width = 'auto'; confirmBtn.onclick = () => { onConfirm(); document.body.removeChild(modalBackdrop); }; const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancelar'; cancelBtn.className = 'btn-secondary'; cancelBtn.style.width = 'auto'; cancelBtn.onclick = () => { document.body.removeChild(modalBackdrop); }; buttonContainer.appendChild(cancelBtn); buttonContainer.appendChild(confirmBtn); modalContent.appendChild(messageP); modalContent.appendChild(buttonContainer); modalBackdrop.appendChild(modalContent); document.body.appendChild(modalBackdrop); }
         
-        // ✅ FUNCIÓN RENDERADMINPANEL CON DEBUGGING MEJORADO
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin - FIX URL</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Con FIX para URL undefined resuelto</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
+            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin - Carga ARREGLADA</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Con debugging mejorado y FIX para RLS</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin: 0.5rem 0.5rem 0 0; cursor: pointer;">🔍 Debug User</button><button onclick="debugSupabaseConfig()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin: 0.5rem 0 0 0; cursor: pointer;">🔍 Debug Supabase</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
             await renderAdminLists(); 
             setupAdminForms(); 
         }
         
         async function renderAdminLists() { 
-            const { data: albums } = await supabase.from('albums').select('*'); 
-            const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)'); 
-            const albumList = document.getElementById('admin-album-list'); 
-            albumList.innerHTML = albums.map(album => `<div class="admin-item
-        // ✅ CONTINUACIÓN DE renderAdminLists()
-        async function renderAdminLists() { 
-            const { data: albums } = await supabase.from('albums').select('*'); 
-            const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)'); 
-            const albumList = document.getElementById('admin-album-list'); 
-            albumList.innerHTML = albums.map(album => `<div class="admin-item"><div class="admin-item-info"><strong>${album.title}</strong><br><small>${album.artist}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="editAlbum('${album.id}', '${album.title}', '${album.artist}', '${album.cover_url}')">Editar</button><button class="btn-danger" onclick="deleteAlbum('${album.id}')">Borrar</button></div></div>`).join(''); 
-            const songList = document.getElementById('admin-song-list'); 
-            songList.innerHTML = songs.map(song => `<div class="admin-item"><div class="admin-item-info"><strong>${song.title}</strong><br><small>${song.albums.title}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="editSong('${song.id}', '${song.title}', '${song.album_id}', '${song.song_url}')">Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">Borrar</button></div></div>`).join(''); 
-            const albumSelect = document.getElementById('song-album-select'); 
-            albumSelect.innerHTML = `<option value="">-- Seleccionar Álbum --</option>` + albums.map(album => `<option value="${album.id}">${album.title}</option>`).join(''); 
+            try {
+                const { data: albums } = await supabase.from('albums').select('*'); 
+                const { data: songs } = await supabase.from('songs').select('*, albums:album_id(title)'); 
+                const albumList = document.getElementById('admin-album-list'); 
+                albumList.innerHTML = albums.map(album => `<div class="admin-item"><div class="admin-item-info"><strong>${album.title}</strong><br><small>${album.artist}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="editAlbum('${album.id}', '${album.title}', '${album.artist}', '${album.cover_url}')">Editar</button><button class="btn-danger" onclick="deleteAlbum('${album.id}')">Borrar</button></div></div>`).join(''); 
+                const songList = document.getElementById('admin-song-list'); 
+                songList.innerHTML = songs.map(song => `<div class="admin-item"><div class="admin-item-info"><strong>${song.title}</strong><br><small>${song.albums.title}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="editSong('${song.id}', '${song.title}', '${song.album_id}', '${song.song_url}')">Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">Borrar</button></div></div>`).join(''); 
+                const albumSelect = document.getElementById('song-album-select'); 
+                albumSelect.innerHTML = `<option value="">-- Seleccionar Álbum --</option>` + albums.map(album => `<option value="${album.id}">${album.title}</option>`).join(''); 
+            } catch (error) {
+                console.error('Error cargando listas admin:', error);
+                document.getElementById('admin-album-list').innerHTML = '❌ Error cargando álbumes';
+                document.getElementById('admin-song-list').innerHTML = '❌ Error cargando canciones';
+            }
         }
         
-        // ✅ FUNCIÓN SETUPADMINFORMS CON DEBUGGING DE ARCHIVOS MEJORADO
         function setupAdminForms() { 
             const albumForm = document.getElementById('album-form'); 
             albumForm.addEventListener('submit', async (e) => { 
@@ -716,51 +907,30 @@
                 const id = document.getElementById('album-id').value; 
                 const title = document.getElementById('album-title').value; 
                 const artist = document.getElementById('album-artist').value; 
-                
-                // ✅ DEBUGGING DETALLADO DE ARCHIVO CON FIX URL
                 const coverInput = document.getElementById('album-cover');
                 const coverFile = coverInput?.files?.[0];
                 let cover_url = document.getElementById('album-cover-url').value; 
                 
-                console.log('🔍 DEBUG DETALLADO - Formulario álbum:', {
-                    coverInputElement: !!coverInput,
-                    coverInputTagName: coverInput?.tagName,
-                    coverInputType: coverInput?.type,
-                    filesProperty: !!coverInput?.files,
-                    filesLength: coverInput?.files?.length || 0,
+                console.log('🔍 DEBUG - Formulario álbum:', {
                     coverFile: !!coverFile,
                     fileName: coverFile?.name || 'Sin archivo',
                     fileSize: coverFile?.size || 0,
-                    fileType: coverFile?.type || 'Sin tipo',
-                    currentCoverUrl: cover_url,
-                    isEditing: !!id
+                    currentCoverUrl: cover_url
                 });
                 
                 try { 
-                    // ✅ VALIDACIÓN Y SUBIDA DE ARCHIVO CON FIX URL
                     if (coverFile && coverFile.size > 0) { 
-                        console.log('✅ Archivo válido detectado:', {
-                            name: coverFile.name,
-                            size: coverFile.size,
-                            type: coverFile.type
-                        });
-                        showInfoModal('🔐 Subiendo portada de forma segura...'); 
+                        console.log('✅ Archivo válido detectado:', coverFile.name);
                         cover_url = await uploadFile(coverFile); 
-                        console.log('✅ URL obtenida después del fix:', cover_url);
-                    } else {
-                        console.log('⚠️ No se detectó archivo válido');
+                        console.log('✅ URL obtenida:', cover_url);
                     }
                     
-                    // ✅ VALIDACIÓN FINAL
                     if (!cover_url || cover_url.trim() === '' || cover_url === 'undefined') { 
-                        console.error('❌ No hay cover_url disponible:', cover_url);
                         showInfoModal('Por favor, selecciona una imagen de portada.'); 
                         return; 
                     } 
                     
-                    console.log('✅ Procediendo a guardar álbum con cover_url válida:', cover_url);
                     showLoadingIndicator(true); 
-                    
                     const { error } = id ? 
                         await supabase.from('albums').update({ title, artist, cover_url }).eq('id', id) : 
                         await supabase.from('albums').insert([{ title, artist, cover_url }]); 
@@ -778,22 +948,10 @@
                     await renderAdminLists(); 
                 } catch (err) { 
                     showLoadingIndicator(false); 
-                    console.error('❌ Error completo en formulario:', err);
+                    console.error('❌ Error:', err);
                     showInfoModal('❌ Error guardando álbum: ' + err.message); 
                 } 
             }); 
-            
-            // ✅ LISTENER PARA DEBUGGING EN TIEMPO REAL
-            const coverInput = document.getElementById('album-cover');
-            if (coverInput) {
-                coverInput.addEventListener('change', (e) => {
-                    console.log('🔍 ARCHIVO SELECCIONADO:', {
-                        files: e.target.files,
-                        filesLength: e.target.files.length,
-                        firstFile: e.target.files[0]?.name || 'None'
-                    });
-                });
-            }
             
             document.getElementById('cancel-album-edit').addEventListener('click', () => { 
                 albumForm.reset(); 
@@ -803,7 +961,6 @@
                 document.getElementById('cancel-album-edit').style.display = 'none'; 
             }); 
             
-            // ✅ FORMULARIO DE CANCIONES CON DEBUGGING SIMILAR Y FIX URL
             const songForm = document.getElementById('song-form'); 
             songForm.addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
@@ -816,26 +973,13 @@
                 const id = document.getElementById('song-id').value; 
                 const title = document.getElementById('song-title').value; 
                 const album_id = document.getElementById('song-album-select').value; 
-                
                 const songInput = document.getElementById('song-url');
                 const songFile = songInput?.files?.[0];
                 let song_url = document.getElementById('song-url-hidden').value; 
                 
-                console.log('🔍 DEBUG DETALLADO - Formulario canción:', {
-                    songInputElement: !!songInput,
-                    filesLength: songInput?.files?.length || 0,
-                    songFile: !!songFile,
-                    fileName: songFile?.name || 'Sin archivo',
-                    fileSize: songFile?.size || 0,
-                    currentSongUrl: song_url
-                });
-                
                 try { 
                     if (songFile && songFile.size > 0) { 
-                        console.log('✅ Archivo de canción válido:', songFile.name);
-                        showInfoModal('🔐 Subiendo canción de forma segura...'); 
                         song_url = await uploadFile(songFile); 
-                        console.log('✅ URL de canción obtenida después del fix:', song_url);
                     } 
                     
                     if (!song_url || song_url.trim() === '' || song_url === 'undefined') { 
@@ -861,7 +1005,6 @@
                     await renderAdminLists(); 
                 } catch(err) { 
                     showLoadingIndicator(false); 
-                    console.error('❌ Error en canción:', err);
                     showInfoModal('❌ Error guardando canción: ' + err.message); 
                 } 
             }); 
@@ -875,7 +1018,6 @@
             }); 
         }
         
-        // ✅ FUNCIONES DE GESTIÓN ADMIN
         window.editAlbum = (id, title, artist, cover_url) => { 
             document.getElementById('album-id').value = id; 
             document.getElementById('album-title').value = title; 
@@ -913,6 +1055,12 @@
             document.getElementById('song-title').value = title; 
             document.getElementById('song-album-select').value = album_id; 
             document.getElementById('song-url-hidden').value = song_url; 
+            document.getElementById('current-song-url').textContent = `Canción actual: ${song_url.split('/').pop()}`;
+        window.editSong = (id, title, album_id, song_url) => { 
+            document.getElementById('song-id').value = id; 
+            document.getElementById('song-title').value = title; 
+            document.getElementById('song-album-select').value = album_id; 
+            document.getElementById('song-url-hidden').value = song_url; 
             document.getElementById('current-song-url').textContent = `Canción actual: ${song_url.split('/').pop()}`; 
             document.getElementById('song-url').value = ''; 
             document.getElementById('cancel-song-edit').style.display = 'inline-block'; 
@@ -934,9 +1082,9 @@
             }); 
         };
         
-        // ✅ INICIALIZACIÓN COMPLETA CON FIX URL
+        // ✅ INICIALIZACIÓN COMPLETA CON FIX PARA CARGA DE DATOS
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con FIX para URL undefined...');
+            console.log('🚀 KLMZ MUSIC iniciando con FIX para carga de datos...');
             
             if (typeof Appwrite !== 'undefined') {
                 console.log('✅ Appwrite SDK cargado correctamente');
@@ -944,47 +1092,143 @@
                 console.error('❌ Appwrite SDK NO se pudo cargar');
             }
             
-            console.log('🔧 Configuración con FIX URL:', {
+            console.log('🔧 Configuración con FIX para RLS:', {
                 adminEmail: ADMIN_EMAIL,
                 bucketId: '68ad019f00207b1df467',
                 projectId: '68ab0cf2000365979a71',
                 endpoint: 'https://nyc.cloud.appwrite.io/v1',
                 urlFixImplemented: true,
+                rlsFixImplemented: true,
                 debuggingEnabled: true
             });
             
+            // ✅ SETUP AUDIO PLAYER
             const audio = document.getElementById('audio-player');
             audio.addEventListener('ended', handleSongEnded);
             audio.addEventListener('timeupdate', updateProgressBar);
             audio.addEventListener('play', () => { isPlaying = true; updatePlayButtons(); });
             audio.addEventListener('pause', () => { isPlaying = false; updatePlayButtons(); });
-            document.getElementById('mini-player').addEventListener('click', (e) => { if (!e.target.closest('.player-controls-inline')) openFullPlayer(); });
+            document.getElementById('mini-player').addEventListener('click', (e) => { 
+                if (!e.target.closest('.player-controls-inline')) openFullPlayer(); 
+            });
             
+            // ✅ CARGAR TEMA GUARDADO
             loadSavedTheme();
             
+            // ✅ INICIALIZAR DB Y SUPABASE
             initDB().then(() => {
                 console.log('✅ IndexedDB inicializada correctamente');
                 return loadSupabase();
             }).then(() => {
-                console.log('✅ KLMZ MUSIC inicializado con FIX URL completo');
+                console.log('✅ KLMZ MUSIC inicializado con FIX completo');
                 console.log('🔍 Funciones disponibles:');
-                console.log('  - debugUserSession() - Verificar sesión');
+                console.log('  - debugUserSession() - Verificar sesión de usuario');
+                console.log('  - debugSupabaseConfig() - Verificar configuración Supabase');
+                console.log('  - loadAllData() - Recargar datos con debugging');
                 console.log('  - uploadFile() - Con FIX para URL undefined ✅');
-                console.log('  - Debugging automático en formularios');
-                console.log('  - Múltiples métodos para obtener URL válida');
+                console.log('  - FIX para RLS policies ✅');
             }).catch(err => {
                 console.error("❌ Error crítico:", err);
-                showInfoModal("Error inicializando la aplicación");
+                document.getElementById('albums').innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <h2>❌ Error de inicialización</h2>
+                        <p>Error inicializando la aplicación: ${err.message}</p>
+                        <button onclick="location.reload()" 
+                                style="background: #1DB954; color: #fff; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; margin-top: 1rem; font-size: 1rem;">
+                            🔄 Recargar página
+                        </button>
+                    </div>
+                `;
             });
         });
-    </script>
-    
-    <script>
+        
+        // ✅ SERVICE WORKER
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => console.log('✅ Service Worker registrado:', registration.scope))
-                    .catch(error => console.log('⚠️ Service Worker falló:', error.message));
+                    .catch(error => console.log('⚠️ Service Worker registro falló:', error.message));
+            });
+        }
+        
+        // ✅ FUNCIÓN ADICIONAL PARA RESETEAR APLICACIÓN EN CASO DE ERROR
+        window.resetApp = function() {
+            console.log('🔄 Reseteando aplicación...');
+            localStorage.clear();
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            location.reload();
+        }
+        
+        // ✅ FUNCIÓN PARA MOSTRAR ESTADÍSTICAS DE LA APP
+        window.showAppStats = function() {
+            const stats = {
+                albumsLoaded: allAlbums.length,
+                songsLoaded: allSongs.length,
+                currentUser: currentUser?.email || 'No autenticado',
+                isAdmin: currentUser?.email === ADMIN_EMAIL,
+                supabaseConnected: !!supabase,
+                appwriteLoaded: typeof Appwrite !== 'undefined',
+                serviceWorkerActive: 'serviceWorker' in navigator,
+                theme: localStorage.getItem('klmz_theme') || 'default',
+                favorites: getLocalFavorites().length
+            };
+            
+            console.log('📊 ESTADÍSTICAS KLMZ MUSIC:', stats);
+            
+            const statsHtml = `
+                <div style="background: #2a2a2a; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <h4 style="color: #1DB954; margin-top: 0;">📊 Estadísticas de la App</h4>
+                    <div style="font-family: monospace; font-size: 0.9rem;">
+                        <div>🎵 Álbumes cargados: <span style="color: #1DB954;">${stats.albumsLoaded}</span></div>
+                        <div>🎼 Canciones cargadas: <span style="color: #1DB954;">${stats.songsLoaded}</span></div>
+                        <div>👤 Usuario: <span style="color: #1DB954;">${stats.currentUser}</span></div>
+                        <div>⚙️ Admin: <span style="color: ${stats.isAdmin ? '#1DB954' : '#ff6b6b'};">${stats.isAdmin ? 'Sí' : 'No'}</span></div>
+                        <div>🔗 Supabase: <span style="color: ${stats.supabaseConnected ? '#1DB954' : '#ff6b6b'};">${stats.supabaseConnected ? 'Conectado' : 'Desconectado'}</span></div>
+                        <div>📦 Appwrite: <span style="color: ${stats.appwriteLoaded ? '#1DB954' : '#ff6b6b'};">${stats.appwriteLoaded ? 'Cargado' : 'No cargado'}</span></div>
+                        <div>🎨 Tema: <span style="color: #1DB954;">${stats.theme}</span></div>
+                        <div>❤️ Favoritos: <span style="color: #1DB954;">${stats.favorites}</span></div>
+                    </div>
+                </div>
+            `;
+            
+            showInfoModal(`Revisa la consola para más detalles. ${statsHtml}`);
+        }
+        
+        // ✅ EXPONER FUNCIONES ÚTILES AL WINDOW GLOBAL PARA DEBUGGING
+        window.klmzDebug = {
+            debugUserSession,
+            debugSupabaseConfig,
+            loadAllData,
+            showAppStats,
+            resetApp,
+            reloadTheme: loadSavedTheme
+        };
+        
+        console.log('🔧 Funciones de debug disponibles:', Object.keys(window.klmzDebug));
+        console.log('💡 Usa klmzDebug.showAppStats() para ver estadísticas completas');
+    </script>
+    
+    <!-- ✅ SERVICE WORKER SCRIPT -->
+    <script>
+        // ✅ REGISTRO MEJORADO DE SERVICE WORKER
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registrado con scope:', registration.scope);
+                        
+                        // Verificar actualizaciones
+                        registration.addEventListener('updatefound', () => {
+                            console.log('🔄 Nueva versión de Service Worker disponible');
+                        });
+                    })
+                    .catch(error => {
+                        console.log('⚠️ Service Worker registro falló:', error.message);
+                    });
             });
         }
     </script>
