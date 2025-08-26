@@ -256,7 +256,7 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
     <script>
-        // ✅ VARIABLES GLOBALES CORREGIDAS
+        // ✅ VARIABLES GLOBALES
         let supabase = null;
         let currentSong = null;
         let currentAlbum = null;
@@ -272,7 +272,7 @@
         let originalPlaylist = [];
         let db;
         
-        // ✅ CONFIGURACIÓN ACTUALIZADA
+        // ✅ CONFIGURACIÓN FINAL
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
@@ -325,12 +325,12 @@
             });
         }
         
-        // ✅ FUNCIÓN UPLOADFILE CON API KEY - SOLUCIÓN DEFINITIVA
+        // ✅ FUNCIÓN UPLOADFILE COMPLETAMENTE CORREGIDA (SIN .setKey())
         async function uploadFile(file) {
-            console.log("🔑 Subiendo con API Key de servidor...");
+            console.log("🔐 Subiendo con autenticación de usuario...");
             showLoadingIndicator(true);
             
-            // ✅ VERIFICAR QUE SEAS ADMIN EN SUPABASE
+            // ✅ VERIFICAR AUTENTICACIÓN
             if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
                 throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
             }
@@ -344,45 +344,57 @@
                 const storage = new Appwrite.Storage(client);
                 const bucketId = '68ad019f00207b1df467';
                 
-                // ✅ USAR TU NUEVA API KEY REGENERADA (REEMPLAZA AQUÍ)
+                // ✅ CONFIGURACIÓN CORRECTA PARA SDK WEB (SIN .setKey())
                 client
                     .setEndpoint('https://nyc.cloud.appwrite.io/v1')
-                    .setProject('68ab0cf2000365979a71')
-                    .setKey('standard_64c2b910e62ac938043988397b932e3eaee66b24cc0c297cbe3fcf98097fbceccac950a9ce108deaa2e41440b4e65e0af489a2a80f7877f9e01e62f3cb88c204afea768ab3ec01311b75e80a35f70ab481c5955e45501b6568168face6bab21e2f0e027e6375516a1f8aa7775a3c2566b732a8c6fb1c0f1ccf9533b591a98282'); // ← REEMPLAZAR CON TU NUEVA API KEY
+                    .setProject('68ab0cf2000365979a71');
                 
-                console.log('✅ Configuración con API Key:', {
+                console.log('✅ Configuración sin API Key:', {
                     adminEmail: currentUser.email,
+                    userId: currentUser.id,
                     bucketId: bucketId,
                     fileName: file.name,
                     fileSize: file.size,
-                    useApiKey: true,
-                    timestamp: new Date().toISOString()
+                    useUserAuth: true
                 });
                 
-                // ✅ SUBIR CON CREDENCIALES DE SERVIDOR
-                const response = await storage.createFile(bucketId, Appwrite.ID.unique(), file);
+                // ✅ SUBIR CON PERMISOS DE ARCHIVO
+                const response = await storage.createFile(
+                    bucketId, 
+                    Appwrite.ID.unique(), 
+                    file,
+                    [
+                        // Todos pueden leer
+                        Appwrite.Permission.read(Appwrite.Role.any()),
+                        // Solo tú puedes actualizar/eliminar
+                        Appwrite.Permission.update(Appwrite.Role.user(currentUser.id)),
+                        Appwrite.Permission.delete(Appwrite.Role.user(currentUser.id))
+                    ]
+                );
+                
                 const fileId = response.$id;
                 const publicUrl = storage.getFileView(bucketId, fileId);
                 
-                console.log("✅ ÉXITO - Archivo subido con API Key:", publicUrl.href);
+                console.log("✅ ÉXITO - Archivo subido:", publicUrl.href);
                 showInfoModal('🎵 ¡Archivo subido correctamente! ✅');
                 return publicUrl.href;
                 
             } catch (error) {
-                console.error('❌ Error con API Key:', error);
+                console.error('❌ Error:', error);
                 
                 if (error.code === 401) {
-                    throw new Error(`🔑 API Key inválida o sin permisos. 
+                    throw new Error(`🔐 Error de permisos:
                     
-🔧 SOLUCIÓN:
-1. Regenera la API Key en Appwrite Console
-2. Asegúrate que tenga scopes: files.read + files.write
-3. Reemplaza la API Key en el código
-4. La API Key anterior fue comprometida públicamente`);
-                }
-                
-                if (error.message.includes('bucket')) {
-                    throw new Error(`🪣 Bucket no encontrado: Verifica que el bucket ${bucketId} exista`);
+📋 SOLUCIÓN REQUERIDA:
+1. Ve a Appwrite Console → Storage → Bucket ${bucketId}
+2. Settings → Permissions
+3. Agrega tu email (${currentUser.email}) con permisos CREATE ✅
+4. Asegúrate que "File Security" esté DESACTIVADO ❌
+5. Role "Any" debe tener READ ✅
+
+🔧 Configuración necesaria:
+- Any: Solo READ
+- ${currentUser.email}: CREATE + READ + UPDATE + DELETE`);
                 }
                 
                 throw new Error(`❌ Error: ${error.message}`);
@@ -391,13 +403,12 @@
             }
         }
         
-        // ✅ FUNCIÓN DEBUG MEJORADA
+        // ✅ FUNCIÓN DEBUG
         function debugUserSession() {
             console.log('🔍 Debug completo de sesión:', {
                 currentUser: currentUser,
                 userEmail: currentUser?.email,
-                userIdDot: currentUser?.id,
-                userIdDollar: currentUser?.$id,
+                userId: currentUser?.id,
                 userAuthenticated: !!currentUser,
                 expectedAdminEmail: ADMIN_EMAIL,
                 isAdmin: currentUser?.email === ADMIN_EMAIL,
@@ -405,8 +416,7 @@
                 projectId: '68ab0cf2000365979a71',
                 appwriteLoaded: typeof Appwrite !== 'undefined',
                 supabaseLoaded: !!supabase,
-                apiKeyConfigured: true, // Cambia a true después de agregar la API Key
-                currentUserStructure: currentUser
+                sdkWebCorrect: true
             });
             
             if (!currentUser) {
@@ -414,7 +424,7 @@
             } else if (currentUser.email !== ADMIN_EMAIL) {
                 console.error('❌ Usuario no es admin');
             } else {
-                console.log('✅ Usuario admin verificado - Listo para subir archivos');
+                console.log('✅ Usuario admin verificado - Listo para subir');
             }
         }
         
@@ -631,7 +641,7 @@
         
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin con API Key</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">🔑 Usando API Key segura de Appwrite | Bucket: 68ad019f00207b1df467</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
+            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin sin API Key</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Usando autenticación de usuario segura | Bucket: 68ad019f00207b1df467</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
             await renderAdminLists(); 
             setupAdminForms(); 
         }
@@ -671,7 +681,7 @@
                 
                 try { 
                     if (coverFile) { 
-                        showInfoModal('🔑 Subiendo portada con API Key...'); 
+                        showInfoModal('🔐 Subiendo portada con autenticación de usuario...'); 
                         cover_url = await uploadFile(coverFile); 
                     } 
                     if (!cover_url) { 
@@ -721,7 +731,7 @@
                 
                 try { 
                     if (songFile) { 
-                        showInfoModal('🔑 Subiendo canción con API Key...'); 
+                        showInfoModal('🔐 Subiendo canción con autenticación de usuario...'); 
                         song_url = await uploadFile(songFile); 
                     } 
                     if (!song_url) { 
@@ -813,76 +823,56 @@
             }); 
         };
         
-        // ✅ INICIALIZACIÓN COMPLETA CON API KEY
+        // ✅ INICIALIZACIÓN COMPLETA SIN API KEY
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con API Key de Appwrite...');
+            console.log('🚀 KLMZ MUSIC iniciando con autenticación de usuario...');
             
             if (typeof Appwrite !== 'undefined') {
-                console.log('✅ Appwrite SDK cargado correctamente');
+                console.log('✅ Appwrite SDK Web cargado correctamente (sin .setKey())');
             } else {
                 console.error('❌ Appwrite SDK NO se pudo cargar');
             }
             
-            console.log('🔧 Configuración:', {
+            console.log('🔧 Configuración final:', {
                 adminEmail: ADMIN_EMAIL,
                 bucket: '68ad019f00207b1df467',
                 project: '68ab0cf2000365979a71',
-                apiKeyConfigured: 'Reemplaza con tu API Key'
+                useUserAuth: true,
+                sdkWebCorrect: true
             });
             
-            // ✅ CONFIGURAR AUDIO PLAYER
             const audio = document.getElementById('audio-player');
             audio.addEventListener('ended', handleSongEnded);
             audio.addEventListener('timeupdate', updateProgressBar);
-            audio.addEventListener('play', () => { 
-                isPlaying = true; 
-                updatePlayButtons(); 
-            });
-            audio.addEventListener('pause', () => { 
-                isPlaying = false; 
-                updatePlayButtons(); 
-            });
+            audio.addEventListener('play', () => { isPlaying = true; updatePlayButtons(); });
+            audio.addEventListener('pause', () => { isPlaying = false; updatePlayButtons(); });
+            document.getElementById('mini-player').addEventListener('click', (e) => { if (!e.target.closest('.player-controls-inline')) openFullPlayer(); });
             
-            // ✅ CONFIGURAR MINI PLAYER
-            document.getElementById('mini-player').addEventListener('click', (e) => { 
-                if (!e.target.closest('.player-controls-inline')) {
-                    openFullPlayer(); 
-                }
-            });
-            
-            // ✅ CARGAR TEMA GUARDADO
             loadSavedTheme();
             
-            // ✅ INICIALIZAR BASE DE DATOS Y CARGAR SUPABASE
             initDB().then(() => {
                 console.log('✅ IndexedDB inicializada correctamente');
                 return loadSupabase();
             }).then(() => {
-                console.log('✅ KLMZ MUSIC inicializado completamente con API Key');
+                console.log('✅ KLMZ MUSIC inicializado completamente');
                 console.log('🔍 Funciones disponibles:');
                 console.log('  - debugUserSession() - Verificar sesión de usuario');
-                console.log('  - La función uploadFile usa API Key segura de Appwrite');
+                console.log('  - uploadFile usa autenticación correcta sin .setKey()');
             }).catch(err => {
-                console.error("❌ Error crítico durante la inicialización:", err);
-                showInfoModal("Error inicializando la aplicación. Revisa tu conexión a internet.");
+                console.error("❌ Error crítico:", err);
+                showInfoModal("Error inicializando la aplicación");
             });
         });
     </script>
     
-    <!-- ✅ SERVICE WORKER OPCIONAL -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(registration => {
-                        console.log('✅ Service Worker registrado correctamente:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('⚠️ Service Worker no se pudo registrar (opcional):', error.message);
-                    });
+                    .then(registration => console.log('✅ Service Worker registrado:', registration.scope))
+                    .catch(error => console.log('⚠️ Service Worker falló:', error.message));
             });
         }
     </script>
 </body>
 </html>
-
