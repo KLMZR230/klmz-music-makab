@@ -40,7 +40,7 @@
         .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
         .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
         .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
-        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor: pointer; transition: all 0.3s ease; }
+        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: all 0.3s ease; }
         .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
         .full-player-backdrop.active { display: flex;}
         .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
@@ -272,10 +272,137 @@
         let originalPlaylist = [];
         let db;
         
-        // ✅ CONFIGURACIÓN FINAL
+        // ✅ CONFIGURACIÓN FINAL CON APPWRITE
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
+        const ADMIN_PASSWORD = 'TU_PASSWORD_AQUI'; // ✅ REEMPLAZAR CON TU PASSWORD DE APPWRITE
+        
+        // ✅ CONFIGURACIÓN APPWRITE
+        let appwriteClient = null;
+        let appwriteAccount = null;
+        let appwriteStorage = null;
+        
+        function initAppwrite() {
+            appwriteClient = new Appwrite.Client();
+            appwriteAccount = new Appwrite.Account(appwriteClient);
+            appwriteStorage = new Appwrite.Storage(appwriteClient);
+            
+            appwriteClient
+                .setEndpoint('https://nyc.cloud.appwrite.io/v1')
+                .setProject('68ab0cf2000365979a71');
+                
+            console.log('✅ Appwrite inicializado correctamente');
+        }
+        
+        // ✅ FUNCIÓN PARA AUTENTICAR EN APPWRITE EXPLICITAMENTE
+        async function authenticateInAppwrite() {
+            if (!appwriteAccount) {
+                initAppwrite();
+            }
+            
+            try {
+                // Intentar obtener sesión actual
+                const session = await appwriteAccount.get();
+                if (session.email === ADMIN_EMAIL) {
+                    console.log('✅ Sesión Appwrite activa:', session.email);
+                    return session;
+                }
+            } catch (sessionError) {
+                console.log('⚡ No hay sesión activa, creando nueva sesión...');
+                
+                try {
+                    // Crear sesión explícita con email y password
+                    await appwriteAccount.createEmailSession(ADMIN_EMAIL, ADMIN_PASSWORD);
+                    const newSession = await appwriteAccount.get();
+                    console.log('✅ Nueva sesión creada en Appwrite:', newSession.email);
+                    return newSession;
+                } catch (loginError) {
+                    console.error('❌ Error creando sesión:', loginError);
+                    throw new Error(`No se pudo autenticar en Appwrite: ${loginError.message}`);
+                }
+            }
+        }
+        
+        // ✅ FUNCIÓN UPLOADFILE CON AUTENTICACIÓN EXPLÍCITA APPWRITE
+        async function uploadFile(file) {
+            console.log("🔐 Subiendo con autenticación explícita de Appwrite...");
+            showLoadingIndicator(true);
+            
+            // ✅ VERIFICAR AUTENTICACIÓN SUPABASE
+            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+                throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
+            }
+            
+            if (typeof Appwrite === 'undefined') {
+                throw new Error('❌ Appwrite SDK no está cargado');
+            }
+            
+            try {
+                // ✅ ASEGURAR AUTENTICACIÓN EN APPWRITE
+                const appwriteSession = await authenticateInAppwrite();
+                
+                // ✅ CONFIGURAR VARIABLES
+                const bucketId = '68ad019f00207b1df467';
+                
+                console.log('✅ Configuración completa:', {
+                    supabaseUser: currentUser.email,
+                    appwriteUser: appwriteSession.email,
+                    appwriteUserId: appwriteSession.$id,
+                    bucketId: bucketId,
+                    fileName: file.name,
+                    fileSize: file.size
+                });
+                
+                // ✅ SUBIR ARCHIVO CON SESIÓN ACTIVA
+                const response = await appwriteStorage.createFile(
+                    bucketId,
+                    Appwrite.ID.unique(),
+                    file,
+                    [
+                        // Todos pueden leer
+                        Appwrite.Permission.read(Appwrite.Role.any()),
+                        // Solo el usuario autenticado puede actualizar/eliminar
+                        Appwrite.Permission.update(Appwrite.Role.user(appwriteSession.$id)),
+                        Appwrite.Permission.delete(Appwrite.Role.user(appwriteSession.$id))
+                    ]
+                );
+                
+                const fileId = response.$id;
+                const publicUrl = appwriteStorage.getFileView(bucketId, fileId);
+                
+                console.log("✅ ÉXITO - Archivo subido con sesión explícita:", {
+                    fileId: fileId,
+                    publicUrl: publicUrl.href,
+                    appwriteUser: appwriteSession.email
+                });
+                
+                showInfoModal('🎵 ¡Archivo subido correctamente! ✅');
+                return publicUrl.href;
+                
+            } catch (error) {
+                console.error('❌ Error completo:', error);
+                
+                if (error.code === 401 || error.message.includes('unauthorized')) {
+                    throw new Error(`🔐 Error de autenticación persistente:
+                    
+📋 CAUSAS POSIBLES:
+1. Password incorrecto en ADMIN_PASSWORD
+2. Usuario no creado en Appwrite Console
+3. Permisos del bucket mal configurados
+
+🔧 SOLUCIÓN:
+1. Verifica que el usuario ${ADMIN_EMAIL} exista en Appwrite Console
+2. Confirma que ADMIN_PASSWORD sea correcto
+3. Verifica permisos del bucket: user:ID con CREATE ✅
+4. File Security debe estar OFF ❌`);
+                }
+                
+                throw new Error(`❌ Error: ${error.message}`);
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
         
         // IndexedDB para descargas
         function initDB() {
@@ -325,100 +452,7 @@
             });
         }
         
-        // ✅ FUNCIÓN UPLOADFILE COMPLETAMENTE CORREGIDA (bucketId DEFINIDO)
-        async function uploadFile(file) {
-            console.log("🔐 Subiendo con autenticación de usuario...");
-            showLoadingIndicator(true);
-            
-            // ✅ VERIFICAR AUTENTICACIÓN
-            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
-                throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
-            }
-            
-            if (typeof Appwrite === 'undefined') {
-                throw new Error('❌ Appwrite SDK no está cargado');
-            }
-            
-            try {
-                // ✅ DEFINIR TODAS LAS VARIABLES AL INICIO DE LA FUNCIÓN
-                const client = new Appwrite.Client();
-                const storage = new Appwrite.Storage(client);
-                const bucketId = '68ad019f00207b1df467'; // ✅ BUCKET ID DEFINIDO CORRECTAMENTE
-                const projectId = '68ab0cf2000365979a71'; // ✅ PROJECT ID DEFINIDO
-                const endpoint = 'https://nyc.cloud.appwrite.io/v1'; // ✅ ENDPOINT DEFINIDO
-                
-                // ✅ CONFIGURACIÓN CORRECTA PARA SDK WEB (SIN .setKey())
-                client
-                    .setEndpoint(endpoint)
-                    .setProject(projectId);
-                
-                console.log('✅ Configuración completa:', {
-                    adminEmail: currentUser.email,
-                    userId: currentUser.id,
-                    bucketId: bucketId, // ✅ BUCKETID ESTÁ DEFINIDO
-                    projectId: projectId,
-                    endpoint: endpoint,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    useUserAuth: true
-                });
-                
-                // ✅ SUBIR CON PERMISOS DE ARCHIVO
-                const response = await storage.createFile(
-                    bucketId, // ✅ VARIABLE DEFINIDA CORRECTAMENTE
-                    Appwrite.ID.unique(), 
-                    file,
-                    [
-                        // Todos pueden leer
-                        Appwrite.Permission.read(Appwrite.Role.any()),
-                        // Solo tú puedes actualizar/eliminar
-                        Appwrite.Permission.update(Appwrite.Role.user(currentUser.id)),
-                        Appwrite.Permission.delete(Appwrite.Role.user(currentUser.id))
-                    ]
-                );
-                
-                const fileId = response.$id;
-                const publicUrl = storage.getFileView(bucketId, fileId); // ✅ BUCKET ID USADO CORRECTAMENTE
-                
-                console.log("✅ ÉXITO - Archivo subido:", {
-                    fileId: fileId,
-                    publicUrl: publicUrl.href,
-                    bucketUsed: bucketId
-                });
-                
-                showInfoModal('🎵 ¡Archivo subido correctamente! ✅');
-                return publicUrl.href;
-                
-            } catch (error) {
-                console.error('❌ Error completo:', error);
-                
-                if (error.code === 401 || error.message.includes('unauthorized')) {
-                    throw new Error(`🔐 Error de permisos en Appwrite:
-                    
-📋 SOLUCIÓN REQUERIDA:
-1. Ve a Appwrite Console: https://cloud.appwrite.io
-2. Storage → Buckets → 68ad019f00207b1df467
-3. Settings → Permissions
-4. Agrega tu email (${currentUser.email}) con permisos CREATE ✅
-5. Asegúrate que "File Security" esté DESACTIVADO ❌
-6. Role "Any" debe tener READ ✅
-
-🔧 Configuración necesaria:
-- Any: Solo READ
-- ${currentUser.email}: CREATE + READ + UPDATE + DELETE`);
-                }
-                
-                if (error.message.includes('bucket')) {
-                    throw new Error(`🪣 Bucket no encontrado: Verifica que el bucket 68ad019f00207b1df467 exista en tu proyecto Appwrite`);
-                }
-                
-                throw new Error(`❌ Error: ${error.message}`);
-            } finally {
-                showLoadingIndicator(false);
-            }
-        }
-        
-        // ✅ FUNCIÓN DEBUG
+        // ✅ FUNCIÓN DEBUG MEJORADA
         function debugUserSession() {
             console.log('🔍 Debug completo de sesión:', {
                 currentUser: currentUser,
@@ -432,23 +466,31 @@
                 endpoint: 'https://nyc.cloud.appwrite.io/v1',
                 appwriteLoaded: typeof Appwrite !== 'undefined',
                 supabaseLoaded: !!supabase,
-                bucketIdDefined: true // ✅ CONFIRMAMOS QUE ESTÁ DEFINIDO
+                appwriteConfigured: !!appwriteClient,
+                authenticationMethod: 'Explicit Appwrite Session'
             });
             
             if (!currentUser) {
-                console.error('❌ Usuario NO autenticado');
-                console.log('💡 SOLUCIÓN: Inicia sesión con klmzr@gmail.com');
+                console.error('❌ Usuario NO autenticado en Supabase');
             } else if (currentUser.email !== ADMIN_EMAIL) {
                 console.error('❌ Usuario no es admin');
-                console.log(`💡 Tu email: ${currentUser.email}`);
-                console.log(`💡 Email requerido: ${ADMIN_EMAIL}`);
             } else {
-                console.log('✅ Usuario admin verificado - bucketId definido correctamente');
+                console.log('✅ Usuario admin verificado - Autenticación dual activa');
+            }
+            
+            // ✅ VERIFICAR SESIÓN APPWRITE
+            if (appwriteAccount) {
+                appwriteAccount.get().then(session => {
+                    console.log('✅ Sesión Appwrite activa:', session.email);
+                }).catch(error => {
+                    console.log('⚠️ No hay sesión Appwrite activa');
+                });
             }
         }
         
         window.debugUserSession = debugUserSession;
         
+        // [RESTO DEL CÓDIGO JAVASCRIPT IGUAL QUE ANTES]
         window.downloadSong = async function(songId, element) {
             if (element.classList.contains('downloaded')) {
                 showInfoModal('Esta canción ya está descargada.');
@@ -660,7 +702,7 @@
         
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin (bucketId corregido)</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ bucketId definido correctamente | 68ad019f00207b1df467</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
+            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0 0 0.5rem 0;">🔐 Panel Admin con Autenticación Dual</h3><p style="margin: 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p><p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.85rem;">✅ Supabase (datos) + Appwrite (archivos) | Sesión explícita activa</p><button onclick="debugUserSession()" style="background: #444; color: #fff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">🔍 Debug User Session</button></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
             await renderAdminLists(); 
             setupAdminForms(); 
         }
@@ -700,7 +742,7 @@
                 
                 try { 
                     if (coverFile) { 
-                        showInfoModal('🔐 Subiendo portada con bucketId corregido...'); 
+                        showInfoModal('🔐 Subiendo portada con autenticación dual...'); 
                         cover_url = await uploadFile(coverFile); 
                     } 
                     if (!cover_url) { 
@@ -750,7 +792,7 @@
                 
                 try { 
                     if (songFile) { 
-                        showInfoModal('🔐 Subiendo canción con bucketId corregido...'); 
+                        showInfoModal('🔐 Subiendo canción con autenticación dual...'); 
                         song_url = await uploadFile(songFile); 
                     } 
                     if (!song_url) { 
@@ -842,22 +884,24 @@
             }); 
         };
         
-        // ✅ INICIALIZACIÓN COMPLETA CON BUCKETID DEFINIDO
+        // ✅ INICIALIZACIÓN COMPLETA CON AUTENTICACIÓN DUAL
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con bucketId definido correctamente...');
+            console.log('🚀 KLMZ MUSIC iniciando con autenticación dual...');
             
             if (typeof Appwrite !== 'undefined') {
-                console.log('✅ Appwrite SDK Web cargado correctamente');
+                console.log('✅ Appwrite SDK cargado correctamente');
+                initAppwrite();
             } else {
                 console.error('❌ Appwrite SDK NO se pudo cargar');
             }
             
-            console.log('🔧 Configuración verificada:', {
+            console.log('🔧 Configuración dual:', {
                 adminEmail: ADMIN_EMAIL,
-                bucketId: '68ad019f00207b1df467', // ✅ DEFINIDO CORRECTAMENTE
-                projectId: '68ab0cf2000365979a71',
-                endpoint: 'https://nyc.cloud.appwrite.io/v1',
-                bucketIdFixed: true
+                supabaseUrl: supabaseUrl,
+                appwriteEndpoint: 'https://nyc.cloud.appwrite.io/v1',
+                appwriteProject: '68ab0cf2000365979a71',
+                bucketId: '68ad019f00207b1df467',
+                dualAuthentication: true
             });
             
             const audio = document.getElementById('audio-player');
@@ -873,10 +917,11 @@
                 console.log('✅ IndexedDB inicializada correctamente');
                 return loadSupabase();
             }).then(() => {
-                console.log('✅ KLMZ MUSIC inicializado - bucketId error RESUELTO');
+                console.log('✅ KLMZ MUSIC inicializado con autenticación dual');
                 console.log('🔍 Funciones disponibles:');
-                console.log('  - debugUserSession() - Verificar sesión');
-                console.log('  - uploadFile() - Ahora con bucketId definido correctamente');
+                console.log('  - debugUserSession() - Verificar sesión dual');
+                console.log('  - uploadFile() - Con autenticación explícita Appwrite');
+                console.log('  - Supabase maneja datos, Appwrite maneja archivos');
             }).catch(err => {
                 console.error("❌ Error crítico:", err);
                 showInfoModal("Error inicializando la aplicación");
@@ -889,7 +934,6 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => console.log('✅ Service Worker registrado:', registration.scope))
-                    .catch(error => console.log('⚠️ Service Worker fal
                     .catch(error => console.log('⚠️ Service Worker falló:', error.message));
             });
         }
