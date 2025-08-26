@@ -323,7 +323,7 @@
             });
         }
         
-        // ✅ FUNCIÓN UPLOADFILE COMPLETAMENTE CORREGIDA CON PROJECT ID CORRECTO
+        // ✅ FUNCIÓN UPLOADFILE COMPLETAMENTE CORREGIDA CON TU BUCKET ID REAL
         async function uploadFile(file) {
             console.log("Iniciando subida de archivo a Appwrite...");
             showLoadingIndicator(true);
@@ -335,20 +335,20 @@
             try {
                 const client = new Appwrite.Client();
                 const storage = new Appwrite.Storage(client);
-                const bucketId = '68acb56c001b6384c0db';
                 
-                // ✅ PROJECT ID CORREGIDO SEGÚN TU CONSOLA DE APPWRITE
+                // ✅ TU BUCKET ID REAL CORRECTO
+                const bucketId = '68ab1101001cff947e6b';
+                
+                // ✅ PROJECT ID CORRECTO SEGÚN TU CONSOLA
                 client
                     .setEndpoint('https://nyc.cloud.appwrite.io/v1')
-                    .setProject('68ab0cf2000365979a71'); // ← ID correcto de tu consola
+                    .setProject('68ab0cf2000365979a71');
                 
-                console.log('✅ Cliente Appwrite configurado con Project ID:', '68ab0cf2000365979a71');
-                console.log('🔍 Configuración Appwrite:', {
-                    endpoint: 'https://nyc.cloud.appwrite.io/v1',
+                console.log('✅ Configuración Appwrite verificada:', {
                     projectId: '68ab0cf2000365979a71',
-                    bucketId: '68acb56c001b6384c0db',
+                    bucketId: bucketId,
                     currentOrigin: window.location.origin,
-                    platformConfigured: 'klmz-music-makab.netlify.app'
+                    platform: 'klmz-music-makab.netlify.app'
                 });
                 
                 const response = await storage.createFile(bucketId, Appwrite.ID.unique(), file);
@@ -356,13 +356,18 @@
                 const publicUrl = storage.getFileView(bucketId, fileId);
                 
                 console.log("✅ Archivo subido a Appwrite con éxito:", publicUrl.href);
+                showInfoModal('Archivo subido correctamente ✅');
                 return publicUrl.href;
                 
             } catch (error) {
                 console.error('❌ Error detallado subiendo archivo:', error);
                 
                 if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                    throw new Error(`Error de CORS: Verifica que el dominio '${window.location.origin}' esté agregado en Appwrite Console → Settings → Platforms`);
+                    throw new Error(`Error de CORS: Verifica que el dominio '${window.location.origin}' esté agregado en Appwrite Console`);
+                }
+                
+                if (error.message.includes('bucket') || error.message.includes('not found')) {
+                    throw new Error(`Error de bucket: El bucket ${bucketId} no existe o no tienes permisos`);
                 }
                 
                 throw new Error(`Error subiendo archivo: ${error.message}`);
@@ -538,26 +543,8 @@
         }
         
         function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
-        
-        async function updateMiniPlayer() {
-            document.getElementById('mini-player').style.display = 'flex';
-            const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null);
-            let coverUrl = currentAlbum?.cover_url || '';
-            if (downloadedSong && downloadedSong.cover) { coverUrl = URL.createObjectURL(downloadedSong.cover); }
-            document.getElementById('mini-player-img').src = coverUrl;
-            document.getElementById('mini-player-title').textContent = currentSong?.title || 'Sin título';
-            document.getElementById('mini-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
-        }
-        
-        async function updateFullPlayer() {
-            const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null);
-            let coverUrl = currentAlbum?.cover_url || '';
-            if (downloadedSong && downloadedSong.cover) { coverUrl = URL.createObjectURL(downloadedSong.cover); }
-            document.getElementById('full-player-cover').src = coverUrl;
-            document.getElementById('full-player-title').textContent = currentSong?.title || 'Sin título';
-            document.getElementById('full-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
-        }
-        
+        async function updateMiniPlayer() { document.getElementById('mini-player').style.display = 'flex'; const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null); let coverUrl = currentAlbum?.cover_url || ''; if (downloadedSong && downloadedSong.cover) { coverUrl = URL.createObjectURL(downloadedSong.cover); } document.getElementById('mini-player-img').src = coverUrl; document.getElementById('mini-player-title').textContent = currentSong?.title || 'Sin título'; document.getElementById('mini-player-artist').textContent = currentAlbum?.artist || 'Desconocido'; }
+        async function updateFullPlayer() { const downloadedSong = await getSongFromDB(currentSong.id).catch(() => null); let coverUrl = currentAlbum?.cover_url || ''; if (downloadedSong && downloadedSong.cover) { coverUrl = URL.createObjectURL(downloadedSong.cover); } document.getElementById('full-player-cover').src = coverUrl; document.getElementById('full-player-title').textContent = currentSong?.title || 'Sin título'; document.getElementById('full-player-artist').textContent = currentAlbum?.artist || 'Desconocido'; }
         function updatePlayButtons() { const playText = isPlaying ? '⏸' : '▶'; ['mini-play-btn', 'full-play-btn'].forEach(id => { const btn = document.getElementById(id); if (btn) btn.textContent = playText; }); }
         window.togglePlay = function() { const audio = document.getElementById('audio-player'); if (isPlaying) audio.pause(); else audio.play(); }
         window.nextSong = function() { if (currentPlaylist.length === 0) return; currentIndex = (currentIndex + 1) % currentPlaylist.length; playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex); }
