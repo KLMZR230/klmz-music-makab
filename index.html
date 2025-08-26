@@ -323,54 +323,70 @@
             });
         }
         
-        // ✅ FUNCIÓN UPLOADFILE COMPLETAMENTE CORREGIDA CON TU BUCKET ID REAL
+        // ✅ FUNCIÓN UPLOADFILE CORREGIDA CON VERIFICACIÓN DE ADMIN Y PERMISOS
         async function uploadFile(file) {
-            console.log("Iniciando subida de archivo a Appwrite...");
+            console.log("🎵 Iniciando subida de archivo como administrador...");
             showLoadingIndicator(true);
             
+            // ✅ VERIFICAR QUE ESTÉS AUTENTICADO COMO ADMIN
+            if (!currentUser) {
+                throw new Error('⚠️ Debes iniciar sesión como administrador (klmzr@gmail.com) para subir archivos');
+            }
+            
+            if (!isAdmin()) {
+                throw new Error('🔒 Solo klmzr@gmail.com puede subir música y álbumes');
+            }
+            
             if (typeof Appwrite === 'undefined') {
-                throw new Error('Appwrite SDK no está cargado. Verifica la conexión.');
+                throw new Error('❌ Appwrite SDK no está cargado. Verifica la conexión.');
             }
             
             try {
                 const client = new Appwrite.Client();
                 const storage = new Appwrite.Storage(client);
                 
-                // ✅ TU BUCKET ID REAL CORRECTO
+                // ✅ TU BUCKET ID CORRECTO CON PERMISOS CONFIGURADOS
                 const bucketId = '68ab1101001cff947e6b';
                 
-                // ✅ PROJECT ID CORRECTO SEGÚN TU CONSOLA
+                // ✅ PROJECT ID CORRECTO
                 client
                     .setEndpoint('https://nyc.cloud.appwrite.io/v1')
                     .setProject('68ab0cf2000365979a71');
                 
-                console.log('✅ Configuración Appwrite verificada:', {
+                console.log('✅ Administrador verificado y configuración Appwrite:', {
+                    adminEmail: currentUser.email,
+                    userId: currentUser.$id,
                     projectId: '68ab0cf2000365979a71',
                     bucketId: bucketId,
-                    currentOrigin: window.location.origin,
-                    platform: 'klmz-music-makab.netlify.app'
+                    isAdminConfirmed: isAdmin(),
+                    bucketPermissions: 'Any:Read, Admin:Create/Update/Delete'
                 });
                 
+                // ✅ SUBIR ARCHIVO - Los permisos del bucket permiten al admin crear
                 const response = await storage.createFile(bucketId, Appwrite.ID.unique(), file);
                 const fileId = response.$id;
                 const publicUrl = storage.getFileView(bucketId, fileId);
                 
-                console.log("✅ Archivo subido a Appwrite con éxito:", publicUrl.href);
-                showInfoModal('Archivo subido correctamente ✅');
+                console.log("✅ Archivo subido exitosamente por admin:", publicUrl.href);
+                showInfoModal('🎵 Archivo subido correctamente como administrador ✅');
                 return publicUrl.href;
                 
             } catch (error) {
                 console.error('❌ Error detallado subiendo archivo:', error);
                 
-                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                    throw new Error(`Error de CORS: Verifica que el dominio '${window.location.origin}' esté agregado en Appwrite Console`);
+                if (error.message.includes('unauthorized') || error.code === 401) {
+                    throw new Error('🔒 Error de permisos: Verifica que tu usuario tenga permisos CREATE en el bucket de Appwrite Console');
                 }
                 
-                if (error.message.includes('bucket') || error.message.includes('not found')) {
-                    throw new Error(`Error de bucket: El bucket ${bucketId} no existe o no tienes permisos`);
+                if (error.message.includes('CORS')) {
+                    throw new Error('🌐 Error de CORS: Verifica que klmz-music-makab.netlify.app esté en las plataformas de Appwrite Console');
                 }
                 
-                throw new Error(`Error subiendo archivo: ${error.message}`);
+                if (error.message.includes('bucket')) {
+                    throw new Error('🪣 Error de bucket: Verifica que el bucket exista y tenga permisos correctos');
+                }
+                
+                throw new Error(`❌ Error subiendo archivo: ${error.message}`);
             } finally {
                 showLoadingIndicator(false);
             }
@@ -575,7 +591,7 @@
         window.toggleFavorite = function(songId, el) { let favorites = getLocalFavorites(); const isFavorite = favorites.includes(songId); if (isFavorite) { favorites = favorites.filter(id => id !== songId); } else { favorites.push(songId); } saveLocalFavorites(favorites); if (el) { el.style.color = isFavorite ? '#666' : '#1DB954'; el.innerHTML = isFavorite ? '🤍' : '❤️'; } if (document.getElementById('favorites-section').classList.contains('active')) loadFavorites(); }
         async function loadFavorites() { const content = document.getElementById('favorites-content'); const favorites = getLocalFavorites(); if (favorites.length === 0) { content.innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>No tienes favoritos</h2></div>`; return; } const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites); if (error) { content.innerHTML = `Error cargando favoritos.`; return; } let html = '<div class="favorites-list">'; songs.forEach(song => { html += `<div class="favorite-item" onclick="playSongFromFavorites('${song.id}')"><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.albums.artist} • ${song.albums.title}</div></div><div class="song-actions"><span onclick="event.stopPropagation(); toggleFavorite('${song.id}', this);" style="cursor: pointer; color: #1DB954; font-size: 1.2rem;">❤️</span><span style="font-size: 1.1rem;">▶</span></div></div>`; }); content.innerHTML = html + '</div>'; }
         window.playSongFromFavorites = async function(songId) { const song = songsWithAlbumInfo.find(s => s.id === songId); if (song) playSong(song, song.albums, [song], 0); }
-        window.showSection = function(section) { document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active')); document.getElementById(`${section}-section`).classList.add('active'); document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active')); const navIdMap = { home: 'home', search: 'search', downloads: 'downloads', favorites: 'favs' }; const navItem = document.getElementById(`nav-${navIdMap[section]}`); if(navItem) navItem.classList.add('active'); if (section === 'home') { showAlbumsGrid(); } if (section === 'favorites') loadFavorites(); if (section === 'downloads') loadDownloads(); if (section === 'admin') { if (!isAdmin()) { showInfoModal('Acceso denegado. Solo para administradores.'); showSection('home'); return; } renderAdminPanel(); } }
+        window.showSection = function(section) { document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active')); document.getElementById(`${section}-section`).classList.add('active'); document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active')); const navIdMap = { home: 'home', search: 'search', downloads: 'downloads', favorites: 'favs' }; const navItem = document.getElementById(`nav-${navIdMap[section]}`); if(navItem) navItem.classList.add('active'); if (section === 'home') { showAlbumsGrid(); } if (section === 'favorites') loadFavorites(); if (section === 'downloads') loadDownloads(); if (section === 'admin') { if (!isAdmin()) { showInfoModal('🔒 Acceso denegado. Solo klmzr@gmail.com puede acceder al panel de administración.'); showSection('home'); return; } renderAdminPanel(); } }
         window.showAlbumsGrid = function() { document.getElementById('album-detail').style.display = 'none'; document.getElementById('albums').style.display = 'grid'; }
         window.playSongFromPlaylist = function(index) { playSong(currentPlaylist[index], currentAlbum, currentPlaylist, index); }
         window.searchMusic = function() { const query = document.getElementById('search-input').value.toLowerCase().trim(); const results = document.getElementById('search-results'); if (!query) { results.innerHTML = ''; return; } const foundAlbums = allAlbums.filter(a => a.title.toLowerCase().includes(query) || a.artist.toLowerCase().includes(query)); const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.albums.artist.toLowerCase().includes(query)); let html = ''; if (foundAlbums.length) { html += '<h3>📀 Álbumes</h3><div class="album-grid">' + foundAlbums.map(album => `<div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'><img class="album-img" src="${album.cover_url}"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`).join('') + '</div>'; } if (foundSongs.length) { html += '<h3>🎵 Canciones</h3>' + foundSongs.map(song => `<div class="search-song-item" onclick="playSongFromSearch('${song.id}')"><div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums.artist}</div></div><div style="font-size: 1.1rem;">▶</div></div>`).join(''); } results.innerHTML = (html || '<h3>No se encontraron resultados</h3>'); }
@@ -587,7 +603,7 @@
         
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div class="admin-section"><h4>Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
+            adminContent.innerHTML = `<div style="background: #1a4a2e; border: 2px solid #1DB954; padding: 1rem; border-radius: 8px; margin-bottom: 2rem;"><h3 style="color: #1DB954; margin: 0;">🔐 Panel de Administración Exclusivo</h3><p style="margin: 0.5rem 0 0 0; color: #b3b3b3;">Solo ${ADMIN_EMAIL} puede subir música y álbumes</p></div><div class="admin-section"><h4>🎵 Gestión de Álbumes</h4><form id="album-form" class="admin-form"><input type="hidden" id="album-id"><input type="hidden" id="album-cover-url"><div class="form-group"><input type="text" id="album-title" placeholder="Título del Álbum" required></div><div class="form-group"><input type="text" id="album-artist" placeholder="Artista" required></div><div class="form-group"><label>Portada del Álbum</label><input type="file" id="album-cover" accept="image/*" class="form-control"><small id="current-album-cover" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Álbum</button><button type="button" id="cancel-album-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-album-list" class="admin-list">Cargando álbumes...</div></div><div class="admin-section"><h4>🎼 Gestión de Canciones</h4><form id="song-form" class="admin-form"><input type="hidden" id="song-id"><input type="hidden" id="song-url-hidden"><div class="form-group"><input type="text" id="song-title" placeholder="Título de la Canción" required></div><div class="form-group"><select id="song-album-select" required><option>Cargando álbumes...</option></select></div><div class="form-group"><label>Archivo de Canción</label><input type="file" id="song-url" accept="audio/*" class="form-control"><small id="current-song-url" style="display: block; margin-top: 5px; color: #b3b3b3;"></small></div><button type="submit" class="btn-primary">Guardar Canción</button><button type="button" id="cancel-song-edit" class="btn-secondary" style="display:none; margin-top: .5rem;">Cancelar Edición</button></form><div id="admin-song-list" class="admin-list">Cargando canciones...</div></div>`; 
             await renderAdminLists(); 
             setupAdminForms(); 
         }
@@ -607,14 +623,28 @@
             const albumForm = document.getElementById('album-form'); 
             albumForm.addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
+                
+                // ✅ VERIFICACIÓN ESTRICTA DE ADMIN
+                if (!currentUser) {
+                    showInfoModal('🔒 Debes iniciar sesión como administrador');
+                    showAuth('login');
+                    return;
+                }
+                
+                if (!isAdmin()) {
+                    showInfoModal('⚠️ Solo klmzr@gmail.com puede subir álbumes');
+                    return;
+                }
+                
                 const id = document.getElementById('album-id').value; 
                 const title = document.getElementById('album-title').value; 
                 const artist = document.getElementById('album-artist').value; 
                 const coverFile = document.getElementById('album-cover').files[0]; 
                 let cover_url = document.getElementById('album-cover-url').value; 
+                
                 try { 
                     if (coverFile) { 
-                        showInfoModal('Subiendo portada...'); 
+                        showInfoModal('🎵 Subiendo portada como administrador...'); 
                         cover_url = await uploadFile(coverFile); 
                     } 
                     if (!cover_url) { 
@@ -625,7 +655,7 @@
                     const { error } = id ? await supabase.from('albums').update({ title, artist, cover_url }).eq('id', id) : await supabase.from('albums').insert([{ title, artist, cover_url }]); 
                     showLoadingIndicator(false); 
                     if (error) throw error; 
-                    showInfoModal('Álbum guardado con éxito.'); 
+                    showInfoModal('✅ Álbum guardado exitosamente por admin'); 
                     albumForm.reset(); 
                     document.getElementById('album-id').value = ''; 
                     document.getElementById('album-cover-url').value = ''; 
@@ -635,7 +665,7 @@
                     await renderAdminLists(); 
                 } catch (err) { 
                     showLoadingIndicator(false); 
-                    showInfoModal('Error guardando álbum: ' + err.message); 
+                    showInfoModal('❌ Error guardando álbum: ' + err.message); 
                 } 
             }); 
             
@@ -650,14 +680,22 @@
             const songForm = document.getElementById('song-form'); 
             songForm.addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
+                
+                // ✅ VERIFICACIÓN ESTRICTA DE ADMIN
+                if (!isAdmin()) {
+                    showInfoModal('⚠️ Solo klmzr@gmail.com puede subir canciones');
+                    return;
+                }
+                
                 const id = document.getElementById('song-id').value; 
                 const title = document.getElementById('song-title').value; 
                 const album_id = document.getElementById('song-album-select').value; 
                 const songFile = document.getElementById('song-url').files[0]; 
                 let song_url = document.getElementById('song-url-hidden').value; 
+                
                 try { 
                     if (songFile) { 
-                        showInfoModal('Subiendo canción (esto puede tardar)...'); 
+                        showInfoModal('🎼 Subiendo canción como administrador...'); 
                         song_url = await uploadFile(songFile); 
                     } 
                     if (!song_url) { 
@@ -668,7 +706,7 @@
                     const { error } = id ? await supabase.from('songs').update({ title, album_id, song_url }).eq('id', id) : await supabase.from('songs').insert([{ title, album_id, song_url }]); 
                     showLoadingIndicator(false); 
                     if (error) throw error; 
-                    showInfoModal('Canción guardada con éxito.'); 
+                    showInfoModal('✅ Canción guardada exitosamente por admin'); 
                     songForm.reset(); 
                     document.getElementById('song-id').value = ''; 
                     document.getElementById('song-url-hidden').value = ''; 
@@ -678,7 +716,7 @@
                     await renderAdminLists(); 
                 } catch(err) { 
                     showLoadingIndicator(false); 
-                    showInfoModal('Error guardando canción: ' + err.message); 
+                    showInfoModal('❌ Error guardando canción: ' + err.message); 
                 } 
             }); 
             
