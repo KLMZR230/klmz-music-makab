@@ -5,6 +5,7 @@
     <title>KLMZ MUSIC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1DB954">
+    <link rel="manifest" href="./manifest.json">
     <script defer src="https://cdn.jsdelivr.net/npm/appwrite@18.2.0"></script>
     <style>
         * { box-sizing: border-box; }
@@ -110,8 +111,6 @@
         .download-icon { cursor: pointer; color: #666; font-size: 1.2rem; }
         .download-icon.downloaded { color: #1DB954; }
         #album-detail { padding-bottom: 120px; }
-        
-        /* ✅ ESTILOS PANEL ADMIN MEJORADOS */
         .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
         .admin-section h3 { margin-top: 0; border-bottom: 2px solid #1DB954; padding-bottom: 0.8rem; margin-bottom: 1.5rem; color: #1DB954; display: flex; align-items: center; gap: 0.5rem; }
         .admin-form { margin-bottom: 2rem; }
@@ -133,7 +132,7 @@
         .stat-number { font-size: 2rem; font-weight: bold; color: #1DB954; }
         .stat-label { color: #b3b3b3; margin-top: 0.5rem; }
         
-        /* ✅ 6 TEMAS COMPLETOS FUNCIONANDO */
+        /* 6 TEMAS */
         body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0f0f23 100%) !important; color: #00ff88 !important; }
         body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
         body.theme-neon header { background: #0f0f23 !important; border-bottom: 1px solid #00ff88; }
@@ -323,7 +322,7 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
 
-## 🎯 **PARTE 2: JavaScript BÁSICO (Variables + Funciones principales)**
+## 🎯 **PARTE 2: JavaScript BÁSICO (Con MediaSession ARREGLADA)**
 
 <script>
     let supabase = null;
@@ -339,73 +338,147 @@
     let repeatMode = 'off';
     let shuffleMode = false;
     let db;
+    let mediaSessionSupported = false;
     
     const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
     const ADMIN_EMAIL = 'klmzr@gmail.com';
     
-    // ✅ FUNCIONES ADMIN AVANZADAS
-    async function uploadFile(file) {
-        showLoadingIndicator(true);
-        try {
-            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
-                throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
-            }
+    // ✅ MEDIA SESSION API MEJORADA PARA PANTALLA DE BLOQUEO
+    function setupMediaSession() {
+        if ('mediaSession' in navigator) {
+            mediaSessionSupported = true;
+            console.log('🔒 MediaSession API disponible - configurando controles de pantalla de bloqueo');
             
-            const client = new Appwrite.Client();
-            const storage = new Appwrite.Storage(client);
-            const bucketId = '68ad019f00207b1df467';
-            const projectId = '68ab0cf2000365979a71';
-            const endpoint = 'https://nyc.cloud.appwrite.io/v1';
+            // Configurar action handlers
+            navigator.mediaSession.setActionHandler('play', handleMediaSessionPlay);
+            navigator.mediaSession.setActionHandler('pause', handleMediaSessionPause);
+            navigator.mediaSession.setActionHandler('previoustrack', handleMediaSessionPrevious);
+            navigator.mediaSession.setActionHandler('nexttrack', handleMediaSessionNext);
+            navigator.mediaSession.setActionHandler('stop', handleMediaSessionStop);
             
-            client.setEndpoint(endpoint).setProject(projectId);
-            
-            const fileId = Appwrite.ID.unique();
-            const response = await storage.createFile(bucketId, fileId, file);
-            
-            const finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${response.$id}/view?project=${projectId}`;
-            return finalUrl;
-            
-        } catch (error) {
-            throw new Error(error.message || 'Error desconocido');
-        } finally {
-            showLoadingIndicator(false);
-        }
-    }
-    
-    async function uploadMultipleSongs(files, albumId) {
-        const results = { success: [], errors: [] };
-        const progressDiv = document.getElementById('upload-progress');
-        
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+            // Intentar configurar seekto si está disponible
             try {
-                progressDiv.innerHTML = `<div class="upload-progress">📤 Subiendo ${file.name}... (${i + 1}/${files.length})</div>`;
-                
-                const song_url = await uploadFile(file);
-                const title = file.name.replace(/\.[^/.]+$/, "");
-                
-                const { error } = await supabase.from('songs').insert([{
-                    title: title,
-                    album_id: albumId,
-                    song_url: song_url
-                }]);
-                
-                if (error) throw new Error(`Error BD: ${error.message}`);
-                results.success.push({ filename: file.name, title: title, url: song_url });
-                
-                progressDiv.innerHTML = `<div class="upload-progress success">✅ ${file.name} subido correctamente</div>`;
-                
+                navigator.mediaSession.setActionHandler('seekto', handleMediaSessionSeekTo);
+                console.log('✅ Seek action handler configurado');
             } catch (error) {
-                results.errors.push({ filename: file.name, error: error.message });
-                progressDiv.innerHTML = `<div class="upload-progress error">❌ Error con ${file.name}: ${error.message}</div>`;
+                console.log('⚠️ Seek action no soportado:', error);
             }
+            
+            // Configurar seekbackward y seekforward si están disponibles
+            try {
+                navigator.mediaSession.setActionHandler('seekbackward', () => {
+                    const audio = document.getElementById('audio-player');
+                    if (audio) {
+                        audio.currentTime = Math.max(0, audio.currentTime - 10);
+                    }
+                });
+                
+                navigator.mediaSession.setActionHandler('seekforward', () => {
+                    const audio = document.getElementById('audio-player');
+                    if (audio) {
+                        audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
+                    }
+                });
+                console.log('✅ Seek forward/backward configurados');
+            } catch (error) {
+                console.log('⚠️ Seek forward/backward no soportados:', error);
+            }
+            
+        } else {
+            console.log('⚠️ MediaSession API no soportada en este navegador');
         }
-        
-        await loadAllData();
-        return results;
     }
     
+    // ✅ HANDLERS MEJORADOS PARA MEDIA SESSION
+    function handleMediaSessionPlay() {
+        console.log('🎵 MediaSession: Play desde pantalla de bloqueo/auriculares');
+        const audio = document.getElementById('audio-player');
+        if (currentSong && audio && audio.paused) {
+            audio.play().then(() => {
+                updateMediaSessionPlaybackState('playing');
+            }).catch(console.error);
+        }
+    }
+    
+    function handleMediaSessionPause() {
+        console.log('⏸️ MediaSession: Pause desde pantalla de bloqueo/auriculares');
+        const audio = document.getElementById('audio-player');
+        if (audio && !audio.paused) {
+            audio.pause();
+            updateMediaSessionPlaybackState('paused');
+        }
+    }
+    
+    function handleMediaSessionPrevious() {
+        console.log('⏮️ MediaSession: Previous desde pantalla de bloqueo/auriculares');
+        previousSong();
+    }
+    
+    function handleMediaSessionNext() {
+        console.log('⏭️ MediaSession: Next desde pantalla de bloqueo/auriculares');
+        nextSong();
+    }
+    
+    function handleMediaSessionStop() {
+        console.log('⏹️ MediaSession: Stop desde pantalla de bloqueo');
+        const audio = document.getElementById('audio-player');
+        if (audio) {
+            audio.pause();
+            audio.currentTime = 0;
+            updateMediaSessionPlaybackState('paused');
+        }
+    }
+    
+    function handleMediaSessionSeekTo(details) {
+        console.log('⏩ MediaSession: Seek to', details.seekTime);
+        const audio = document.getElementById('audio-player');
+        if (audio && details.seekTime !== null && details.seekTime !== undefined) {
+            audio.currentTime = details.seekTime;
+        }
+    }
+    
+    // ✅ ACTUALIZAR METADATA Y ESTADO DE MEDIA SESSION
+    function updateMediaSessionMetadata(song, album) {
+        if (!mediaSessionSupported || !song) return;
+        
+        const title = song.title || 'Sin título';
+        const artist = album ? album.artist : 'Artista desconocido';
+        const albumName = album ? album.title : 'KLMZ MUSIC';
+        const artwork = album && album.cover_url ? [
+            { src: album.cover_url, sizes: '96x96', type: 'image/png' },
+            { src: album.cover_url, sizes: '128x128', type: 'image/png' },
+            { src: album.cover_url, sizes: '192x192', type: 'image/png' },
+            { src: album.cover_url, sizes: '256x256', type: 'image/png' },
+            { src: album.cover_url, sizes: '384x384', type: 'image/png' },
+            { src: album.cover_url, sizes: '512x512', type: 'image/png' }
+        ] : [];
+        
+        try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title,
+                artist: artist,
+                album: albumName,
+                artwork: artwork
+            });
+            console.log('✅ MediaSession metadata actualizada:', { title, artist, albumName });
+        } catch (error) {
+            console.error('❌ Error actualizando MediaSession metadata:', error);
+        }
+    }
+    
+    function updateMediaSessionPlaybackState(state) {
+        if (!mediaSessionSupported) return;
+        
+        try {
+            navigator.mediaSession.playbackState = state;
+            console.log('🔄 MediaSession playbackState:', state);
+        } catch (error) {
+            console.error('❌ Error actualizando playbackState:', error);
+        }
+    }
+    
+    // ✅ FUNCIONES DE BASE DE DATOS OFFLINE
     function initDB() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open('KLMZMusicDB', 2);
@@ -453,6 +526,75 @@
         });
     }
     
+    // ✅ FUNCIONES ADMIN
+    async function uploadFile(file) {
+        showLoadingIndicator(true);
+        try {
+            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+                throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
+            }
+            
+            const client = new Appwrite.Client();
+            const storage = new Appwrite.Storage(client);
+            const bucketId = '68ad019f00207b1df467';
+            const projectId = '68ab0cf2000365979a71';
+            const endpoint = 'https://nyc.cloud.appwrite.io/v1';
+            
+            client.setEndpoint(endpoint).setProject(projectId);
+            
+            const fileId = Appwrite.ID.unique();
+            const response = await storage.createFile(bucketId, fileId, file);
+            
+            const finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${response.$id}/view?project=${projectId}`;
+            return finalUrl;
+            
+        } catch (error) {
+            throw new Error(error.message || 'Error desconocido');
+        } finally {
+            showLoadingIndicator(false);
+        }
+    }
+    
+    async function uploadMultipleSongs(files, albumId) {
+        const results = { success: [], errors: [] };
+        const progressDiv = document.getElementById('upload-progress');
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            try {
+                if (progressDiv) {
+                    progressDiv.innerHTML = `<div class="upload-progress">📤 Subiendo ${file.name}... (${i + 1}/${files.length})</div>`;
+                }
+                
+                const song_url = await uploadFile(file);
+                const title = file.name.replace(/\.[^/.]+$/, "");
+                
+                const { error } = await supabase.from('songs').insert([{
+                    title: title,
+                    album_id: albumId,
+                    song_url: song_url
+                }]);
+                
+                if (error) throw new Error(`Error BD: ${error.message}`);
+                results.success.push({ filename: file.name, title: title, url: song_url });
+                
+                if (progressDiv) {
+                    progressDiv.innerHTML = `<div class="upload-progress success">✅ ${file.name} subido correctamente</div>`;
+                }
+                
+            } catch (error) {
+                results.errors.push({ filename: file.name, error: error.message });
+                if (progressDiv) {
+                    progressDiv.innerHTML = `<div class="upload-progress error">❌ Error con ${file.name}: ${error.message}</div>`;
+                }
+            }
+        }
+        
+        await loadAllData();
+        return results;
+    }
+    
+    // ✅ CARGA DE DATOS
     async function loadSupabase() {
         showLoadingIndicator(true);
         try {
@@ -557,7 +699,10 @@
         }
     }
     
+    // ✅ FUNCIÓN PLAYSIDE MEJORADA CON MEDIA SESSION
     window.playSong = async function(song, album, playlist = [song], index = 0) {
+        console.log('🎵 Reproduciendo canción:', song.title);
+        
         currentSong = song;
         currentAlbum = album;
         currentPlaylist = playlist;
@@ -567,17 +712,25 @@
         audio.pause();
         updateAllPlayers();
         
+        // Cargar audio (offline primero, luego online)
         try {
             const downloadedSong = await getSongFromDB(song.id);
             if (downloadedSong?.audio) {
+                console.log('🎵 Reproduciendo desde offline:', song.title);
                 audio.src = URL.createObjectURL(downloadedSong.audio);
             } else {
+                console.log('🌐 Reproduciendo desde online:', song.title);
                 audio.src = song.song_url;
             }
         } catch (error) {
+            console.log('⚠️ Error accediendo offline, usando online:', error);
             audio.src = song.song_url;
         }
         
+        // Actualizar MediaSession ANTES de reproducir
+        updateMediaSessionMetadata(song, album);
+        
+        // Comunicación con Android (si está disponible)
         if (typeof Android !== 'undefined' && Android.playFromJS) {
             try {
                 Android.playFromJS(
@@ -586,84 +739,87 @@
                     album ? album.artist : 'Artista desconocido',
                     album ? album.cover_url : ''
                 );
+                console.log('✅ Enviado a Android para controles nativos');
             } catch (error) {
-                console.log('Android interface no disponible:', error);
+                console.log('⚠️ Android interface no disponible:', error);
             }
         }
         
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: song.title,
-                artist: album ? album.artist : 'Artista desconocido',
-                album: album ? album.title : 'KLMZ MUSIC',
-                artwork: album && album.cover_url ? [
-                    { src: album.cover_url, sizes: '96x96', type: 'image/jpeg' },
-                    { src: album.cover_url, sizes: '192x192', type: 'image/jpeg' },
-                    { src: album.cover_url, sizes: '512x512', type: 'image/jpeg' }
-                ] : []
-            });
-        }
-        
+        // Cargar y reproducir
         audio.load();
-        audio.play().catch(console.error);
+        
+        // Reproducir con manejo de promesas
+        audio.play()
+            .then(() => {
+                console.log('✅ Reproducción iniciada exitosamente');
+                updateMediaSessionPlaybackState('playing');
+            })
+            .catch(error => {
+                console.error('❌ Error al reproducir:', error);
+                updateMediaSessionPlaybackState('paused');
+            });
     }
-    
-    function updateAllPlayers() {
-        updateMiniPlayer();
-        updateFullPlayer();
-        updatePlayButtons();
-    }
-    
-    function updateMiniPlayer() {
-        document.getElementById('mini-player').style.display = 'flex';
-        document.getElementById('mini-player-img').src = currentAlbum?.cover_url || '';
-        document.getElementById('mini-player-title').textContent = currentSong?.title || 'Sin título';
-        document.getElementById('mini-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
-    }
-    
-    function updateFullPlayer() {
-        document.getElementById('full-player-cover').src = currentAlbum?.cover_url || '';
-        document.getElementById('full-player-title').textContent = currentSong?.title || 'Sin título';
-        document.getElementById('full-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
-    }
-    
-    function updatePlayButtons() {
-        const playText = isPlaying ? '⏸' : '▶';
-        document.getElementById('mini-play-btn').textContent = playText;
-        document.getElementById('full-play-btn').textContent = playText;
-    }
-    
-    window.togglePlay = function() {
-        const audio = document.getElementById('audio-player');
-        if (isPlaying) {
-            audio.pause();
-        } else {
-            audio.play();
-        }
-    }
-    
-    window.nextSong = function() {
-        if (currentPlaylist.length === 0) return;
-        currentIndex = (currentIndex + 1) % currentPlaylist.length;
-        playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
-    }
-    
-    window.previousSong = function() {
-        if (currentPlaylist.length === 0) return;
-        currentIndex = currentIndex > 0 ? currentIndex - 1 : currentPlaylist.length - 1;
-        playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
-    }
-    
-    function handleSongEnded() {
-        if (repeatMode === 'all' || currentIndex < currentPlaylist.length - 1) {
-            nextSong();
-        } else {
-            isPlaying = false;
+        
+        function updateAllPlayers() {
+            updateMiniPlayer();
+            updateFullPlayer();
             updatePlayButtons();
         }
-    }
         
-        // ✅ PANEL DE ADMINISTRACIÓN COMPLETO Y FUNCIONANDO
+        function updateMiniPlayer() {
+            document.getElementById('mini-player').style.display = 'flex';
+            document.getElementById('mini-player-img').src = currentAlbum?.cover_url || '';
+            document.getElementById('mini-player-title').textContent = currentSong?.title || 'Sin título';
+            document.getElementById('mini-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
+        }
+        
+        function updateFullPlayer() {
+            document.getElementById('full-player-cover').src = currentAlbum?.cover_url || '';
+            document.getElementById('full-player-title').textContent = currentSong?.title || 'Sin título';
+            document.getElementById('full-player-artist').textContent = currentAlbum?.artist || 'Desconocido';
+        }
+        
+        function updatePlayButtons() {
+            const playText = isPlaying ? '⏸' : '▶';
+            document.getElementById('mini-play-btn').textContent = playText;
+            document.getElementById('full-play-btn').textContent = playText;
+        }
+        
+        window.togglePlay = function() {
+            const audio = document.getElementById('audio-player');
+            if (isPlaying) {
+                audio.pause();
+                updateMediaSessionPlaybackState('paused');
+            } else {
+                audio.play()
+                    .then(() => updateMediaSessionPlaybackState('playing'))
+                    .catch(console.error);
+            }
+        }
+        
+        window.nextSong = function() {
+            if (currentPlaylist.length === 0) return;
+            currentIndex = (currentIndex + 1) % currentPlaylist.length;
+            playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
+        }
+        
+        window.previousSong = function() {
+            if (currentPlaylist.length === 0) return;
+            currentIndex = currentIndex > 0 ? currentIndex - 1 : currentPlaylist.length - 1;
+            playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
+        }
+        
+        function handleSongEnded() {
+            if (repeatMode === 'all' || currentIndex < currentPlaylist.length - 1) {
+                nextSong();
+            } else {
+                isPlaying = false;
+                updatePlayButtons();
+                updateMediaSessionPlaybackState('paused');
+            }
+        }
+        
+        // ✅ PANEL DE ADMINISTRACIÓN COMPLETO
         async function renderAdminPanel() {
             const adminContent = document.getElementById('admin-content');
             const albumsCount = allAlbums.length;
@@ -680,8 +836,8 @@
                         <div class="stat-label">🎵 Canciones</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">${currentUser ? '✅' : '❌'}</div>
-                        <div class="stat-label">👤 Admin</div>
+                        <div class="stat-number">${mediaSessionSupported ? '✅' : '❌'}</div>
+                        <div class="stat-label">🔒 MediaSession</div>
                     </div>
                 </div>
                 
@@ -718,8 +874,7 @@
                             <label>Archivos de Audio (Múltiples):</label>
                             <input type="file" id="song-files" accept="audio/*" multiple required>
                             <div class="multiple-files-info">
-                                💡 <strong>Tip:</strong> Puedes seleccionar múltiples archivos de audio a la vez. 
-                                Los nombres de archivo se usarán como títulos de las canciones.
+                                💡 <strong>Tip:</strong> Puedes seleccionar múltiples archivos de audio a la vez.
                             </div>
                         </div>
                         <button type="submit" class="btn-primary">📤 Subir Canciones</button>
@@ -727,16 +882,8 @@
                     <div id="upload-progress"></div>
                     <div id="admin-song-list" class="admin-list"></div>
                 </div>
-                
-                <div class="admin-section">
-                    <h3>🗂️ Gestión de Contenido</h3>
-                    <button onclick="refreshAllData()" class="btn-secondary">🔄 Refrescar Datos</button>
-                    <button onclick="clearCache()" class="btn-secondary">🗑️ Limpiar Cache</button>
-                    <button onclick="downloadBackup()" class="btn-secondary">💾 Descargar Backup</button>
-                </div>
             `;
             
-            // Llenar select de álbumes
             const albumSelect = document.getElementById('song-album-select');
             albumSelect.innerHTML = '<option value="">-- Seleccionar Álbum --</option>' + 
                 allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('');
@@ -747,7 +894,6 @@
         
         async function renderAdminLists() {
             try {
-                // Lista de álbumes
                 const albumList = document.getElementById('admin-album-list');
                 if (allAlbums.length > 0) {
                     albumList.innerHTML = allAlbums.map(album => `
@@ -765,7 +911,6 @@
                     albumList.innerHTML = '<p style="text-align: center; color: #666;">No hay álbumes creados</p>';
                 }
                 
-                // Lista de canciones
                 const songList = document.getElementById('admin-song-list');
                 if (allSongs.length > 0) {
                     songList.innerHTML = allSongs.map(song => `
@@ -782,14 +927,12 @@
                 } else {
                     songList.innerHTML = '<p style="text-align: center; color: #666;">No hay canciones subidas</p>';
                 }
-                
             } catch (error) {
                 console.error('Error cargando listas admin:', error);
             }
         }
         
         function setupAdminForms() {
-            // Formulario de álbumes
             document.getElementById('album-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (currentUser?.email !== ADMIN_EMAIL) {
@@ -825,7 +968,6 @@
                 }
             });
             
-            // Formulario de canciones
             document.getElementById('song-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (currentUser?.email !== ADMIN_EMAIL) {
@@ -864,68 +1006,6 @@
                     alert('❌ Error: ' + err.message);
                 }
             });
-        }
-        
-        // Funciones administrativas adicionales
-        window.deleteAlbum = async function(albumId) {
-            if (!confirm('¿Estás seguro de eliminar este álbum? También se eliminarán todas sus canciones.')) return;
-            
-            try {
-                const { error } = await supabase.from('albums').delete().eq('id', albumId);
-                if (error) throw error;
-                
-                alert('✅ Álbum eliminado');
-                await loadAllData();
-                await renderAdminPanel();
-            } catch (error) {
-                alert('❌ Error eliminando álbum: ' + error.message);
-            }
-        }
-        
-        window.deleteSong = async function(songId) {
-            if (!confirm('¿Estás seguro de eliminar esta canción?')) return;
-            
-            try {
-                const { error } = await supabase.from('songs').delete().eq('id', songId);
-                if (error) throw error;
-                
-                alert('✅ Canción eliminada');
-                await loadAllData();
-                await renderAdminPanel();
-            } catch (error) {
-                alert('❌ Error eliminando canción: ' + error.message);
-            }
-        }
-        
-        window.refreshAllData = async function() {
-            showLoadingIndicator(true);
-            await loadAllData();
-            await renderAdminPanel();
-            showLoadingIndicator(false);
-            alert('✅ Datos actualizados');
-        }
-        
-        window.clearCache = function() {
-            localStorage.clear();
-            if (db) {
-                const request = indexedDB.deleteDatabase('KLMZMusicDB');
-                request.onsuccess = () => alert('✅ Cache limpiado');
-            }
-        }
-        
-        window.downloadBackup = function() {
-            const backup = {
-                albums: allAlbums,
-                songs: allSongs,
-                timestamp: new Date().toISOString()
-            };
-            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `klmz-backup-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
         }
         
         // ✅ RESTO DE FUNCIONES (descargas, favoritos, etc.)
@@ -1015,13 +1095,12 @@
             document.getElementById('shuffle-btn').classList.toggle('active', shuffleMode);
         }
         
-        // ✅ FUNCIÓN DE 6 TEMAS CORREGIDA
+        // ✅ FUNCIONES DE 6 TEMAS
         window.changeTheme = function(theme) {
             const body = document.body;
             body.classList.remove('theme-neon', 'theme-minimal', 'theme-sunset', 'theme-pastel', 'theme-luxury', 'theme-oceanic');
             if (theme && theme !== 'default') {
                 body.classList.add('theme-' + theme);
-                console.log('🎨 Tema aplicado:', theme);
             }
             localStorage.setItem('klmz_theme', theme);
         }
@@ -1218,6 +1297,33 @@
             });
         }
         
+        // Funciones admin adicionales
+        window.deleteAlbum = async function(albumId) {
+            if (!confirm('¿Eliminar álbum y todas sus canciones?')) return;
+            try {
+                const { error } = await supabase.from('albums').delete().eq('id', albumId);
+                if (error) throw error;
+                alert('✅ Álbum eliminado');
+                await loadAllData();
+                await renderAdminPanel();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        window.deleteSong = async function(songId) {
+            if (!confirm('¿Eliminar esta canción?')) return;
+            try {
+                const { error } = await supabase.from('songs').delete().eq('id', songId);
+                if (error) throw error;
+                alert('✅ Canción eliminada');
+                await loadAllData();
+                await renderAdminPanel();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
         function showLoadingIndicator(show) { 
             const indicator = document.getElementById('loading-indicator');
             if (indicator) indicator.style.display = show ? 'block' : 'none'; 
@@ -1225,28 +1331,53 @@
         function goToAdmin() { document.getElementById('user-dropdown').classList.remove('show'); showSection('admin'); }
         function confirmLogout() { if (confirm('¿Cerrar sesión?')) logout(); }
         
-        // ✅ INICIALIZACIÓN COMPLETA
+        // ✅ INICIALIZACIÓN COMPLETA CON MEDIA SESSION ARREGLADA
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 KLMZ MUSIC iniciando con MediaSession mejorada...');
+            
             const audio = document.getElementById('audio-player');
             audio.addEventListener('ended', handleSongEnded);
             audio.addEventListener('timeupdate', updateProgressBar);
-            audio.addEventListener('play', () => { isPlaying = true; updatePlayButtons(); });
-            audio.addEventListener('pause', () => { isPlaying = false; updatePlayButtons(); });
+            audio.addEventListener('play', () => { 
+                isPlaying = true; 
+                updatePlayButtons();
+                updateMediaSessionPlaybackState('playing');
+            });
+            audio.addEventListener('pause', () => { 
+                isPlaying = false; 
+                updatePlayButtons(); 
+                updateMediaSessionPlaybackState('paused');
+            });
             
             document.getElementById('mini-player').addEventListener('click', (e) => {
                 if (!e.target.closest('.player-controls-inline')) { openFullPlayer(); }
             });
             
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('play', () => { if (currentSong && !isPlaying) togglePlay(); });
-                navigator.mediaSession.setActionHandler('pause', () => { if (isPlaying) togglePlay(); });
-                navigator.mediaSession.setActionHandler('previoustrack', () => previousSong());
-                navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
-            }
+            // ✅ CONFIGURAR MEDIA SESSION AL INICIO
+            setupMediaSession();
             
             loadSavedTheme();
             initDB().then(() => loadSupabase()).catch(console.error);
+            
+            console.log('✅ KLMZ MUSIC iniciado con:');
+            console.log('  🔒 MediaSession API:', mediaSessionSupported ? 'ACTIVADO' : 'NO DISPONIBLE');
+            console.log('  📱 Descargas offline: ACTIVADAS');
+            console.log('  🎨 6 temas visuales: ACTIVADOS');
+            console.log('  ⚙️ Panel admin: ACTIVADO');
         });
+        
+        // ✅ SERVICE WORKER PARA PWA (OPCIONAL)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registrado');
+                    })
+                    .catch(error => {
+                        console.log('⚠️ Service Worker no registrado:', error);
+                    });
+            });
+        }
     </script>
 </body>
 </html>
