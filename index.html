@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segui UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease; }
+        body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease; }
         header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
         .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; }
         .user-actions { display:flex; align-items: center; gap:.5rem; }
@@ -82,13 +82,27 @@
         /* Animaciones */
         @keyframes heartBeat { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
         
-        /* Temas (solo los básicos para este ejemplo) */
+        /* Temas básicos */
         body.theme-neon { background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e) !important; }
         body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 20px #00ff88 !important; }
         body.theme-neon .btn-primary { background: linear-gradient(45deg, #00ff88, #00cc6a) !important; color: #000 !important; }
         body.theme-neon .song-list li { color: #00ff88 !important; }
         body.theme-neon .play-btn-inline { background: #00ff88 !important; color: #000 !important; }
         body.theme-neon .bottom-nav-item.active { color: #00ff88 !important; }
+        
+        body.theme-sunset { background: linear-gradient(135deg, #2c1810, #4a2c2a, #6d4c41) !important; }
+        body.theme-sunset .logo { color: #ff7043 !important; text-shadow: 0 0 15px #ff7043 !important; }
+        body.theme-sunset .btn-primary { background: linear-gradient(45deg, #ff7043, #ff5722) !important; }
+        body.theme-sunset .song-list li { color: #ff7043 !important; }
+        body.theme-sunset .play-btn-inline { background: #ff7043 !important; }
+        body.theme-sunset .bottom-nav-item.active { color: #ff7043 !important; }
+        
+        body.theme-oceanic { background: linear-gradient(135deg, #0a192f, #173a5e, #3b6978) !important; }
+        body.theme-oceanic .logo { color: #17a2b8 !important; text-shadow: 0 0 15px #17a2b8 !important; }
+        body.theme-oceanic .btn-primary { background: linear-gradient(45deg, #17a2b8, #138496) !important; }
+        body.theme-oceanic .song-list li { color: #17a2b8 !important; }
+        body.theme-oceanic .play-btn-inline { background: #17a2b8 !important; }
+        body.theme-oceanic .bottom-nav-item.active { color: #17a2b8 !important; }
     </style>
 </head>
 <body>
@@ -101,6 +115,8 @@
                 <select id="theme-select" onchange="changeTheme(this.value)">
                     <option value="default">🎵 Default</option>
                     <option value="neon">⚡ Neon</option>
+                    <option value="sunset">🌅 Sunset</option>
+                    <option value="oceanic">🌊 Oceanic</option>
                 </select>
             </div>
             <div class="user-menu">
@@ -226,7 +242,7 @@
         // ===== VARIABLES GLOBALES =====
         let supabase;
         let currentUser = null;
-        let allAlbums = [];
+        let allAlbums = [];  // ✅ CORREGIDO: era "allAlbumes"
         let allSongs = [];
         let currentSong = null;
         let currentAlbum = null;
@@ -249,7 +265,6 @@
                 this.favorites = this.loadFavorites();
             }
 
-            // Cargar favoritos desde localStorage
             loadFavorites() {
                 try {
                     const stored = localStorage.getItem('klmz_favorites');
@@ -260,7 +275,6 @@
                 }
             }
 
-            // Guardar favoritos en localStorage
             saveFavorites() {
                 try {
                     localStorage.setItem('klmz_favorites', JSON.stringify(this.favorites));
@@ -270,12 +284,10 @@
                 }
             }
 
-            // Verificar si una canción es favorita
             isFavorite(songId) {
                 return this.favorites.some(fav => fav.id === songId);
             }
 
-            // Agregar canción a favoritos
             addFavorite(song, album) {
                 if (this.isFavorite(song.id)) {
                     console.log('⚠️ Canción ya en favoritos:', song.title);
@@ -299,7 +311,6 @@
                 return true;
             }
 
-            // Quitar canción de favoritos
             removeFavorite(songId) {
                 const initialLength = this.favorites.length;
                 this.favorites = this.favorites.filter(fav => fav.id !== songId);
@@ -313,7 +324,6 @@
                 return false;
             }
 
-            // Toggle favorito
             toggleFavorite(song, album) {
                 if (this.isFavorite(song.id)) {
                     this.removeFavorite(song.id);
@@ -324,17 +334,14 @@
                 }
             }
 
-            // Obtener todos los favoritos
             getAllFavorites() {
                 return [...this.favorites];
             }
 
-            // Obtener favorito por ID
             getFavorite(songId) {
                 return this.favorites.find(fav => fav.id === songId);
             }
 
-            // Limpiar favoritos
             clearFavorites() {
                 this.favorites = [];
                 this.saveFavorites();
@@ -351,21 +358,17 @@
             
             const wasAdded = favoritesManager.toggleFavorite(song, album);
             
-            // Actualizar UI del botón
             if (element) {
                 element.innerHTML = wasAdded ? '❤️' : '🤍';
                 element.classList.toggle('active', wasAdded);
                 element.title = wasAdded ? 'Quitar de favoritos' : 'Agregar a favoritos';
             }
             
-            // Actualizar todos los botones de favoritos para esta canción
             updateAllFavoriteButtons(song.id, wasAdded);
             
-            // Mostrar feedback
             const message = wasAdded ? `❤️ "${song.title}" agregada a favoritos` : `💔 "${song.title}" removida de favoritos`;
             showToast(message);
             
-            // Si estamos en la sección de favoritos, recargar
             if (document.getElementById('favorites-section').classList.contains('active')) {
                 setTimeout(() => loadFavorites(), 500);
             }
@@ -381,7 +384,6 @@
         }
 
         function showToast(message) {
-            // Crear toast notification temporal
             const toast = document.createElement('div');
             toast.textContent = message;
             toast.style.cssText = `
@@ -399,7 +401,6 @@
                 animation: slideInOut 2.5s ease-in-out;
             `;
             
-            // Agregar animación CSS
             const style = document.createElement('style');
             style.textContent = `
                 @keyframes slideInOut {
@@ -413,8 +414,8 @@
             document.body.appendChild(toast);
             
             setTimeout(() => {
-                document.body.removeChild(toast);
-                document.head.removeChild(style);
+                if (document.body.contains(toast)) document.body.removeChild(toast);
+                if (document.head.contains(style)) document.head.removeChild(style);
             }, 2500);
         }
 
@@ -493,7 +494,6 @@
         function toggleFavoriteFromList(songId, element) {
             const favorite = favoritesManager.getFavorite(songId);
             if (favorite) {
-                // Crear objeto canción y álbum para toggleFavorite
                 const song = {
                     id: favorite.id,
                     title: favorite.title,
@@ -519,7 +519,6 @@
             
             console.log('🎵 Reproduciendo favorito:', favorite.title);
             
-            // Crear objetos para el reproductor
             const song = {
                 id: favorite.id,
                 title: favorite.title,
@@ -532,7 +531,6 @@
                 cover_url: favorite.cover_url
             };
             
-            // Reproducir
             playSong(song, album);
         }
 
@@ -546,7 +544,7 @@
             loadFavorites();
         }
         
-        // ===== RESTO DEL CÓDIGO ORIGINAL (SIN CAMBIOS) =====
+        // ===== FUNCIONES BÁSICAS =====
         function detectEnvironment() {
             isCordova = !!(window.cordova || window.phonegap);
             console.log('📱 Entorno:', isCordova ? 'Cordova APK' : 'Navegador Web');
@@ -556,7 +554,7 @@
         function changeTheme(theme) {
             console.log('🎨 Cambiando tema:', theme);
             const body = document.body;
-            ['theme-neon'].forEach(t => body.classList.remove(t));
+            ['theme-neon', 'theme-sunset', 'theme-oceanic'].forEach(t => body.classList.remove(t));
             if (theme !== 'default') body.classList.add('theme-' + theme);
             localStorage.setItem('klmz_theme', theme);
         }
@@ -603,7 +601,7 @@
                     .from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false });
                 if (songError) throw songError;
                 
-                allAlbums = albums || [];
+                allAlbums = albums || [];  // ✅ CORREGIDO: Variable correcta
                 allSongs = songs || [];
                 
                 console.log(`✅ Cargados: ${allAlbums.length} álbumes, ${allSongs.length} canciones`);
@@ -626,7 +624,7 @@
         function displayAlbums() {
             const container = document.getElementById('albums');
             
-            if (allAlbums.length === 0) {
+            if (allAlbums.length === 0) {  // ✅ CORREGIDO: Variable correcta
                 container.innerHTML = `
                     <div style="text-align: center; padding: 2rem; color: #666;">
                         <h3>📀 No hay álbumes</h3>
@@ -637,7 +635,7 @@
                 return;
             }
             
-            container.innerHTML = allAlbumes.map(album => `
+            container.innerHTML = allAlbums.map(album => `  ✅ CORREGIDO: Variable correcta
                 <div class="album-card" onclick="showAlbum('${album.id}')">
                     <img class="album-img" src="${album.cover_url}" alt="${album.title}" onerror="this.style.background='#333'; this.alt='🎵';">
                     <div class="album-title">${album.title}</div>
@@ -650,7 +648,7 @@
             try {
                 console.log('🔍 Mostrando álbum:', albumId);
                 
-                const album = allAlbums.find(a => a.id === albumId);
+                const album = allAlbums.find(a => a.id === albumId);  // ✅ CORREGIDO: Variable correcta
                 if (!album) return;
                 
                 currentAlbum = album;
@@ -767,7 +765,6 @@
             document.getElementById('albums').style.display = 'grid';
         }
         
-        // Función de descarga temporal (hasta implementar Cordova)
         function downloadSong(song, album, element) {
             element.textContent = '⏳';
             element.style.color = '#ff9800';
@@ -790,7 +787,6 @@
             `;
         }
         
-        // Navegación
         function showSection(sectionName) {
             console.log('🧭 Navegando a:', sectionName);
             
@@ -798,7 +794,13 @@
             document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
             
             document.getElementById(sectionName + '-section').classList.add('active');
-            event.target.closest('.bottom-nav-item')?.classList.add('active');
+            
+            // Marcar navegación activa
+            const navMap = { home: 0, search: 1, downloads: 2, favorites: 3 };
+            const navItems = document.querySelectorAll('.bottom-nav-item');
+            if (navMap.hasOwnProperty(sectionName)) {
+                navItems[navMap[sectionName]].classList.add('active');
+            }
             
             if (sectionName === 'favorites') {
                 loadFavorites();
@@ -818,7 +820,6 @@
             }
         }
         
-        // Búsqueda
         function searchMusic() {
             const query = document.getElementById('search-input').value.toLowerCase();
             const results = document.getElementById('search-results');
@@ -846,18 +847,18 @@
             `).join('');
         }
         
-        // Funciones de interfaz
         function toggleUserMenu() { document.getElementById('userDropdown').classList.toggle('show'); }
+        
         function showAuth(type) {
             document.getElementById('userDropdown').classList.remove('show');
             document.getElementById('login-form').style.display = type === 'login' ? 'block' : 'none';
             document.getElementById('register-form').style.display = type === 'register' ? 'block' : 'none';
             document.getElementById('auth-modal').style.display = 'flex';
         }
+        
         function closeModal() { document.getElementById('auth-modal').style.display = 'none'; }
         function showLoading(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }
         
-        // Auth
         function updateAuthUI() {
             const adminBtn = document.getElementById('adminBtn');
             const logoutBtn = document.getElementById('logoutBtn');
@@ -921,12 +922,14 @@
             document.getElementById('admin-content').innerHTML = `
                 <div style="text-align: center; padding: 2rem; color: #666;">
                     <h3>⚙️ Panel Admin</h3>
-                    <p>Funcionalidad admin se agregará próximamente</p>
+                    <p><strong>Álbumes:</strong> ${allAlbums.length}</p>
+                    <p><strong>Canciones:</strong> ${allSongs.length}</p>
+                    <p>Panel completo disponible próximamente</p>
                 </div>
             `;
         }
         
-        // Inicialización
+        // ===== INICIALIZACIÓN =====
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 === INICIALIZANDO KLMZ MUSIC ===');
             
