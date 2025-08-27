@@ -7,106 +7,783 @@
     <meta name="theme-color" content="#1DB954">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease; }
-        header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-        .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; }
-        .user-actions { display:flex; align-items: center; gap:.5rem; }
-        .lock-icon { cursor:pointer; font-size:1.4rem; color:#fff; user-select:none; transition: all 0.3s ease; }
-        .theme-selector { display: flex; align-items: center; gap: 0.3rem; margin-right: 0.5rem; }
-        .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.2rem; cursor: pointer; transition: all 0.3s ease; }
-        main { flex:1; padding:1rem; max-width:900px; margin:0 auto;}
-        .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
-        .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
-        .album-card { background:none; padding:0; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; border: 2px solid transparent; border-radius: 12px; transition: all 0.3s ease; }
-        .album-card:hover { transform:scale(1.05); }
-        .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease; }
-        .album-title { font-size:.98rem; font-weight: bold; margin-bottom: 0.4rem; transition: all 0.3s ease; }
-        .album-artist { font-size: .9rem; color: #b3b3b3; transition: all 0.3s ease; }
-        .song-list ul { list-style:none; padding:0; margin:0;}
-        .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease;}
-        .song-list li:hover { color:#fff; background: rgba(255,255,255,.05);}
-        .song-actions { display: flex; gap: 0.8rem; align-items: center; }
-        .action-btn { cursor: pointer; font-size: 1.2rem; transition: all 0.2s ease; }
-        .action-btn:hover { transform: scale(1.1); }
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); 
+            color: #ffffff; 
+            min-height: 100vh;
+            padding-bottom: 100px;
+            overflow-x: hidden;
+        }
+
+        /* ===== HEADER MODERNO ===== */
+        header { 
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.2rem 2rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .logo { 
+            font-weight: 800; 
+            font-size: 1.6rem; 
+            background: linear-gradient(135deg, #1DB954, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+        
+        .user-actions { 
+            display: flex; 
+            align-items: center; 
+            gap: 1rem; 
+        }
+        
+        .theme-selector select { 
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: #fff; 
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px; 
+            padding: 0.5rem 1rem; 
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-selector select:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #1DB954;
+        }
+        
+        .lock-icon { 
+            cursor: pointer; 
+            font-size: 1.5rem; 
+            padding: 0.8rem;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .lock-icon:hover {
+            background: rgba(29, 185, 84, 0.2);
+            border-color: #1DB954;
+            transform: scale(1.05);
+        }
+        
+        /* ===== MAIN CONTAINER ===== */
+        main { 
+            padding: 2rem; 
+            max-width: 1200px; 
+            margin: 0 auto;
+        }
+        
+        .section-title { 
+            font-size: 2.5rem; 
+            font-weight: 700; 
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #ffffff, #b3b3b3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+        
+        /* ===== GRID DE ÁLBUMES MODERNO ===== */
+        .album-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .album-card { 
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px; 
+            padding: 1.5rem; 
+            cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .album-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.1), rgba(0, 255, 136, 0.05));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1;
+        }
+        
+        .album-card:hover::before {
+            opacity: 1;
+        }
+        
+        .album-card:hover { 
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(29, 185, 84, 0.3);
+            box-shadow: 0 20px 60px rgba(29, 185, 84, 0.2);
+        }
+        
+        .album-img { 
+            width: 100%; 
+            aspect-ratio: 1;
+            border-radius: 16px; 
+            object-fit: cover; 
+            margin-bottom: 1rem; 
+            background: linear-gradient(135deg, #333, #555);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 2;
+        }
+        
+        .album-title { 
+            font-size: 1.1rem; 
+            font-weight: 600; 
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .album-artist { 
+            font-size: 0.9rem; 
+            color: rgba(255, 255, 255, 0.7);
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* ===== LISTA DE CANCIONES MODERNA ===== */
+        .song-list ul { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0;
+        }
+        
+        .song-list li { 
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1rem 1.5rem; 
+            margin-bottom: 0.8rem;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .song-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, rgba(29, 185, 84, 0.2), transparent);
+            transition: width 0.3s ease;
+        }
+        
+        .song-list li:hover::before {
+            width: 100%;
+        }
+        
+        .song-list li:hover { 
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(29, 185, 84, 0.3);
+            transform: translateX(8px);
+        }
+        
+        .song-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #ffffff;
+        }
+        
+        .song-actions { 
+            display: flex; 
+            gap: 1rem; 
+            align-items: center; 
+        }
+        
+        .action-btn { 
+            cursor: pointer; 
+            font-size: 1.3rem; 
+            padding: 0.6rem;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+        }
+        
+        .action-btn:hover { 
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
         .favorite-btn { color: #666; }
-        .favorite-btn.active { color: #ff4757; animation: heartBeat 0.3s ease; }
+        .favorite-btn.active { 
+            color: #ff4757; 
+            background: rgba(255, 71, 87, 0.2);
+            border-color: #ff4757;
+        }
+        
         .download-btn { color: #666; }
-        .download-btn.downloaded { color: #1DB954; }
-        .play-btn { color: #1DB954; }
-        .player { position: fixed; bottom: 84px; left: 0; right: 0; background: #212121; border-top: 1px solid #282828; z-index: 300; display: none; align-items: center; padding: 0.8rem 1.2rem; transition: all 0.3s ease;}
-        .player-img-mini { width:44px; height:44px; border-radius:50%; object-fit:cover; margin-right:1rem;}
-        .player-info-mini { flex:1; overflow:hidden;}
-        .player-title-mini { font-weight:bold; font-size:1rem; }
-        .player-artist-mini { color:#b3b3b3; font-size:0.9rem; }
-        .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
-        .play-btn-inline { background: #1DB954; color:#fff; border:none; border-radius:50%; width:36px; height:36px; cursor:pointer; transition: all 0.3s ease; }
-        .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
-        .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; position: relative; transition: all 0.3s ease; }
-        .form-group { margin-bottom:1rem;}
-        .form-group input, .form-group select { width:100%; padding:.7rem; background:#404040; border:1px solid #555; border-radius:4px; color:#fff; transition: all 0.3s ease;}
-        .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
-        .btn-primary:hover { background:#1ed760; }
-        .btn-danger { background:#e22134; color:#fff; border:none; padding:.5rem 1rem; border-radius:4px; cursor:pointer; transition: all 0.3s ease; }
-        .btn-danger:hover { background:#ff4757; }
-        .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
-        .user-menu { position: relative; display: inline-block; }
-        .user-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #282828; min-width: 200px; border-radius: 8px; z-index: 1000; transition: all 0.3s ease; }
-        .user-dropdown.show { display: block; }
-        .user-dropdown-item { padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid #404040; transition: all 0.3s ease; }
-        .user-dropdown-item:hover { background: #404040; }
-        .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
-        .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; padding: 4px 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
-        .bottom-nav-item.active { color: #1DB954; }
-        .content-section { display: none; }
-        .content-section.active { display: block; }
-        .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: all 0.3s ease; }
-        .back-btn:hover { background: #333; }
-        .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; z-index: 2000; display: none; }
-        .admin-section { margin-bottom: 2rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
-        .admin-form input[type="file"] { background: #333; border: 2px dashed #1DB954; padding: 1rem; border-radius: 8px; cursor: pointer; }
-        .upload-progress { background: #333; border: 1px solid #1DB954; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
-        .upload-progress.success { background: #1a4a2e; border-color: #1DB954; }
-        .upload-progress.error { background: #4a1a1a; border-color: #ff4757; }
-        .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; }
+        .download-btn.downloaded { 
+            color: #1DB954; 
+            background: rgba(29, 185, 84, 0.2);
+            border-color: #1DB954;
+        }
         
-        /* Favoritos */
-        .favorite-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #ff4757; transition: all 0.3s ease; }
-        .favorite-item:hover { background: #333; transform: translateX(5px); }
-        .favorite-info { flex: 1; }
-        .favorite-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
-        .favorite-artist { font-size: 0.9rem; color: #b3b3b3; }
-        .favorite-album { font-size: 0.8rem; color: #666; margin-top: 0.2rem; }
+        .play-btn { 
+            color: #1DB954; 
+            background: rgba(29, 185, 84, 0.2);
+            border-color: #1DB954;
+        }
         
-        /* Animaciones */
-        @keyframes heartBeat { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        /* ===== REPRODUCTOR MINI MODERNO ===== */
+        .player { 
+            position: fixed; 
+            bottom: 90px; 
+            left: 20px; 
+            right: 20px; 
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            z-index: 300; 
+            display: none; 
+            align-items: center; 
+            padding: 1rem 1.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
         
-        /* Temas básicos */
-        body.theme-neon { background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e) !important; }
-        body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 20px #00ff88 !important; }
-        body.theme-neon .btn-primary { background: linear-gradient(45deg, #00ff88, #00cc6a) !important; color: #000 !important; }
-        body.theme-neon .song-list li { color: #00ff88 !important; }
-        body.theme-neon .play-btn-inline { background: #00ff88 !important; color: #000 !important; }
-        body.theme-neon .bottom-nav-item.active { color: #00ff88 !important; }
+        .player:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 80px rgba(29, 185, 84, 0.15);
+        }
         
-        body.theme-sunset { background: linear-gradient(135deg, #2c1810, #4a2c2a, #6d4c41) !important; }
-        body.theme-sunset .logo { color: #ff7043 !important; text-shadow: 0 0 15px #ff7043 !important; }
-        body.theme-sunset .btn-primary { background: linear-gradient(45deg, #ff7043, #ff5722) !important; }
-        body.theme-sunset .song-list li { color: #ff7043 !important; }
-        body.theme-sunset .play-btn-inline { background: #ff7043 !important; }
-        body.theme-sunset .bottom-nav-item.active { color: #ff7043 !important; }
+        .player-img-mini { 
+            width: 50px; 
+            height: 50px; 
+            border-radius: 12px; 
+            object-fit: cover; 
+            margin-right: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
         
-        body.theme-oceanic { background: linear-gradient(135deg, #0a192f, #173a5e, #3b6978) !important; }
-        body.theme-oceanic .logo { color: #17a2b8 !important; text-shadow: 0 0 15px #17a2b8 !important; }
-        body.theme-oceanic .btn-primary { background: linear-gradient(45deg, #17a2b8, #138496) !important; }
-        body.theme-oceanic .song-list li { color: #17a2b8 !important; }
-        body.theme-oceanic .play-btn-inline { background: #17a2b8 !important; }
-        body.theme-oceanic .bottom-nav-item.active { color: #17a2b8 !important; }
+        .player-info-mini { 
+            flex: 1; 
+            overflow: hidden;
+        }
+        
+        .player-title-mini { 
+            font-weight: 600; 
+            font-size: 1rem;
+            color: #ffffff;
+            margin-bottom: 0.2rem;
+        }
+        
+        .player-artist-mini { 
+            color: rgba(255, 255, 255, 0.7); 
+            font-size: 0.85rem;
+        }
+        
+        .player-controls-inline { 
+            display: flex; 
+            align-items: center; 
+            gap: 1rem;
+        }
+        
+        .play-btn-inline { 
+            background: linear-gradient(135deg, #1DB954, #00ff88);
+            color: #000; 
+            border: none; 
+            border-radius: 50%; 
+            width: 44px; 
+            height: 44px; 
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(29, 185, 84, 0.4);
+        }
+        
+        .play-btn-inline:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(29, 185, 84, 0.6);
+        }
+        
+        /* ===== NAVEGACIÓN INFERIOR MODERNA ===== */
+        .bottom-nav { 
+            position: fixed; 
+            left: 20px; 
+            right: 20px; 
+            bottom: 20px; 
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            display: flex; 
+            height: 70px; 
+            z-index: 5000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+        
+        .bottom-nav-item { 
+            color: rgba(255, 255, 255, 0.6); 
+            text-align: center; 
+            flex: 1; 
+            padding: 0.8rem 0; 
+            cursor: pointer; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .bottom-nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.1), rgba(0, 255, 136, 0.05));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .bottom-nav-item.active::before {
+            opacity: 1;
+        }
+        
+        .bottom-nav-item.active { 
+            color: #1DB954;
+        }
+        
+        .bottom-nav-item:hover {
+            color: #ffffff;
+        }
+        
+        .bottom-nav-item .icon { 
+            font-size: 1.4rem; 
+        }
+        
+        .bottom-nav-item small { 
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        
+        /* ===== SECCIONES DE CONTENIDO ===== */
+        .content-section { 
+            display: none; 
+        }
+        
+        .content-section.active { 
+            display: block; 
+        }
+        
+        /* ===== BOTÓN DE VOLVER ===== */
+        .back-btn { 
+            margin-bottom: 2rem; 
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: #fff; 
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.8rem 1.5rem; 
+            border-radius: 50px; 
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .back-btn:hover { 
+            background: rgba(29, 185, 84, 0.2);
+            border-color: #1DB954;
+            transform: translateX(-4px);
+        }
+        
+        /* ===== MODAL MODERNO ===== */
+        .modal { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 2000;
+        }
+        
+        .modal-content { 
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2.5rem; 
+            border-radius: 24px; 
+            width: 95%; 
+            max-width: 400px; 
+            position: relative;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+        }
+        
+        .form-group { 
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group input { 
+            width: 100%; 
+            padding: 1rem 1.2rem; 
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px; 
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #1DB954;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.1);
+        }
+        
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .btn-primary { 
+            background: linear-gradient(135deg, #1DB954, #00ff88);
+            color: #000; 
+            border: none; 
+            padding: 1rem 2rem; 
+            border-radius: 50px; 
+            cursor: pointer; 
+            width: 100%; 
+            margin-top: 1rem;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(29, 185, 84, 0.4);
+        }
+        
+        .btn-primary:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(29, 185, 84, 0.6);
+        }
+        
+        .close-modal { 
+            position: absolute; 
+            top: 1rem; 
+            right: 1rem; 
+            background: rgba(255, 255, 255, 0.1);
+            border: none; 
+            color: #fff; 
+            font-size: 1.5rem; 
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .close-modal:hover {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+        
+        /* ===== DROPDOWN MODERNO ===== */
+        .user-dropdown { 
+            display: none; 
+            position: absolute; 
+            right: 0; 
+            top: calc(100% + 10px); 
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(20px);
+            min-width: 220px; 
+            border-radius: 16px; 
+            z-index: 1000;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+        
+        .user-dropdown.show { 
+            display: block; 
+            animation: dropdownSlideIn 0.3s ease;
+        }
+        
+        .user-dropdown-item { 
+            padding: 1rem 1.5rem; 
+            cursor: pointer; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .user-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .user-dropdown-item:hover { 
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        /* ===== LOADING MODERNO ===== */
+        .loading-indicator { 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(20px);
+            color: #fff; 
+            padding: 2rem 3rem; 
+            border-radius: 20px; 
+            z-index: 2000; 
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* ===== FAVORITOS MODERNOS ===== */
+        .favorite-item { 
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 1.5rem; 
+            margin-bottom: 1rem; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-left: 4px solid #ff4757;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .favorite-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, rgba(255, 71, 87, 0.1), transparent);
+            transition: width 0.3s ease;
+        }
+        
+        .favorite-item:hover::before {
+            width: 100%;
+        }
+        
+        .favorite-item:hover { 
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 71, 87, 0.3);
+            transform: translateX(8px);
+        }
+        
+        .favorite-info { 
+            flex: 1; 
+        }
+        
+        .favorite-title { 
+            font-weight: 600; 
+            margin-bottom: 0.4rem; 
+            color: #fff;
+            font-size: 1.1rem;
+        }
+        
+        .favorite-artist { 
+            font-size: 0.9rem; 
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .favorite-album { 
+            font-size: 0.8rem; 
+            color: rgba(255, 255, 255, 0.5); 
+            margin-top: 0.2rem; 
+        }
+        
+        /* ===== SEARCH INPUT MODERNO ===== */
+        .search-input {
+            width: 100%; 
+            padding: 1.2rem 1.5rem; 
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px; 
+            color: #fff; 
+            margin-bottom: 2rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #1DB954;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.1);
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* ===== COPYRIGHT MODERNO ===== */
+        .copyright { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 20px; 
+            background: rgba(0, 0, 0, 0.8);
+            color: rgba(255, 255, 255, 0.4); 
+            font-size: 0.7rem; 
+            text-align: center; 
+            padding: 2px 0; 
+            z-index: 10000;
+        }
+        
+        /* ===== ANIMACIONES ===== */
+        @keyframes dropdownSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes heartBeat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        /* ===== TEMAS ADICIONALES ===== */
+        body.theme-neon { 
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 30%, #16213e 60%, #0f0f23 100%);
+        }
+        
+        body.theme-neon .logo { 
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        body.theme-sunset { 
+            background: linear-gradient(135deg, #2c1810 0%, #4a2c2a 25%, #6d4c41 50%, #8d5524 75%);
+        }
+        
+        body.theme-sunset .logo { 
+            background: linear-gradient(135deg, #ff7043, #ff5722);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        body.theme-oceanic { 
+            background: linear-gradient(135deg, #0a192f 0%, #173a5e 30%, #3b6978 60%, #84a9ac 100%);
+        }
+        
+        body.theme-oceanic .logo { 
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            main { 
+                padding: 1rem; 
+            }
+            
+            .album-grid { 
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+                gap: 1rem;
+            }
+            
+            .section-title { 
+                font-size: 2rem; 
+            }
+            
+            header { 
+                padding: 1rem; 
+            }
+            
+            .player {
+                left: 10px;
+                right: 10px;
+            }
+            
+            .bottom-nav {
+                left: 10px;
+                right: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="loading-indicator" id="loading">🎵 Cargando...</div>
+    <div class="loading-indicator" id="loading">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 20px; height: 20px; border: 2px solid #1DB954; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            🎵 Cargando música...
+        </div>
+    </div>
     
     <header>
         <span class="logo">KLMZ MUSIC</span>
@@ -120,12 +797,20 @@
                 </select>
             </div>
             <div class="user-menu">
-                <div class="lock-icon" onclick="toggleUserMenu()">🔒</div>
+                <div class="lock-icon" id="header-lock-icon" onclick="toggleUserMenu()">🔒</div>
                 <div class="user-dropdown" id="userDropdown">
-                    <div class="user-dropdown-item" onclick="showAuth('login')">🔐 Iniciar Sesión</div>
-                    <div class="user-dropdown-item" onclick="showAuth('register')">📝 Registrarse</div>
-                    <div class="user-dropdown-item" id="adminBtn" onclick="showSection('admin')" style="display:none;">⚙️ Panel Admin</div>
-                    <div class="user-dropdown-item" id="logoutBtn" onclick="logout()" style="display:none;">🚪 Cerrar Sesión</div>
+                    <div class="user-dropdown-item" onclick="showAuth('login')">
+                        <span>🔐</span> Iniciar Sesión
+                    </div>
+                    <div class="user-dropdown-item" onclick="showAuth('register')">
+                        <span>📝</span> Registrarse
+                    </div>
+                    <div class="user-dropdown-item" id="adminBtn" onclick="showSection('admin')" style="display:none;">
+                        <span>⚙️</span> Panel Admin
+                    </div>
+                    <div class="user-dropdown-item" id="logoutBtn" onclick="logout()" style="display:none;">
+                        <span>🚪</span> Cerrar Sesión
+                    </div>
                 </div>
             </div>
         </div>
@@ -133,60 +818,63 @@
 
     <main>
         <section class="content-section active" id="home-section">
-            <div class="section-title">Albums</div>
+            <div class="section-title">Descubre Música</div>
             <div class="album-grid" id="albums">
-                <div style="text-align: center; padding: 2rem; color: #666;">
-                    <h3>Cargando álbumes...</h3>
+                <div style="text-align: center; padding: 4rem; color: rgba(255,255,255,0.6);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎵</div>
+                    <h3>Cargando tu biblioteca musical...</h3>
                 </div>
             </div>
             <div id="album-detail" style="display:none;"></div>
         </section>
 
         <section class="content-section" id="search-section">
-            <div class="section-title">🔍 Buscar Música</div>
-            <input type="text" placeholder="¿Qué quieres escuchar?" id="search-input" style="width:100%; padding:1rem; background:#242424; border:none; border-radius:4px; color:#fff; margin-bottom:2rem;" onkeyup="searchMusic()">
+            <div class="section-title">Explorar</div>
+            <input type="text" placeholder="Busca canciones, artistas o álbumes..." id="search-input" class="search-input" onkeyup="searchMusic()">
             <div id="search-results"></div>
         </section>
 
         <section class="content-section" id="favorites-section">
-            <div class="section-title">❤️ Mis Favoritos</div>
+            <div class="section-title">❤️ Favoritos</div>
             <div id="favorites-content">
-                <div style="text-align: center; padding: 2rem; color: #666;">
-                    <h3>Cargando favoritos...</h3>
+                <div style="text-align: center; padding: 4rem; color: rgba(255,255,255,0.6);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">💖</div>
+                    <h3>Cargando tus favoritos...</h3>
                 </div>
             </div>
         </section>
 
         <section class="content-section" id="downloads-section">
-            <div class="section-title">📥 Mis Descargas</div>
+            <div class="section-title">📥 Offline</div>
             <div id="downloads-content">
-                <div style="text-align: center; padding: 2rem; color: #666;">
-                    <h3>Cargando descargas...</h3>
+                <div style="text-align: center; padding: 4rem; color: rgba(255,255,255,0.6);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
+                    <h3>Cargando música offline...</h3>
                 </div>
             </div>
         </section>
 
         <section class="content-section" id="admin-section">
-            <div class="section-title">⚙️ Panel de Administración</div>
+            <div class="section-title">⚙️ Administración</div>
             <div id="admin-content"></div>
         </section>
     </main>
 
     <nav class="bottom-nav">
         <div class="bottom-nav-item active" onclick="showSection('home')">
-            <div style="font-size: 1.2rem;">⌂</div>
+            <div class="icon">🏠</div>
             <small>Inicio</small>
         </div>
         <div class="bottom-nav-item" onclick="showSection('search')">
-            <div style="font-size: 1.2rem;">🔍</div>
+            <div class="icon">🔍</div>
             <small>Buscar</small>
         </div>
         <div class="bottom-nav-item" onclick="showSection('downloads')">
-            <div style="font-size: 1.2rem;">↓</div>
-            <small>Descargas</small>
+            <div class="icon">📥</div>
+            <small>Offline</small>
         </div>
         <div class="bottom-nav-item" onclick="showSection('favorites')">
-            <div style="font-size: 1.2rem;">♡</div>
+            <div class="icon">💖</div>
             <small>Favoritos</small>
         </div>
     </nav>
@@ -206,22 +894,22 @@
         <div class="modal-content">
             <button class="close-modal" onclick="closeModal()">&times;</button>
             <div id="login-form">
-                <h2>Iniciar Sesión</h2>
+                <h2 style="text-align: center; margin-bottom: 2rem; font-weight: 700; background: linear-gradient(135deg, #1DB954, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Iniciar Sesión</h2>
                 <form onsubmit="login(event)">
                     <div class="form-group">
-                        <input type="email" id="login-email" placeholder="Email" required>
+                        <input type="email" id="login-email" placeholder="Correo electrónico" required>
                     </div>
                     <div class="form-group">
                         <input type="password" id="login-password" placeholder="Contraseña" required>
                     </div>
-                    <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                    <button type="submit" class="btn-primary">Entrar</button>
                 </form>
             </div>
             <div id="register-form" style="display: none;">
-                <h2>Registrarse</h2>
+                <h2 style="text-align: center; margin-bottom: 2rem; font-weight: 700; background: linear-gradient(135deg, #1DB954, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Crear Cuenta</h2>
                 <form onsubmit="register(event)">
                     <div class="form-group">
-                        <input type="email" id="register-email" placeholder="Email" required>
+                        <input type="email" id="register-email" placeholder="Correo electrónico" required>
                     </div>
                     <div class="form-group">
                         <input type="password" id="register-password" placeholder="Contraseña" required>
@@ -238,11 +926,18 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
 
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
     <script>
         // ===== VARIABLES GLOBALES =====
         let supabase;
         let currentUser = null;
-        let allAlbums = [];  // ✅ CORREGIDO: era "allAlbumes"
+        let allAlbums = [];
         let allSongs = [];
         let currentSong = null;
         let currentAlbum = null;
@@ -257,7 +952,7 @@
             adminEmail: 'klmzr@gmail.com'
         };
         
-        console.log('🚀 KLMZ MUSIC - Iniciando aplicación...');
+        console.log('🚀 KLMZ MUSIC - Aplicación moderna iniciando...');
         
         // ===== SISTEMA DE FAVORITOS COMPLETO =====
         class FavoritesManager {
@@ -391,22 +1086,28 @@
                 top: 100px;
                 left: 50%;
                 transform: translateX(-50%);
-                background: #333;
+                background: rgba(26, 26, 46, 0.95);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 color: #fff;
-                padding: 12px 24px;
-                border-radius: 25px;
+                padding: 1rem 2rem;
+                border-radius: 50px;
                 z-index: 10000;
                 font-size: 14px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                animation: slideInOut 2.5s ease-in-out;
+                font-weight: 500;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                animation: toastSlideIn 0.4s ease;
             `;
             
             const style = document.createElement('style');
             style.textContent = `
-                @keyframes slideInOut {
-                    0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-                    15%, 85% { opacity: 1; transform: translateX(-50%) translateY(0); }
-                    100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                @keyframes toastSlideIn {
+                    0% { opacity: 0; transform: translateX(-50%) translateY(-30px); }
+                    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                }
+                @keyframes toastSlideOut {
+                    0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                    100% { opacity: 0; transform: translateX(-50%) translateY(-30px); }
                 }
             `;
             
@@ -414,9 +1115,12 @@
             document.body.appendChild(toast);
             
             setTimeout(() => {
-                if (document.body.contains(toast)) document.body.removeChild(toast);
-                if (document.head.contains(style)) document.head.removeChild(style);
-            }, 2500);
+                toast.style.animation = 'toastSlideOut 0.4s ease';
+                setTimeout(() => {
+                    if (document.body.contains(toast)) document.body.removeChild(toast);
+                    if (document.head.contains(style)) document.head.removeChild(style);
+                }, 400);
+            }, 2100);
         }
 
         async function loadFavorites() {
@@ -429,11 +1133,11 @@
                 
                 if (favorites.length === 0) {
                     content.innerHTML = `
-                        <div style="text-align: center; padding: 3rem; color: #666;">
+                        <div style="text-align: center; padding: 4rem; color: rgba(255,255,255,0.6);">
                             <div style="font-size: 4rem; margin-bottom: 1rem;">💔</div>
-                            <h3>No tienes favoritos aún</h3>
-                            <p>Marca canciones como favoritas presionando ❤️ en cualquier álbum</p>
-                            <button onclick="showSection('home')" class="btn-primary" style="width: auto; margin-top: 1rem;">
+                            <h3 style="margin-bottom: 1rem;">No tienes favoritos aún</h3>
+                            <p style="margin-bottom: 2rem;">Descubre música increíble y marca tus canciones favoritas</p>
+                            <button onclick="showSection('home')" class="btn-primary" style="width: auto; padding: 1rem 2rem;">
                                 🎵 Explorar Música
                             </button>
                         </div>
@@ -444,11 +1148,13 @@
                 console.log(`❤️ Mostrando ${favorites.length} favoritos`);
                 
                 content.innerHTML = `
-                    <div style="margin-bottom: 1rem; text-align: center; color: #ff4757;">
-                        <strong>${favorites.length} canciones favoritas</strong>
-                        <button onclick="clearAllFavorites()" class="btn-danger" style="margin-left: 1rem; width: auto; padding: 0.3rem 1rem; font-size: 0.8rem;">
-                            🗑️ Limpiar Todo
-                        </button>
+                    <div style="margin-bottom: 2rem; text-align: center;">
+                        <div style="display: inline-flex; align-items: center; gap: 1rem; background: rgba(255, 71, 87, 0.1); padding: 1rem 2rem; border-radius: 50px; border: 1px solid rgba(255, 71, 87, 0.3);">
+                            <span style="color: #ff4757; font-weight: 600; font-size: 1.1rem;">❤️ ${favorites.length} canciones favoritas</span>
+                            <button onclick="clearAllFavorites()" style="background: rgba(255, 71, 87, 0.2); border: 1px solid #ff4757; color: #ff4757; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.8rem;">
+                                🗑️ Limpiar
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="favorites-list">
@@ -458,8 +1164,8 @@
                                     <div class="favorite-title">${favorite.title}</div>
                                     <div class="favorite-artist">${favorite.artist}</div>
                                     <div class="favorite-album">${favorite.album}</div>
-                                    <small style="color: #666; font-size: 0.7rem;">
-                                        Agregado: ${new Date(favorite.addedAt).toLocaleDateString()}
+                                    <small style="color: rgba(255,255,255,0.4); font-size: 0.7rem; margin-top: 0.3rem; display: block;">
+                                        💖 ${new Date(favorite.addedAt).toLocaleDateString()}
                                     </small>
                                 </div>
                                 <div class="song-actions">
@@ -478,9 +1184,10 @@
             } catch (error) {
                 console.error('❌ Error cargando favoritos:', error);
                 document.getElementById('favorites-content').innerHTML = `
-                    <div style="text-align: center; padding: 2rem; color: #ff4757;">
-                        <h3>❌ Error cargando favoritos</h3>
-                        <p>${error.message}</p>
+                    <div style="text-align: center; padding: 4rem; color: #ff4757;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                        <h3>Error cargando favoritos</h3>
+                        <p style="margin: 1rem 0;">${error.message}</p>
                         <button onclick="loadFavorites()" class="btn-primary" style="width: auto; margin-top: 1rem;">
                             🔄 Reintentar
                         </button>
@@ -513,7 +1220,7 @@
         function playFavoriteSong(songId) {
             const favorite = favoritesManager.getFavorite(songId);
             if (!favorite) {
-                alert('❌ Canción favorita no encontrada');
+                showToast('❌ Canción favorita no encontrada');
                 return;
             }
             
@@ -544,7 +1251,7 @@
             loadFavorites();
         }
         
-        // ===== FUNCIONES BÁSICAS =====
+        // ===== RESTO DE FUNCIONES (IGUALES PERO CON MEJOR UI) =====
         function detectEnvironment() {
             isCordova = !!(window.cordova || window.phonegap);
             console.log('📱 Entorno:', isCordova ? 'Cordova APK' : 'Navegador Web');
@@ -601,7 +1308,7 @@
                     .from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false });
                 if (songError) throw songError;
                 
-                allAlbums = albums || [];  // ✅ CORREGIDO: Variable correcta
+                allAlbums = albums || [];
                 allSongs = songs || [];
                 
                 console.log(`✅ Cargados: ${allAlbums.length} álbumes, ${allSongs.length} canciones`);
@@ -610,9 +1317,10 @@
             } catch (error) {
                 console.error('❌ Error cargando datos:', error);
                 document.getElementById('albums').innerHTML = `
-                    <div style="text-align: center; padding: 2rem; color: #ff4757;">
-                        <h3>❌ Error de conexión</h3>
-                        <p>${error.message}</p>
+                    <div style="text-align: center; padding: 4rem; color: #ff4757;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                        <h3>Error de conexión</h3>
+                        <p style="margin: 1rem 0;">${error.message}</p>
                         <button onclick="loadData()" class="btn-primary" style="width: auto; margin-top: 1rem;">🔄 Reintentar</button>
                     </div>
                 `;
@@ -624,20 +1332,21 @@
         function displayAlbums() {
             const container = document.getElementById('albums');
             
-            if (allAlbums.length === 0) {  // ✅ CORREGIDO: Variable correcta
+            if (allAlbums.length === 0) {
                 container.innerHTML = `
-                    <div style="text-align: center; padding: 2rem; color: #666;">
-                        <h3>📀 No hay álbumes</h3>
-                        <p>Inicia sesión como admin para subir música</p>
+                    <div style="text-align: center; padding: 4rem; color: rgba(255,255,255,0.6);">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">🎼</div>
+                        <h3 style="margin-bottom: 1rem;">No hay álbumes disponibles</h3>
+                        <p style="margin-bottom: 2rem;">Inicia sesión como administrador para subir música</p>
                         ${currentUser?.email === CONFIG.adminEmail ? '<button onclick="showSection(\'admin\')" class="btn-primary" style="width: auto; margin-top: 1rem;">⚙️ Ir al Panel Admin</button>' : ''}
                     </div>
                 `;
                 return;
             }
             
-            container.innerHTML = allAlbums.map(album => `  ✅ CORREGIDO: Variable correcta
+            container.innerHTML = allAlbums.map(album => `
                 <div class="album-card" onclick="showAlbum('${album.id}')">
-                    <img class="album-img" src="${album.cover_url}" alt="${album.title}" onerror="this.style.background='#333'; this.alt='🎵';">
+                    <img class="album-img" src="${album.cover_url}" alt="${album.title}" onerror="this.style.background='linear-gradient(135deg, #333, #555)'; this.alt='🎵';">
                     <div class="album-title">${album.title}</div>
                     <div class="album-artist">${album.artist}</div>
                 </div>
@@ -648,7 +1357,7 @@
             try {
                 console.log('🔍 Mostrando álbum:', albumId);
                 
-                const album = allAlbums.find(a => a.id === albumId);  // ✅ CORREGIDO: Variable correcta
+                const album = allAlbums.find(a => a.id === albumId);
                 if (!album) return;
                 
                 currentAlbum = album;
@@ -658,13 +1367,20 @@
                 detail.style.display = 'block';
                 
                 detail.innerHTML = `
-                    <button class="back-btn" onclick="backToAlbums()">⟵ Volver</button>
-                    <div style="text-align: center; margin-bottom: 2rem;">
-                        <img src="${album.cover_url}" style="width: 200px; height: 200px; border-radius: 12px;" onerror="this.style.background='#333';">
-                        <h2>${album.title}</h2>
-                        <p style="color: #b3b3b3;">${album.artist}</p>
+                    <button class="back-btn" onclick="backToAlbums()">
+                        <span>⟵</span> Volver a álbumes
+                    </button>
+                    <div style="text-align: center; margin-bottom: 3rem;">
+                        <img src="${album.cover_url}" style="width: 250px; height: 250px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); margin-bottom: 1.5rem;" onerror="this.style.background='linear-gradient(135deg, #333, #555)';">
+                        <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">${album.title}</h2>
+                        <p style="color: rgba(255,255,255,0.7); font-size: 1.1rem;">${album.artist}</p>
                     </div>
-                    <div id="song-list">🔄 Cargando canciones...</div>
+                    <div id="song-list">
+                        <div style="text-align: center; color: rgba(255,255,255,0.6);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">🎵</div>
+                            <h3>Cargando canciones...</h3>
+                        </div>
+                    </div>
                 `;
                 
                 const { data: songs } = await supabase.from('songs').select('*').eq('album_id', albumId);
@@ -672,9 +1388,10 @@
                 
                 if (!songs || songs.length === 0) {
                     songList.innerHTML = `
-                        <div style="text-align: center; color: #666; padding: 2rem;">
-                            <h3>📭 No hay canciones</h3>
-                            <p>Este álbum aún no tiene canciones</p>
+                        <div style="text-align: center; color: rgba(255,255,255,0.6); padding: 3rem;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                            <h3>No hay canciones</h3>
+                            <p style="margin: 1rem 0;">Este álbum aún no tiene canciones</p>
                             ${currentUser?.email === CONFIG.adminEmail ? '<button onclick="showSection(\'admin\')" class="btn-primary" style="width: auto; margin-top: 1rem;">⚙️ Subir Canciones</button>' : ''}
                         </div>
                     `;
@@ -688,9 +1405,9 @@
                         <ul>
                             ${songs.map((song, idx) => `
                                 <li data-song-id="${song.id}">
-                                    <span onclick="playSong(${JSON.stringify(song).replace(/"/g, '&quot;')}, ${JSON.stringify(album).replace(/"/g, '&quot;')})" style="flex: 1; cursor: pointer;">
-                                        ${song.title}
-                                    </span>
+                                    <div onclick="playSong(${JSON.stringify(song).replace(/"/g, '&quot;')}, ${JSON.stringify(album).replace(/"/g, '&quot;')})" style="flex: 1; cursor: pointer;">
+                                        <div class="song-title">${song.title}</div>
+                                    </div>
                                     <div class="song-actions">
                                         <span class="action-btn favorite-btn ${favoritesManager.isFavorite(song.id) ? 'active' : ''}" 
                                               onclick="toggleFavorite(${JSON.stringify(song).replace(/"/g, '&quot;')}, ${JSON.stringify(album).replace(/"/g, '&quot;')}, this)" 
@@ -779,9 +1496,10 @@
         
         function loadDownloads() {
             document.getElementById('downloads-content').innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: #666;">
-                    <h3>📥 Descargas Offline</h3>
-                    <p>Entorno: ${isCordova ? '📱 APK' : '🌐 Web'}</p>
+                <div style="text-align: center; padding: 4rem; color: rgba(255,255,255,0.6);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
+                    <h3 style="margin-bottom: 1rem;">Música Offline</h3>
+                    <p style="margin-bottom: 1rem;">Entorno: ${isCordova ? '📱 APK' : '🌐 Web'}</p>
                     <p>Las descargas reales se implementarán con Cordova</p>
                 </div>
             `;
@@ -795,7 +1513,6 @@
             
             document.getElementById(sectionName + '-section').classList.add('active');
             
-            // Marcar navegación activa
             const navMap = { home: 0, search: 1, downloads: 2, favorites: 3 };
             const navItems = document.querySelectorAll('.bottom-nav-item');
             if (navMap.hasOwnProperty(sectionName)) {
@@ -812,7 +1529,7 @@
             
             if (sectionName === 'admin') {
                 if (!currentUser || currentUser.email !== CONFIG.adminEmail) {
-                    alert('🔒 Solo el administrador puede acceder');
+                    showToast('🔒 Solo el administrador puede acceder');
                     showSection('home');
                     return;
                 }
@@ -835,19 +1552,30 @@
             );
             
             if (found.length === 0) {
-                results.innerHTML = '<p style="color: #666;">No se encontraron resultados</p>';
+                results.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: rgba(255,255,255,0.6);">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">🔍</div>
+                        <h3>No se encontraron resultados</h3>
+                        <p>Intenta con otro término de búsqueda</p>
+                    </div>
+                `;
                 return;
             }
             
             results.innerHTML = found.map(song => `
-                <div style="padding: 1rem; background: #242424; margin: 0.5rem 0; border-radius: 8px; cursor: pointer;" onclick="playSong(${JSON.stringify(song).replace(/"/g, '&quot;')}, ${JSON.stringify(song.albums).replace(/"/g, '&quot;')})">
-                    <strong>${song.title}</strong><br>
-                    <small style="color: #b3b3b3;">${song.albums?.artist || 'Desconocido'}</small>
+                <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); padding: 1.5rem; margin: 1rem 0; border-radius: 16px; cursor: pointer; transition: all 0.3s ease;" 
+                     onclick="playSong(${JSON.stringify(song).replace(/"/g, '&quot;')}, ${JSON.stringify(song.albums).replace(/"/g, '&quot;')})"
+                     onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateX(8px)'"
+                     onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='translateX(0)'">
+                    <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.3rem;">${song.title}</div>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">${song.albums?.artist || 'Desconocido'}</div>
                 </div>
             `).join('');
         }
         
-        function toggleUserMenu() { document.getElementById('userDropdown').classList.toggle('show'); }
+        function toggleUserMenu() { 
+            document.getElementById('userDropdown').classList.toggle('show'); 
+        }
         
         function showAuth(type) {
             document.getElementById('userDropdown').classList.remove('show');
@@ -856,13 +1584,18 @@
             document.getElementById('auth-modal').style.display = 'flex';
         }
         
-        function closeModal() { document.getElementById('auth-modal').style.display = 'none'; }
-        function showLoading(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }
+        function closeModal() { 
+            document.getElementById('auth-modal').style.display = 'none'; 
+        }
+        
+        function showLoading(show) { 
+            document.getElementById('loading').style.display = show ? 'block' : 'none'; 
+        }
         
         function updateAuthUI() {
             const adminBtn = document.getElementById('adminBtn');
             const logoutBtn = document.getElementById('logoutBtn');
-            const lockIcon = document.querySelector('.lock-icon');
+            const lockIcon = document.getElementById('header-lock-icon');
             
             if (currentUser) {
                 lockIcon.textContent = '👤';
@@ -885,10 +1618,10 @@
                 const password = document.getElementById('login-password').value;
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                alert('✅ ¡Bienvenido!');
+                showToast('✅ ¡Bienvenido de vuelta!');
                 closeModal();
             } catch (error) {
-                alert('❌ Error: ' + error.message);
+                showToast('❌ Error: ' + error.message);
             }
         }
         
@@ -898,20 +1631,23 @@
                 const email = document.getElementById('register-email').value;
                 const password = document.getElementById('register-password').value;
                 const confirm = document.getElementById('register-confirm').value;
-                if (password !== confirm) { alert('❌ Las contraseñas no coinciden'); return; }
+                if (password !== confirm) { 
+                    showToast('❌ Las contraseñas no coinciden'); 
+                    return; 
+                }
                 const { error } = await supabase.auth.signUp({ email, password });
                 if (error) throw error;
-                alert('✅ Registro exitoso. Revisa tu email.');
+                showToast('✅ Registro exitoso. Revisa tu email.');
                 closeModal();
             } catch (error) {
-                alert('❌ Error: ' + error.message);
+                showToast('❌ Error: ' + error.message);
             }
         }
         
         async function logout() {
             try {
                 await supabase.auth.signOut();
-                alert('✅ Sesión cerrada');
+                showToast('✅ Sesión cerrada correctamente');
                 showSection('home');
             } catch (error) {
                 console.error('Error logout:', error);
@@ -920,10 +1656,14 @@
         
         function loadAdminPanel() {
             document.getElementById('admin-content').innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: #666;">
-                    <h3>⚙️ Panel Admin</h3>
-                    <p><strong>Álbumes:</strong> ${allAlbums.length}</p>
-                    <p><strong>Canciones:</strong> ${allSongs.length}</p>
+                <div style="text-align: center; padding: 4rem; color: rgba(255,255,255,0.6);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚙️</div>
+                    <h3 style="margin-bottom: 1rem;">Panel de Administración</h3>
+                    <div style="background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.3); padding: 2rem; border-radius: 16px; margin: 2rem 0;">
+                        <p><strong>📀 Álbumes:</strong> ${allAlbums.length}</p>
+                        <p><strong>🎵 Canciones:</strong> ${allSongs.length}</p>
+                        <p><strong>👤 Usuario:</strong> ${currentUser?.email}</p>
+                    </div>
                     <p>Panel completo disponible próximamente</p>
                 </div>
             `;
@@ -931,7 +1671,7 @@
         
         // ===== INICIALIZACIÓN =====
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 === INICIALIZANDO KLMZ MUSIC ===');
+            console.log('🚀 === INICIALIZANDO KLMZ MUSIC MODERNA ===');
             
             try {
                 loadTheme();
@@ -940,7 +1680,7 @@
                 const supabaseOk = await initSupabase();
                 if (supabaseOk) {
                     await loadData();
-                    console.log('✅ === APLICACIÓN INICIADA CORRECTAMENTE ===');
+                    console.log('✅ === APLICACIÓN MODERNA INICIADA CORRECTAMENTE ===');
                 } else {
                     console.error('❌ Error inicializando aplicación');
                 }
@@ -962,7 +1702,7 @@
             detectEnvironment();
         }, false);
         
-        console.log('✅ === SCRIPT CARGADO COMPLETAMENTE ===');
+        console.log('✅ === SCRIPT MODERNO CARGADO COMPLETAMENTE ===');
     </script>
 </body>
 </html>
