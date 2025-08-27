@@ -321,7 +321,7 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
 
-## 🎯 **PARTE 2: JavaScript BÁSICO (CON DETECCIÓN DE WEBVIEW)**
+## 🎯 **PARTE 2: JavaScript BÁSICO (Sistema Híbrido Web/APK)**
 
 <script>
     let supabase = null;
@@ -338,41 +338,41 @@
     let shuffleMode = false;
     let db;
     let mediaSessionSupported = false;
-    let isAndroidWebView = false;
+    let isCordovaApp = false;
+    let isWebBrowser = false;
     
     const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
     const ADMIN_EMAIL = 'klmzr@gmail.com';
     
-    // ✅ DETECCIÓN DE ANDROID WEBVIEW
-    function detectAndroidWebView() {
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    // ✅ DETECCIÓN PRECISA DE ENTORNO
+    function detectEnvironment() {
+        // Verificar si es Cordova
+        isCordovaApp = !!(window.cordova || window.phonegap || window.PhoneGap);
+        isWebBrowser = !isCordovaApp;
         
-        // Detección más precisa de Android WebView
-        const isAndroid = /Android/i.test(userAgent);
-        const isWebView = /wv$$/i.test(userAgent) || 
-                         /Version\/[0-9\.]+/i.test(userAgent) && /Chrome\/[0-9\.]+/i.test(userAgent) ||
-                         typeof window.Android !== 'undefined' ||
-                         /; wv$$/i.test(userAgent);
+        // Detectar características adicionales
+        const hasDeviceReady = typeof document !== 'undefined' && 'deviceready' in document;
+        const hasCordovaFile = typeof window.cordova !== 'undefined' && window.cordova.file;
         
-        isAndroidWebView = isAndroid && isWebView;
-        
-        if (isAndroidWebView) {
-            console.log('📱 Android WebView detectado - Service Worker DESACTIVADO');
-            console.log('📱 UserAgent:', userAgent);
-            console.log('📱 Android interface:', typeof window.Android !== 'undefined' ? 'DISPONIBLE' : 'NO DISPONIBLE');
+        if (isCordovaApp) {
+            console.log('📱 CORDOVA APP detectada');
+            console.log('  🔧 cordova.file:', hasCordovaFile ? 'DISPONIBLE' : 'NO DISPONIBLE');
+            console.log('  🔧 Android interface:', typeof window.Android !== 'undefined' ? 'DISPONIBLE' : 'NO DISPONIBLE');
         } else {
-            console.log('🌐 Navegador web detectado - Service Worker HABILITADO');
+            console.log('🌐 NAVEGADOR WEB detectado');
+            console.log('  🔧 Service Worker:', 'serviceWorker' in navigator ? 'SOPORTADO' : 'NO SOPORTADO');
+            console.log('  🔧 IndexedDB:', 'indexedDB' in window ? 'SOPORTADO' : 'NO SOPORTADO');
         }
         
-        return isAndroidWebView;
+        return { isCordovaApp, isWebBrowser };
     }
     
-    // ✅ MEDIA SESSION API OPTIMIZADA PARA WEBVIEW
+    // ✅ MEDIA SESSION SOLO EN WEB
     function setupMediaSession() {
-        if ('mediaSession' in navigator && !isAndroidWebView) {
+        if ('mediaSession' in navigator && isWebBrowser) {
             mediaSessionSupported = true;
-            console.log('🔒 MediaSession API disponible - configurando controles de pantalla de bloqueo');
+            console.log('🔒 MediaSession API configurando para navegador web...');
             
             try {
                 navigator.mediaSession.setActionHandler('play', handleMediaSessionPlay);
@@ -380,54 +380,34 @@
                 navigator.mediaSession.setActionHandler('previoustrack', handleMediaSessionPrevious);
                 navigator.mediaSession.setActionHandler('nexttrack', handleMediaSessionNext);
                 navigator.mediaSession.setActionHandler('stop', handleMediaSessionStop);
-                
-                // Configurar seekto solo si no es WebView
                 navigator.mediaSession.setActionHandler('seekto', handleMediaSessionSeekTo);
                 
-                navigator.mediaSession.setActionHandler('seekbackward', () => {
-                    const audio = document.getElementById('audio-player');
-                    if (audio) {
-                        audio.currentTime = Math.max(0, audio.currentTime - 10);
-                    }
-                });
-                
-                navigator.mediaSession.setActionHandler('seekforward', () => {
-                    const audio = document.getElementById('audio-player');
-                    if (audio) {
-                        audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
-                    }
-                });
-                
-                console.log('✅ MediaSession handlers configurados correctamente');
+                console.log('✅ MediaSession handlers configurados');
             } catch (error) {
                 console.log('⚠️ Error configurando MediaSession:', error);
             }
-        } else if (isAndroidWebView) {
-            console.log('📱 Android WebView: MediaSession desactivado, usando controles nativos Android');
+        } else if (isCordovaApp) {
+            console.log('📱 Cordova: MediaSession desactivado, usando controles nativos');
             mediaSessionSupported = false;
         } else {
-            console.log('⚠️ MediaSession API no soportada en este navegador');
+            console.log('⚠️ MediaSession API no disponible');
             mediaSessionSupported = false;
         }
     }
     
-    // ✅ HANDLERS MEJORADOS PARA MEDIA SESSION (SOLO NAVEGADORES WEB)
+    // ✅ HANDLERS DE MEDIA SESSION (SOLO WEB)
     function handleMediaSessionPlay() {
-        if (isAndroidWebView) return; // No usar en WebView
-        
-        console.log('🎵 MediaSession: Play desde pantalla de bloqueo/auriculares');
+        if (isCordovaApp) return;
+        console.log('🎵 MediaSession: Play desde pantalla de bloqueo');
         const audio = document.getElementById('audio-player');
         if (currentSong && audio && audio.paused) {
-            audio.play().then(() => {
-                updateMediaSessionPlaybackState('playing');
-            }).catch(console.error);
+            audio.play().then(() => updateMediaSessionPlaybackState('playing')).catch(console.error);
         }
     }
     
     function handleMediaSessionPause() {
-        if (isAndroidWebView) return; // No usar en WebView
-        
-        console.log('⏸️ MediaSession: Pause desde pantalla de bloqueo/auriculares');
+        if (isCordovaApp) return;
+        console.log('⏸️ MediaSession: Pause desde pantalla de bloqueo');
         const audio = document.getElementById('audio-player');
         if (audio && !audio.paused) {
             audio.pause();
@@ -436,20 +416,17 @@
     }
     
     function handleMediaSessionPrevious() {
-        if (isAndroidWebView) return;
-        console.log('⏮️ MediaSession: Previous desde pantalla de bloqueo/auriculares');
+        if (isCordovaApp) return;
         previousSong();
     }
     
     function handleMediaSessionNext() {
-        if (isAndroidWebView) return;
-        console.log('⏭️ MediaSession: Next desde pantalla de bloqueo/auriculares');
+        if (isCordovaApp) return;
         nextSong();
     }
     
     function handleMediaSessionStop() {
-        if (isAndroidWebView) return;
-        console.log('⏹️ MediaSession: Stop desde pantalla de bloqueo');
+        if (isCordovaApp) return;
         const audio = document.getElementById('audio-player');
         if (audio) {
             audio.pause();
@@ -459,17 +436,16 @@
     }
     
     function handleMediaSessionSeekTo(details) {
-        if (isAndroidWebView) return;
-        console.log('⏩ MediaSession: Seek to', details.seekTime);
+        if (isCordovaApp) return;
         const audio = document.getElementById('audio-player');
         if (audio && details.seekTime !== null && details.seekTime !== undefined) {
             audio.currentTime = details.seekTime;
         }
     }
     
-    // ✅ ACTUALIZAR METADATA SOLO EN NAVEGADORES WEB
+    // ✅ ACTUALIZAR METADATA SOLO EN WEB
     function updateMediaSessionMetadata(song, album) {
-        if (!mediaSessionSupported || !song || isAndroidWebView) return;
+        if (!mediaSessionSupported || !song || isCordovaApp) return;
         
         const title = song.title || 'Sin título';
         const artist = album ? album.artist : 'Artista desconocido';
@@ -497,18 +473,17 @@
     }
     
     function updateMediaSessionPlaybackState(state) {
-        if (!mediaSessionSupported || isAndroidWebView) return;
-        
+        if (!mediaSessionSupported || isCordovaApp) return;
         try {
             navigator.mediaSession.playbackState = state;
-            console.log('🔄 MediaSession playbackState:', state);
         } catch (error) {
             console.error('❌ Error actualizando playbackState:', error);
         }
     }
     
-    // ✅ FUNCIONES DE BASE DE DATOS OFFLINE
-    function initDB() {
+    // ✅ SISTEMA DE ALMACENAMIENTO HÍBRIDO
+    // Para WEB: IndexedDB
+    function initWebDB() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open('KLMZMusicDB', 2);
             request.onerror = () => reject('Error IndexedDB');
@@ -525,7 +500,7 @@
         });
     }
     
-    async function saveSongToDB(songData) {
+    async function saveWebSong(songData) {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(['songs'], 'readwrite');
             const store = transaction.objectStore('songs');
@@ -535,7 +510,7 @@
         });
     }
     
-    async function getSongFromDB(songId) {
+    async function getWebSong(songId) {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(['songs'], 'readonly');
             const store = transaction.objectStore('songs');
@@ -545,7 +520,7 @@
         });
     }
     
-    async function getAllDownloadedSongs() {
+    async function getAllWebSongs() {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(['songs'], 'readonly');
             const store = transaction.objectStore('songs');
@@ -555,75 +530,192 @@
         });
     }
     
-    // ✅ FUNCIONES ADMIN
-    async function uploadFile(file) {
-        showLoadingIndicator(true);
-        try {
-            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
-                throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
+    // ✅ PARA CORDOVA: File System + File Transfer
+    async function saveCordovaSong(songData) {
+        return new Promise((resolve, reject) => {
+            if (!window.cordova || !window.cordova.file) {
+                reject('Cordova file plugin no disponible');
+                return;
             }
             
-            const client = new Appwrite.Client();
-            const storage = new Appwrite.Storage(client);
-            const bucketId = '68ad019f00207b1df467';
-            const projectId = '68ab0cf2000365979a71';
-            const endpoint = 'https://nyc.cloud.appwrite.io/v1';
+            // Guardar metadata en localStorage de Cordova
+            let savedSongs = JSON.parse(localStorage.getItem('cordova_offline_songs') || '[]');
+            const existingIndex = savedSongs.findIndex(s => s.id === songData.id);
             
-            client.setEndpoint(endpoint).setProject(projectId);
+            if (existingIndex >= 0) {
+                savedSongs[existingIndex] = songData;
+            } else {
+                savedSongs.push(songData);
+            }
             
-            const fileId = Appwrite.ID.unique();
-            const response = await storage.createFile(bucketId, fileId, file);
+            localStorage.setItem('cordova_offline_songs', JSON.stringify(savedSongs));
+            resolve();
+        });
+    }
+    
+    async function getCordovaSong(songId) {
+        const savedSongs = JSON.parse(localStorage.getItem('cordova_offline_songs') || '[]');
+        return savedSongs.find(s => s.id === songId) || null;
+    }
+    
+    async function getAllCordovaSongs() {
+        return JSON.parse(localStorage.getItem('cordova_offline_songs') || '[]');
+    }
+    
+    // ✅ FUNCIONES UNIVERSALES DE ALMACENAMIENTO
+    async function saveSongToDevice(songData) {
+        if (isWebBrowser) {
+            return await saveWebSong(songData);
+        } else {
+            return await saveCordovaSong(songData);
+        }
+    }
+    
+    async function getSongFromDevice(songId) {
+        if (isWebBrowser) {
+            return await getWebSong(songId);
+        } else {
+            return await getCordovaSong(songId);
+        }
+    }
+    
+    async function getAllSongsFromDevice() {
+        if (isWebBrowser) {
+            return await getAllWebSongs();
+        } else {
+            return await getAllCordovaSongs();
+        }
+    }
+    
+    // ✅ NORMALIZAR RUTAS PARA REPRODUCCIÓN
+    function normalizeAudioPath(filePath, isLocal = false) {
+        if (!isLocal || isWebBrowser) {
+            return filePath; // URL original para web
+        }
+        
+        // Para Cordova, usar convertFileSrc si está disponible
+        if (isCordovaApp && window.Ionic && window.Ionic.WebView && window.Ionic.WebView.convertFileSrc) {
+            console.log('📱 Normalizando ruta con Ionic WebView:', filePath);
+            return window.Ionic.WebView.convertFileSrc(filePath);
+        }
+        
+        // Fallback para Cordova sin Ionic
+        if (isCordovaApp && filePath.startsWith('file://')) {
+            const normalizedPath = filePath.replace('file://', 'cdvfile://localhost/');
+            console.log('📱 Normalizando ruta manual:', filePath, '->', normalizedPath);
+            return normalizedPath;
+        }
+        
+        return filePath;
+    }
+    
+    // ✅ DESCARGA HÍBRIDA WEB/CORDOVA
+    window.downloadSongHybrid = async function(song, album, element) {
+        if (element.classList.contains('downloaded')) return;
+        
+        try {
+            element.textContent = '⏳';
+            element.style.color = '#ff9800';
             
-            const finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${response.$id}/view?project=${projectId}`;
-            return finalUrl;
+            if (isWebBrowser) {
+                // ✅ DESCARGA WEB CON INDEXEDDB
+                console.log('🌐 Descargando para WEB:', song.title);
+                
+                const response = await fetch(song.song_url);
+                const audioBlob = await response.blob();
+                const coverResponse = await fetch(album.cover_url);
+                const coverBlob = await coverResponse.blob();
+                
+                await saveSongToDevice({
+                    id: song.id,
+                    metadata: song,
+                    album: album,
+                    audio: audioBlob,
+                    cover: coverBlob,
+                    downloadedAt: new Date().toISOString()
+                });
+                
+                console.log('✅ WEB: Canción guardada en IndexedDB');
+                
+            } else if (isCordovaApp) {
+                // ✅ DESCARGA CORDOVA CON FILE SYSTEM
+                console.log('📱 Descargando para CORDOVA:', song.title);
+                
+                if (!window.cordova || !window.cordova.file) {
+                    throw new Error('Plugin cordova-plugin-file no instalado');
+                }
+                
+                // Crear nombre de archivo seguro
+                const safeFileName = song.title.replace(/[^a-zA-Z0-9]/g, '_') + '_' + song.id + '.mp3';
+                const audioPath = window.cordova.file.dataDirectory + safeFileName;
+                
+                // Descargar audio con fetch y guardar
+                const response = await fetch(song.song_url);
+                const audioBlob = await response.blob();
+                
+                // Convertir blob a base64 para Cordova
+                const reader = new FileReader();
+                reader.onload = async function() {
+                    const base64Data = reader.result.split(',');
+                    
+                    // Escribir archivo usando cordova file plugin
+                    window.resolveLocalFileSystemURL(window.cordova.file.dataDirectory, function(dirEntry) {
+                        dirEntry.getFile(safeFileName, { create: true, exclusive: false }, function(fileEntry) {
+                            fileEntry.createWriter(function(fileWriter) {
+                                fileWriter.onwriteend = async function() {
+                                    console.log('✅ CORDOVA: Archivo de audio guardado:', audioPath);
+                                    
+                                    // Guardar metadata
+                                    await saveSongToDevice({
+                                        id: song.id,
+                                        metadata: song,
+                                        album: album,
+                                        localPath: audioPath,
+                                        downloadedAt: new Date().toISOString()
+                                    });
+                                    
+                                    element.classList.add('downloaded');
+                                    element.textContent = '✓';
+                                    element.style.color = '#1DB954';
+                                    alert(`✅ ${song.title} descargada para offline`);
+                                };
+                                
+                                fileWriter.onerror = function() {
+                                    throw new Error('Error escribiendo archivo');
+                                };
+                                
+                                // Escribir datos binarios
+                                const binaryData = atob(base64Data);
+                                const arrayBuffer = new ArrayBuffer(binaryData.length);
+                                const uint8Array = new Uint8Array(arrayBuffer);
+                                for (let i = 0; i < binaryData.length; i++) {
+                                    uint8Array[i] = binaryData.charCodeAt(i);
+                                }
+                                const blob = new Blob([uint8Array], { type: 'audio/mpeg' });
+                                fileWriter.write(blob);
+                            });
+                        });
+                    });
+                };
+                reader.readAsDataURL(audioBlob);
+                return; // Salir aquí para Cordova
+            }
+            
+            // Solo para web
+            element.classList.add('downloaded');
+            element.textContent = '✓';
+            element.style.color = '#1DB954';
+            alert(`✅ ${song.title} descargada para offline`);
             
         } catch (error) {
-            throw new Error(error.message || 'Error desconocido');
-        } finally {
-            showLoadingIndicator(false);
+            console.error('❌ Error descargando canción:', error);
+            alert(`❌ Error descargando: ${error.message}`);
+            element.textContent = '↓';
+            element.style.color = '#666';
         }
     }
     
-    async function uploadMultipleSongs(files, albumId) {
-        const results = { success: [], errors: [] };
-        const progressDiv = document.getElementById('upload-progress');
-        
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            try {
-                if (progressDiv) {
-                    progressDiv.innerHTML = `<div class="upload-progress">📤 Subiendo ${file.name}... (${i + 1}/${files.length})</div>`;
-                }
-                
-                const song_url = await uploadFile(file);
-                const title = file.name.replace(/\.[^/.]+$/, "");
-                
-                const { error } = await supabase.from('songs').insert([{
-                    title: title,
-                    album_id: albumId,
-                    song_url: song_url
-                }]);
-                
-                if (error) throw new Error(`Error BD: ${error.message}`);
-                results.success.push({ filename: file.name, title: title, url: song_url });
-                
-                if (progressDiv) {
-                    progressDiv.innerHTML = `<div class="upload-progress success">✅ ${file.name} subido correctamente</div>`;
-                }
-                
-            } catch (error) {
-                results.errors.push({ filename: file.name, error: error.message });
-                if (progressDiv) {
-                    progressDiv.innerHTML = `<div class="upload-progress error">❌ Error con ${file.name}: ${error.message}</div>`;
-                }
-            }
-        }
-        
-        await loadAllData();
-        return results;
-    }
-    
-    // ✅ CARGA DE DATOS
+    // ✅ CARGA DE DATOS SUPABASE
     async function loadSupabase() {
         showLoadingIndicator(true);
         try {
@@ -709,7 +801,7 @@
             
             currentPlaylist = songs;
             const favorites = getLocalFavorites();
-            const downloaded = await getAllDownloadedSongs();
+            const downloaded = await getAllSongsFromDevice();
             const downloadedIds = downloaded.map(s => s.id);
             
             listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `
@@ -717,7 +809,7 @@
                     <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
                     <div class="song-actions">
                         <span onclick="toggleFavorite('${song.id}', this)" style="cursor: pointer; color: ${favorites.includes(song.id) ? '#1DB954' : '#666'};">${favorites.includes(song.id) ? '❤️' : '🤍'}</span>
-                        <span class="download-icon ${downloadedIds.includes(song.id) ? 'downloaded' : ''}" onclick="downloadSong('${song.id}', this)">↓</span>
+                        <span class="download-icon ${downloadedIds.includes(song.id) ? 'downloaded' : ''}" onclick="downloadSongHybrid(${JSON.stringify(song).replace(/"/g, '&quot;')}, ${JSON.stringify(album).replace(/"/g, '&quot;')}, this)">${downloadedIds.includes(song.id) ? '✓' : '↓'}</span>
                         <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
                     </div>
                 </li>
@@ -728,10 +820,9 @@
         }
     }
     
-    // ✅ FUNCIÓN PLAYSIDE OPTIMIZADA PARA WEBVIEW Y WEB
+    // ✅ FUNCIÓN DE REPRODUCCIÓN HÍBRIDA
     window.playSong = async function(song, album, playlist = [song], index = 0) {
-        console.log('🎵 Reproduciendo canción:', song.title);
-        console.log('📱 Entorno:', isAndroidWebView ? 'Android WebView' : 'Navegador Web');
+        console.log('🎵 Reproduciendo:', song.title, '| Entorno:', isCordovaApp ? 'CORDOVA' : 'WEB');
         
         currentSong = song;
         currentAlbum = album;
@@ -742,55 +833,59 @@
         audio.pause();
         updateAllPlayers();
         
-        // Cargar audio (offline primero, luego online)
+        let audioSrc = song.song_url; // URL por defecto
+        
+        // Intentar usar versión offline primero
         try {
-            const downloadedSong = await getSongFromDB(song.id);
-            if (downloadedSong?.audio) {
-                console.log('🎵 Reproduciendo desde offline:', song.title);
-                audio.src = URL.createObjectURL(downloadedSong.audio);
-            } else {
-                console.log('🌐 Reproduciendo desde online:', song.title);
-                audio.src = song.song_url;
+            const offlineSong = await getSongFromDevice(song.id);
+            if (offlineSong) {
+                if (isWebBrowser && offlineSong.audio) {
+                    // Web: usar blob de IndexedDB
+                    audioSrc = URL.createObjectURL(offlineSong.audio);
+                    console.log('🌐 Reproduciendo desde IndexedDB offline');
+                } else if (isCordovaApp && offlineSong.localPath) {
+                    // Cordova: usar archivo local con ruta normalizada
+                    audioSrc = normalizeAudioPath(offlineSong.localPath, true);
+                    console.log('📱 Reproduciendo desde archivo local:', audioSrc);
+                }
             }
         } catch (error) {
-            console.log('⚠️ Error accediendo offline, usando online:', error);
-            audio.src = song.song_url;
+            console.log('⚠️ No se pudo acceder a versión offline, usando online:', error);
         }
         
-        // ✅ SOLO ACTUALIZAR MEDIASESSION SI NO ES WEBVIEW
-        if (!isAndroidWebView) {
+        audio.src = audioSrc;
+        
+        // ✅ SOLO ACTUALIZAR MEDIASESSION EN WEB
+        if (isWebBrowser) {
             updateMediaSessionMetadata(song, album);
         }
         
-        // ✅ COMUNICACIÓN CON ANDROID (MEJORADA PARA WEBVIEW)
-        if (isAndroidWebView && typeof Android !== 'undefined' && Android.playFromJS) {
+        // ✅ COMUNICACIÓN CON ANDROID EN CORDOVA
+        if (isCordovaApp && typeof window.Android !== 'undefined' && window.Android.playFromJS) {
             try {
-                Android.playFromJS(
+                window.Android.playFromJS(
                     song.song_url,
                     song.title,
                     album ? album.artist : 'Artista desconocido',
                     album ? album.cover_url : ''
                 );
-                console.log('✅ Enviado a Android para controles nativos (WebView)');
+                console.log('✅ Metadatos enviados a Android nativo');
             } catch (error) {
                 console.log('⚠️ Error comunicándose con Android:', error);
             }
         }
         
-        // Cargar y reproducir
         audio.load();
-        
-        // Reproducir con manejo de promesas
         audio.play()
             .then(() => {
-                console.log('✅ Reproducción iniciada exitosamente');
-                if (!isAndroidWebView) {
+                console.log('✅ Reproducción iniciada');
+                if (isWebBrowser) {
                     updateMediaSessionPlaybackState('playing');
                 }
             })
             .catch(error => {
-                console.error('❌ Error al reproducir:', error);
-                if (!isAndroidWebView) {
+                console.error('❌ Error reproduciendo:', error);
+                if (isWebBrowser) {
                     updateMediaSessionPlaybackState('paused');
                 }
             });
@@ -825,18 +920,13 @@
             const audio = document.getElementById('audio-player');
             if (isPlaying) {
                 audio.pause();
-                if (!isAndroidWebView) {
+                if (isWebBrowser) {
                     updateMediaSessionPlaybackState('paused');
-                }
-                
-                // Comunicar con Android si está en WebView
-                if (isAndroidWebView && typeof Android !== 'undefined' && Android.pauseFromJS) {
-                    Android.pauseFromJS();
                 }
             } else {
                 audio.play()
                     .then(() => {
-                        if (!isAndroidWebView) {
+                        if (isWebBrowser) {
                             updateMediaSessionPlaybackState('playing');
                         }
                     })
@@ -862,17 +952,138 @@
             } else {
                 isPlaying = false;
                 updatePlayButtons();
-                if (!isAndroidWebView) {
+                if (isWebBrowser) {
                     updateMediaSessionPlaybackState('paused');
                 }
             }
         }
         
-        // ✅ PANEL DE ADMINISTRACIÓN COMPLETO
+        // ✅ CARGAR DESCARGAS HÍBRIDO
+        async function loadDownloads() {
+            const content = document.getElementById('downloads-content');
+            try {
+                const downloadedSongs = await getAllSongsFromDevice();
+                if (downloadedSongs.length === 0) {
+                    content.innerHTML = `<div style="text-align: center; padding: 2rem;">
+                        <h3>No tienes descargas</h3>
+                        <p style="color: #666;">Descarga canciones desde el botón ↓ en cada álbum</p>
+                        <p style="color: #666;">Entorno: ${isCordovaApp ? '📱 CORDOVA APP' : '🌐 NAVEGADOR WEB'}</p>
+                    </div>`;
+                    return;
+                }
+                
+                content.innerHTML = '<div class="downloads-list">' + downloadedSongs.map(songItem => {
+                    const song = songItem.metadata;
+                    const album = songItem.album;
+                    return `
+                        <div class="download-item" onclick="playOfflineSong('${song.id}')">
+                            <div class="download-info">
+                                <div class="download-title">${song.title}</div>
+                                <div class="download-artist">${album?.artist || 'Artista desconocido'}</div>
+                                <small style="color: #666;">📅 ${new Date(songItem.downloadedAt).toLocaleDateString()}</small>
+                            </div>
+                            <div style="color: #1DB954; font-size: 1.2rem;">✓</div>
+                        </div>
+                    `;
+                }).join('') + '</div>';
+            } catch (error) {
+                console.error('Error cargando descargas:', error);
+                content.innerHTML = `<div style="text-align: center; padding: 2rem;">
+                    <h3>❌ Error cargando descargas</h3>
+                    <p style="color: #666;">${error.message}</p>
+                </div>`;
+            }
+        }
+        
+        window.playOfflineSong = async (songId) => {
+            try {
+                const songData = await getSongFromDevice(songId);
+                if (songData && songData.metadata && songData.album) {
+                    console.log('🎵 Reproduciendo canción offline:', songData.metadata.title);
+                    await playSong(songData.metadata, songData.album);
+                } else {
+                    alert('❌ Error: Canción offline no encontrada');
+                }
+            } catch (error) {
+                console.error('Error reproduciendo canción offline:', error);
+                alert('❌ Error reproduciendo canción offline: ' + error.message);
+            }
+        }
+        
+        // ✅ FUNCIONES ADMIN
+        async function uploadFile(file) {
+            showLoadingIndicator(true);
+            try {
+                if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+                    throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
+                }
+                
+                const client = new Appwrite.Client();
+                const storage = new Appwrite.Storage(client);
+                const bucketId = '68ad019f00207b1df467';
+                const projectId = '68ab0cf2000365979a71';
+                const endpoint = 'https://nyc.cloud.appwrite.io/v1';
+                
+                client.setEndpoint(endpoint).setProject(projectId);
+                
+                const fileId = Appwrite.ID.unique();
+                const response = await storage.createFile(bucketId, fileId, file);
+                
+                const finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${response.$id}/view?project=${projectId}`;
+                return finalUrl;
+                
+            } catch (error) {
+                throw new Error(error.message || 'Error desconocido');
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
+        
+        async function uploadMultipleSongs(files, albumId) {
+            const results = { success: [], errors: [] };
+            const progressDiv = document.getElementById('upload-progress');
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    if (progressDiv) {
+                        progressDiv.innerHTML = `<div class="upload-progress">📤 Subiendo ${file.name}... (${i + 1}/${files.length})</div>`;
+                    }
+                    
+                    const song_url = await uploadFile(file);
+                    const title = file.name.replace(/\.[^/.]+$/, "");
+                    
+                    const { error } = await supabase.from('songs').insert([{
+                        title: title,
+                        album_id: albumId,
+                        song_url: song_url
+                    }]);
+                    
+                    if (error) throw new Error(`Error BD: ${error.message}`);
+                    results.success.push({ filename: file.name, title: title, url: song_url });
+                    
+                    if (progressDiv) {
+                        progressDiv.innerHTML = `<div class="upload-progress success">✅ ${file.name} subido correctamente</div>`;
+                    }
+                    
+                } catch (error) {
+                    results.errors.push({ filename: file.name, error: error.message });
+                    if (progressDiv) {
+                        progressDiv.innerHTML = `<div class="upload-progress error">❌ Error con ${file.name}: ${error.message}</div>`;
+                    }
+                }
+            }
+            
+            await loadAllData();
+            return results;
+        }
+        
+        // ✅ PANEL DE ADMINISTRACIÓN
         async function renderAdminPanel() {
             const adminContent = document.getElementById('admin-content');
             const albumsCount = allAlbums.length;
             const songsCount = allSongs.length;
+            const offlineCount = (await getAllSongsFromDevice()).length;
             
             adminContent.innerHTML = `
                 <div class="admin-stats">
@@ -885,8 +1096,12 @@
                         <div class="stat-label">🎵 Canciones</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">${isAndroidWebView ? '📱' : (mediaSessionSupported ? '✅' : '❌')}</div>
-                        <div class="stat-label">${isAndroidWebView ? 'WebView' : 'MediaSession'}</div>
+                        <div class="stat-number">${offlineCount}</div>
+                        <div class="stat-label">📱 Offline</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${isCordovaApp ? '📱' : '🌐'}</div>
+                        <div class="stat-label">${isCordovaApp ? 'Cordova' : 'Web'}</div>
                     </div>
                 </div>
                 
@@ -923,7 +1138,7 @@
                             <label>Archivos de Audio (Múltiples):</label>
                             <input type="file" id="song-files" accept="audio/*" multiple required>
                             <div class="multiple-files-info">
-                                💡 <strong>Tip:</strong> Puedes seleccionar múltiples archivos de audio a la vez.
+                                💡 <strong>Tip:</strong> Selecciona múltiples archivos de audio a la vez.
                             </div>
                         </div>
                         <button type="submit" class="btn-primary">📤 Subir Canciones</button>
@@ -996,7 +1211,7 @@
                 try {
                     let cover_url = null;
                     if (coverInput.files && coverInput.files.length > 0) {
-                        cover_url = await uploadFile(coverInput.files[0]);
+                        cover_url = await uploadFile(coverInput.files);
                     }
                     
                     if (!cover_url) {
@@ -1057,63 +1272,7 @@
             });
         }
         
-        // ✅ RESTO DE FUNCIONES (descargas, favoritos, etc.)
-        window.downloadSong = async function(songId, element) {
-            if (element.classList.contains('downloaded')) return;
-            
-            try {
-                const song = songsWithAlbumInfo.find(s => s.id === songId);
-                if (!song) throw new Error('Canción no encontrada');
-                
-                element.textContent = '...';
-                const response = await fetch(song.song_url);
-                const audioBlob = await response.blob();
-                const coverResponse = await fetch(song.albums.cover_url);
-                const coverBlob = await coverResponse.blob();
-                
-                await saveSongToDB({ id: song.id, metadata: song, audio: audioBlob, cover: coverBlob });
-                alert(`${song.title} descargada`);
-                element.classList.add('downloaded');
-                element.textContent = '↓';
-            } catch (error) {
-                alert('Error al descargar');
-                element.textContent = '↓';
-            }
-        }
-        
-        async function loadDownloads() {
-            const content = document.getElementById('downloads-content');
-            try {
-                const downloadedSongs = await getAllDownloadedSongs();
-                if (downloadedSongs.length === 0) {
-                    content.innerHTML = '<div style="text-align: center; padding: 2rem;">No tienes descargas</div>';
-                    return;
-                }
-                
-                content.innerHTML = '<div class="downloads-list">' + downloadedSongs.map(songItem => {
-                    const song = songItem.metadata;
-                    return `
-                        <div class="download-item" onclick="playDownloadedSong('${song.id}')">
-                            <div class="download-info">
-                                <div class="download-title">${song.title}</div>
-                                <div class="download-artist">${song.albums.artist}</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('') + '</div>';
-            } catch (error) {
-                content.innerHTML = 'Error cargando descargas';
-            }
-        }
-        
-        window.playDownloadedSong = async (songId) => {
-            const songData = await getSongFromDB(songId);
-            if (songData) {
-                playSong(songData.metadata, songData.metadata.albums);
-            }
-        }
-        
-        // ✅ RESTO DE FUNCIONES DE UTILIDAD
+        // ✅ FUNCIONES DE UTILIDAD
         window.setVolume = (value) => { document.getElementById('audio-player').volume = value / 100; }
         function updateProgressBar() {
             const audio = document.getElementById('audio-player');
@@ -1160,7 +1319,7 @@
             changeTheme(savedTheme);
         }
         
-        // ✅ AUTENTICACIÓN Y NAVEGACIÓN (igual que antes)
+        // ✅ AUTENTICACIÓN Y NAVEGACIÓN
         function updateAuthUI() {
             const headerLockIcon = document.getElementById('header-lock-icon');
             const userInfo = document.getElementById('user-info-section');
@@ -1380,12 +1539,12 @@
         function goToAdmin() { document.getElementById('user-dropdown').classList.remove('show'); showSection('admin'); }
         function confirmLogout() { if (confirm('¿Cerrar sesión?')) logout(); }
         
-        // ✅ INICIALIZACIÓN COMPLETA CON DETECCIÓN DE WEBVIEW
-        document.addEventListener('DOMContentLoaded', () => {
+        // ✅ INICIALIZACIÓN HÍBRIDA WEB/CORDOVA
+        function initializeApp() {
             console.log('🚀 KLMZ MUSIC iniciando...');
             
-            // ✅ DETECTAR ANDROID WEBVIEW PRIMERO
-            detectAndroidWebView();
+            // ✅ DETECTAR ENTORNO PRIMERO
+            const env = detectEnvironment();
             
             const audio = document.getElementById('audio-player');
             audio.addEventListener('ended', handleSongEnded);
@@ -1393,14 +1552,14 @@
             audio.addEventListener('play', () => { 
                 isPlaying = true; 
                 updatePlayButtons();
-                if (!isAndroidWebView) {
+                if (isWebBrowser) {
                     updateMediaSessionPlaybackState('playing');
                 }
             });
             audio.addEventListener('pause', () => { 
                 isPlaying = false; 
                 updatePlayButtons(); 
-                if (!isAndroidWebView) {
+                if (isWebBrowser) {
                     updateMediaSessionPlaybackState('paused');
                 }
             });
@@ -1409,25 +1568,36 @@
                 if (!e.target.closest('.player-controls-inline')) { openFullPlayer(); }
             });
             
-            // ✅ CONFIGURAR MEDIA SESSION SOLO SI NO ES WEBVIEW
-            if (!isAndroidWebView) {
+            // ✅ CONFIGURAR MEDIA SESSION SOLO EN WEB
+            if (isWebBrowser) {
                 setupMediaSession();
             }
             
             loadSavedTheme();
-            initDB().then(() => loadSupabase()).catch(console.error);
             
-            console.log('✅ KLMZ MUSIC iniciado correctamente:');
-            console.log('  📱 Entorno:', isAndroidWebView ? 'Android WebView' : 'Navegador Web');
+            // ✅ INICIALIZAR BASE DE DATOS SEGÚN ENTORNO
+            const initPromise = isWebBrowser ? initWebDB() : Promise.resolve();
+            initPromise.then(() => loadSupabase()).catch(console.error);
+            
+            console.log('✅ KLMZ MUSIC inicializado:');
+            console.log('  📱 Entorno:', env.isCordovaApp ? 'CORDOVA APP' : 'NAVEGADOR WEB');
             console.log('  🔒 MediaSession:', mediaSessionSupported ? 'ACTIVADO' : 'DESACTIVADO');
-            console.log('  📱 Controles Android:', (isAndroidWebView && typeof Android !== 'undefined') ? 'DISPONIBLES' : 'NO DISPONIBLES');
-            console.log('  📱 Descargas offline: ACTIVADAS');
+            console.log('  💾 Almacenamiento:', env.isCordovaApp ? 'FILE SYSTEM + LOCAL STORAGE' : 'INDEXEDDB');
             console.log('  🎨 6 temas visuales: ACTIVADOS');
             console.log('  ⚙️ Panel admin: ACTIVADO');
-        });
+        }
         
-        // ✅ SERVICE WORKER SOLO EN NAVEGADORES WEB (NO EN WEBVIEW)
-        if ('serviceWorker' in navigator && !detectAndroidWebView()) {
+        // ✅ INICIALIZACIÓN DIFERIDA SEGÚN ENTORNO
+        if (typeof window.cordova !== 'undefined') {
+            // Esperar deviceready para Cordova
+            document.addEventListener('deviceready', initializeApp, false);
+        } else {
+            // Inicializar inmediatamente para web
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        }
+        
+        // ✅ SERVICE WORKER SOLO EN WEB
+        if ('serviceWorker' in navigator && typeof window.cordova === 'undefined') {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => {
@@ -1437,8 +1607,6 @@
                         console.log('⚠️ Service Worker no registrado:', error);
                     });
             });
-        } else {
-            console.log('📱 Service Worker OMITIDO en Android WebView - esto evita errores');
         }
     </script>
 </body>
