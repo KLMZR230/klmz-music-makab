@@ -363,18 +363,23 @@
         const appwriteProjectId = '68ab0cf2000365979a71';
         const appwriteEndpoint = 'https://nyc.cloud.appwrite.io/v1';
 
-        // Se eliminó la API Key, ya no es necesaria con los permisos correctos
         let appwriteClient, appwriteStorage;
 
+        // --- INICIO: FUNCIÓN DE SUBIDA CORREGIDA ---
         async function uploadFile(file, onProgress) {
             const fileId = Appwrite.ID.unique();
             
             try {
+                // La llamada correcta a createFile tiene 5 parámetros.
+                // El 4to (permissions) lo dejamos como `undefined` porque no tenemos
+                // un usuario de Appwrite logueado.
+                // El 5to es la función para la barra de progreso.
                 const response = await appwriteStorage.createFile(
                     appwriteBucketId, 
                     fileId, 
                     file,
-                    (progressEvent) => {
+                    undefined, // Parámetro de permisos vacío
+                    (progressEvent) => { // Parámetro de progreso
                         if (onProgress) {
                             onProgress(progressEvent);
                         }
@@ -386,9 +391,10 @@
 
             } catch (error) {
                 console.error("Error detallado de Appwrite:", error);
-                throw new Error(error.message || 'Error desconocido al subir a Appwrite. Revisa los permisos del bucket.');
+                throw new Error(error.message || 'Error al subir a Appwrite. Revisa los permisos del bucket.');
             }
         }
+        // --- FIN: FUNCIÓN DE SUBIDA CORREGIDA ---
         
         async function uploadMultipleSongs(files, albumId) {
             const results = { success: [], errors: [] };
