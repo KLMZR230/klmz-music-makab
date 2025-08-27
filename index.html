@@ -253,10 +253,10 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
 
-## 🎯 **PARTE 2: JavaScript BÁSICO (LIMPIO Y FUNCIONANDO)**
+## 🎯 **PARTE 2: JavaScript CORREGIDO (Con subida y descarga FUNCIONANDO)**
 
 <script>
-    // ✅ VARIABLES GLOBALES BÁSICAS
+    // ✅ VARIABLES GLOBALES
     let supabase = null;
     let currentSong = null;
     let currentAlbum = null;
@@ -269,6 +269,7 @@
     let songsWithAlbumInfo = [];
     let repeatMode = 'off';
     let shuffleMode = false;
+    let isCordovaApp = false;
     
     const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
@@ -276,104 +277,387 @@
     
     console.log('🚀 KLMZ MUSIC iniciando...');
     
-    // ✅ FUNCIÓN UPLOADFILE BÁSICA
+    // ✅ DETECCIÓN DE CORDOVA
+    function detectCordova() {
+        isCordovaApp = !!(window.cordova || window.phonegap || window.PhoneGap);
+        console.log('📱 Entorno detectado:', isCordovaApp ? 'CORDOVA APK' : 'NAVEGADOR WEB');
+    }
+    
+    // ✅ FUNCIÓN UPLOADFILE CORREGIDA - AHORA FUNCIONA
     async function uploadFile(file) {
-        console.log('📤 Subiendo archivo:', file.name);
+        console.log('📤 === INICIANDO UPLOAD ===');
+        console.log('Archivo:', file.name, 'Tamaño:', file.size, 'Tipo:', file.type);
+        
         showLoadingIndicator(true);
         
         try {
+            // ✅ Verificación de usuario admin
             if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
                 throw new Error(`❌ Solo ${ADMIN_EMAIL} puede subir archivos`);
             }
             
-            const client = new Appwrite.Client();
+            if (!file) {
+                throw new Error('❌ No se proporcionó archivo');
+            }
+            
+            // ✅ Configuración correcta de Appwrite
+            console.log('🔧 Configurando Appwrite client...');
+            
+            const client = new Appwrite.Client()
+                .setEndpoint('https://nyc.cloud.appwrite.io/v1')
+                .setProject('68ab0cf2000365979a71');
+            
             const storage = new Appwrite.Storage(client);
             const bucketId = '68ad019f00207b1df467';
-            const projectId = '68ab0cf2000365979a71';
-            const endpoint = 'https://nyc.cloud.appwrite.io/v1';
             
-            client.setEndpoint(endpoint).setProject(projectId);
+            console.log('📤 Subiendo archivo...');
             
+            // ✅ Generar ID único y subir
             const fileId = Appwrite.ID.unique();
-            const response = await storage.createFile(bucketId, fileId, file);
-            const finalUrl = `${endpoint}/storage/buckets/${bucketId}/files/${response.$id}/view?project=${projectId}`;
+            console.log('ID generado:', fileId);
             
-            console.log('✅ Archivo subido:', finalUrl);
+            const response = await storage.createFile(bucketId, fileId, file);
+            console.log('✅ Respuesta de Appwrite:', response);
+            
+            // ✅ Construir URL final
+            const finalUrl = `https://nyc.cloud.appwrite.io/v1/storage/buckets/${bucketId}/files/${response.$id}/view?project=68ab0cf2000365979a71`;
+            
+            console.log('🔗 URL final:', finalUrl);
+            console.log('✅ === UPLOAD COMPLETADO EXITOSAMENTE ===');
+            
             return finalUrl;
             
         } catch (error) {
-            console.error('❌ Error uploadFile:', error);
-            throw error;
+            console.error('❌ === ERROR EN UPLOAD ===');
+            console.error('Error completo:', error);
+            console.error('Mensaje:', error.message);
+            console.error('Stack:', error.stack);
+            throw new Error(`Error subiendo archivo: ${error.message}`);
         } finally {
             showLoadingIndicator(false);
         }
     }
     
-    // ✅ FUNCIÓN UPLOAD MÚLTIPLE BÁSICA
+    // ✅ FUNCIÓN UPLOAD MÚLTIPLE CORREGIDA - AHORA FUNCIONA
     async function uploadMultipleSongs(files, albumId) {
-        console.log(`🎵 Subiendo ${files.length} archivos al álbum ${albumId}`);
+        console.log('🎵 === INICIANDO UPLOAD MÚLTIPLE ===');
+        console.log(`Archivos: ${files.length}, Álbum ID: ${albumId}`);
         
         const results = { success: [], errors: [] };
         const progressDiv = document.getElementById('upload-progress');
         
+        if (!files || files.length === 0) {
+            throw new Error('No se proporcionaron archivos');
+        }
+        
+        if (!albumId) {
+            throw new Error('No se proporcionó ID de álbum');
+        }
+        
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            console.log(`📤 === PROCESANDO ARCHIVO ${i + 1}/${files.length} ===`);
+            console.log('Nombre:', file.name);
+            
             try {
+                // ✅ Actualizar progreso
                 if (progressDiv) {
-                    progressDiv.innerHTML = `<div class="upload-progress">📤 Subiendo ${file.name}... (${i + 1}/${files.length})</div>`;
+                    progressDiv.innerHTML = `<div class="upload-progress">📤 Subiendo "${file.name}"... (${i + 1}/${files.length})</div>`;
                 }
                 
+                // ✅ Subir archivo a Appwrite
+                console.log('🚀 Llamando uploadFile...');
                 const song_url = await uploadFile(file);
-                const title = file.name.replace(/\.[^/.]+$/, "");
+                console.log('✅ URL obtenida:', song_url);
                 
-                const { data, error } = await supabase.from('songs').insert([{
-                    title: title,
-                    album_id: albumId,
-                    song_url: song_url
-                }]).select();
+                // ✅ Generar título limpio
+                const title = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, ' ').trim();
+                console.log('📝 Título generado:', title);
                 
-                if (error) throw error;
+                // ✅ Guardar en Supabase
+                console.log('💾 Guardando en Supabase...');
+                const { data, error } = await supabase
+                    .from('songs')
+                    .insert([{
+                        title: title,
+                        album_id: albumId,
+                        song_url: song_url
+                    }])
+                    .select();
                 
-                results.success.push({ filename: file.name, title: title, url: song_url });
+                if (error) {
+                    console.error('❌ Error Supabase:', error);
+                    throw new Error(`Error BD: ${error.message}`);
+                }
                 
+                console.log('✅ Canción guardada en BD:', data);
+                
+                results.success.push({ 
+                    filename: file.name, 
+                    title: title, 
+                    url: song_url,
+                    data: data
+                });
+                
+                // ✅ Mostrar éxito
                 if (progressDiv) {
-                    progressDiv.innerHTML = `<div class="upload-progress success">✅ ${file.name} subido correctamente</div>`;
+                    progressDiv.innerHTML = `<div class="upload-progress success">✅ "${file.name}" subido correctamente</div>`;
+                    await new Promise(resolve => setTimeout(resolve, 800));
                 }
                 
             } catch (error) {
-                results.errors.push({ filename: file.name, error: error.message });
+                console.error(`❌ Error con archivo ${file.name}:`, error);
+                results.errors.push({ 
+                    filename: file.name, 
+                    error: error.message 
+                });
+                
                 if (progressDiv) {
-                    progressDiv.innerHTML = `<div class="upload-progress error">❌ Error con ${file.name}: ${error.message}</div>`;
+                    progressDiv.innerHTML = `<div class="upload-progress error">❌ Error con "${file.name}": ${error.message}</div>`;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
-            
-            await new Promise(resolve => setTimeout(resolve, 500));
         }
         
+        console.log('📊 === RESULTADOS FINALES ===');
+        console.log('Éxitos:', results.success.length);
+        console.log('Errores:', results.errors.length);
+        
+        // ✅ Recargar datos
         await loadAllData();
+        
         return results;
+    }
+    
+    // ✅ SISTEMA DE DESCARGA HÍBRIDO WEB/APK CORREGIDO
+    window.downloadSong = async function(song, album, element) {
+        if (element.classList.contains('downloaded')) {
+            console.log('⚠️ Canción ya descargada');
+            return;
+        }
+        
+        console.log('📥 === INICIANDO DESCARGA ===');
+        console.log('Canción:', song.title);
+        console.log('Entorno:', isCordovaApp ? 'CORDOVA APK' : 'NAVEGADOR WEB');
+        
+        try {
+            // ✅ Actualizar UI
+            element.textContent = '⏳';
+            element.style.color = '#ff9800';
+            
+            if (isCordovaApp) {
+                // 📱 DESCARGA PARA CORDOVA APK
+                console.log('📱 Descargando para APK...');
+                await downloadForCordova(song, album, element);
+            } else {
+                // 🌐 DESCARGA PARA WEB
+                console.log('🌐 Descargando para Web...');
+                await downloadForWeb(song, album, element);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error descargando:', error);
+            alert(`❌ Error descargando: ${error.message}`);
+            element.textContent = '↓';
+            element.style.color = '#666';
+        }
+    }
+    
+    // ✅ DESCARGA PARA WEB (IndexedDB)
+    async function downloadForWeb(song, album, element) {
+        console.log('🌐 Iniciando descarga web...');
+        
+        // ✅ Inicializar IndexedDB si no existe
+        if (!window.indexedDB) {
+            throw new Error('IndexedDB no soportado en este navegador');
+        }
+        
+        // ✅ Abrir/crear base de datos
+        const db = await new Promise((resolve, reject) => {
+            const request = indexedDB.open('KLMZMusicDB', 1);
+            
+            request.onerror = () => reject('Error abriendo IndexedDB');
+            
+            request.onsuccess = (event) => resolve(event.target.result);
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('songs')) {
+                    db.createObjectStore('songs', { keyPath: 'id' });
+                }
+            };
+        });
+        
+        // ✅ Descargar archivos
+        console.log('📥 Descargando audio...');
+        const audioResponse = await fetch(song.song_url);
+        const audioBlob = await audioResponse.blob();
+        
+        console.log('📥 Descargando portada...');
+        const coverResponse = await fetch(album.cover_url);
+        const coverBlob = await coverResponse.blob();
+        
+        // ✅ Guardar en IndexedDB
+        const songData = {
+            id: song.id,
+            metadata: song,
+            album: album,
+            audio: audioBlob,
+            cover: coverBlob,
+            downloadedAt: new Date().toISOString(),
+            platform: 'web'
+        };
+        
+        await new Promise((resolve, reject) => {
+            const transaction = db.transaction(['songs'], 'readwrite');
+            const store = transaction.objectStore('songs');
+            const request = store.put(songData);
+            
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject('Error guardando en IndexedDB');
+        });
+        
+        // ✅ Actualizar UI
+        element.classList.add('downloaded');
+        element.textContent = '✓';
+        element.style.color = '#1DB954';
+        
+        console.log('✅ Descarga web completada');
+        alert(`✅ "${song.title}" descargada para offline`);
+    }
+    
+    // ✅ DESCARGA PARA CORDOVA APK (File System)
+    async function downloadForCordova(song, album, element) {
+        console.log('📱 Iniciando descarga Cordova...');
+        
+        // ✅ Verificar plugin de archivos
+        if (!window.cordova || !window.cordova.file) {
+            throw new Error('Plugin cordova-plugin-file no instalado.\nInstala con: cordova plugin add cordova-plugin-file');
+        }
+        
+        console.log('📁 Directorio disponible:', window.cordova.file.dataDirectory);
+        
+        // ✅ Nombre de archivo seguro
+        const safeFileName = `${song.title.replace(/[^a-zA-Z0-9]/g, '_')}_${song.id}.mp3`;
+        const audioPath = window.cordova.file.dataDirectory + safeFileName;
+        
+        console.log('📱 Guardando en:', audioPath);
+        
+        // ✅ Descargar audio
+        console.log('📥 Descargando audio desde:', song.song_url);
+        const audioResponse = await fetch(song.song_url);
+        const audioBlob = await audioResponse.blob();
+        
+        console.log('✅ Audio descargado, tamaño:', audioBlob.size, 'bytes');
+        
+        // ✅ Guardar archivo usando Cordova File API
+        await new Promise((resolve, reject) => {
+            window.resolveLocalFileSystemURL(window.cordova.file.dataDirectory, function(dirEntry) {
+                console.log('📁 Directorio resuelto:', dirEntry.nativeURL);
+                
+                dirEntry.getFile(safeFileName, { create: true, exclusive: false }, function(fileEntry) {
+                    console.log('📄 Archivo creado:', fileEntry.nativeURL);
+                    
+                    fileEntry.createWriter(function(fileWriter) {
+                        
+                        fileWriter.onwriteend = function() {
+                            console.log('✅ Archivo guardado exitosamente');
+                            
+                            // ✅ Guardar metadata en localStorage
+                            const savedSongs = JSON.parse(localStorage.getItem('cordova_offline_songs') || '[]');
+                            
+                            const songData = {
+                                id: song.id,
+                                metadata: song,
+                                album: album,
+                                localPath: fileEntry.nativeURL,
+                                fileName: safeFileName,
+                                downloadedAt: new Date().toISOString(),
+                                platform: 'cordova'
+                            };
+                            
+                            // ✅ Agregar o actualizar
+                            const existingIndex = savedSongs.findIndex(s => s.id === song.id);
+                            if (existingIndex >= 0) {
+                                savedSongs[existingIndex] = songData;
+                            } else {
+                                savedSongs.push(songData);
+                            }
+                            
+                            localStorage.setItem('cordova_offline_songs', JSON.stringify(savedSongs));
+                            
+                            // ✅ Actualizar UI
+                            element.classList.add('downloaded');
+                            element.textContent = '✓';
+                            element.style.color = '#1DB954';
+                            
+                            console.log('✅ Descarga Cordova completada');
+                            alert(`✅ "${song.title}" descargada para offline`);
+                            
+                            resolve();
+                        };
+                        
+                        fileWriter.onerror = function(e) {
+                            console.error('❌ Error escribiendo archivo:', e);
+                            reject(new Error('Error escribiendo archivo: ' + e.toString()));
+                        };
+                        
+                        console.log('📝 Escribiendo archivo...');
+                        fileWriter.write(audioBlob);
+                        
+                    }, function(error) {
+                        console.error('❌ Error creando FileWriter:', error);
+                        reject(new Error('Error creando FileWriter: ' + error.message));
+                    });
+                    
+                }, function(error) {
+                    console.error('❌ Error obteniendo archivo:', error);
+                    reject(new Error('Error obteniendo archivo: ' + error.message));
+                });
+                
+            }, function(error) {
+                console.error('❌ Error resolviendo directorio:', error);
+                reject(new Error('Error resolviendo directorio: ' + error.message));
+            });
+        });
     }
     
     // ✅ CARGAR SUPABASE
     async function loadSupabase() {
         showLoadingIndicator(true);
         try {
+            console.log('🔄 Cargando Supabase...');
+            
             const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
             supabase = createClient(supabaseUrl, supabaseKey);
             
+            console.log('✅ Cliente Supabase creado');
+            
+            // ✅ Configurar auth listener
             supabase.auth.onAuthStateChange((event, session) => {
+                console.log('🔐 Auth state changed:', event);
                 currentUser = session?.user || null;
                 updateAuthUI();
             });
             
+            // ✅ Obtener sesión actual
             const { data: { session } } = await supabase.auth.getSession();
             currentUser = session?.user || null;
+            console.log('👤 Usuario actual:', currentUser?.email || 'No autenticado');
+            
             updateAuthUI();
             await loadAllData();
+            
             console.log('✅ Supabase cargado exitosamente');
+            
         } catch (error) {
-            console.error('❌ Error Supabase:', error);
-            document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error de conexión</h2><p>${error.message}</p></div>`;
+            console.error('❌ Error cargando Supabase:', error);
+            document.getElementById('albums').innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <h2>❌ Error de conexión</h2>
+                    <p>No se pudo conectar a la base de datos</p>
+                    <p style="color: #666; font-size: 0.9rem;">${error.message}</p>
+                </div>`;
         } finally {
             showLoadingIndicator(false);
         }
@@ -381,34 +665,76 @@
     
     // ✅ CARGAR DATOS
     async function loadAllData() {
+        console.log('📊 Cargando datos de la base de datos...');
+        showLoadingIndicator(true);
+        
         try {
-            const { data: albums, error: albumsError } = await supabase.from('albums').select('*').order('created_at', { ascending: false });
-            if (albumsError) throw albumsError;
+            // ✅ Cargar álbumes
+            console.log('📀 Cargando álbumes...');
+            const { data: albums, error: albumsError } = await supabase
+                .from('albums')
+                .select('*')
+                .order('created_at', { ascending: false });
             
-            const { data: songs, error: songsError } = await supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false });
-            if (songsError) throw songsError;
+            if (albumsError) {
+                console.error('❌ Error cargando álbumes:', albumsError);
+                throw albumsError;
+            }
             
+            // ✅ Cargar canciones con álbumes
+            console.log('🎵 Cargando canciones...');
+            const { data: songs, error: songsError } = await supabase
+                .from('songs')
+                .select('*, albums:album_id(*)')
+                .order('created_at', { ascending: false });
+            
+            if (songsError) {
+                console.error('❌ Error cargando canciones:', songsError);
+                throw songsError;
+            }
+            
+            // ✅ Actualizar variables globales
             allAlbums = albums || [];
             allSongs = songs || [];
             songsWithAlbumInfo = songs || [];
-            displayAlbums(allAlbums);
+            
             console.log(`✅ Datos cargados: ${allAlbums.length} álbumes, ${allSongs.length} canciones`);
+            
+            // ✅ Mostrar álbumes
+            displayAlbums(allAlbums);
+            
         } catch (error) {
             console.error('❌ Error cargando datos:', error);
-            document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error cargando datos</h2><p>${error.message}</p></div>`;
+            document.getElementById('albums').innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <h2>❌ Error cargando datos</h2>
+                    <p style="color: #666;">${error.message}</p>
+                    <button onclick="loadAllData()" class="btn-primary" style="width: auto; margin-top: 1rem;">🔄 Reintentar</button>
+                </div>`;
+        } finally {
+            showLoadingIndicator(false);
         }
     }
     
     // ✅ MOSTRAR ÁLBUMES
     function displayAlbums(albums) {
         const container = document.getElementById('albums');
+        
         if (!albums || albums.length === 0) {
-            container.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📀 No hay álbumes</h2><p>Usa el panel admin para subir álbumes</p></div>';
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <h2>📀 No hay álbumes</h2>
+                    <p style="color: #666;">Usa el panel admin para crear y subir álbumes</p>
+                    ${currentUser?.email === ADMIN_EMAIL ? '<button onclick="showSection(\'admin\')" class="btn-primary" style="width: auto; margin-top: 1rem;">⚙️ Ir al Panel Admin</button>' : ''}
+                </div>`;
             return;
         }
+        
+        console.log(`🎨 Mostrando ${albums.length} álbumes`);
+        
         container.innerHTML = albums.map(album => `
             <div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'>
-                <img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy">
+                <img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMzMzIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5OAPC90ZXh0Pgo8L3N2Zz4K';">
                 <div class="album-title">${album.title}</div>
                 <div class="album-artist">${album.artist}</div>
             </div>
@@ -417,48 +743,143 @@
     
     // ✅ DETALLES DE ÁLBUM
     async function showAlbumDetail(album) {
+        console.log('🔍 Mostrando detalles del álbum:', album.title);
+        
         currentAlbum = album;
+        
+        // ✅ Ocultar grid y mostrar detalle
         document.getElementById('albums').style.display = 'none';
         const detailView = document.getElementById('album-detail');
         detailView.style.display = 'block';
+        
+        // ✅ HTML de detalles
         detailView.innerHTML = `
             <button class="back-btn" onclick="showAlbumsGrid()">⟵ Volver</button>
             <div style="text-align: center; margin-bottom: 2rem;">
-                <img class="album-img" src="${album.cover_url}" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem;">
+                <img class="album-img" src="${album.cover_url}" style="width: 200px; height: 200px; display: block; margin: 0 auto 1rem; border-radius: 12px;" onerror="this.style.background='#333'; this.alt='🎵';">
                 <div class="album-title" style="font-size: 1.5rem;">${album.title}</div>
                 <div class="album-artist" style="font-size: 1.1rem; color: #b3b3b3;">${album.artist}</div>
             </div>
-            <div class="song-list" id="detail-song-list">Cargando canciones...</div>
+            <div class="song-list" id="detail-song-list">
+                <div style="text-align: center; padding: 2rem;">🔄 Cargando canciones...</div>
+            </div>
         `;
         
         try {
-            const { data: songs } = await supabase.from('songs').select('*').eq('album_id', album.id);
-            const listDiv = document.getElementById('detail-song-list');
+            // ✅ Cargar canciones del álbum
+            console.log('🎵 Cargando canciones del álbum ID:', album.id);
             
-            if (!songs || songs.length === 0) { 
-                listDiv.innerHTML = '<div style="text-align: center; padding: 2rem;">No hay canciones en este álbum</div>'; 
-                return; 
+            const { data: songs, error } = await supabase
+                .from('songs')
+                .select('*')
+                .eq('album_id', album.id)
+                .order('created_at', { ascending: true });
+            
+            if (error) {
+                throw error;
             }
             
+            const listDiv = document.getElementById('detail-song-list');
+            
+            if (!songs || songs.length === 0) {
+                listDiv.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <h3>📭 No hay canciones</h3>
+                        <p style="color: #666;">Este álbum aún no tiene canciones</p>
+                        ${currentUser?.email === ADMIN_EMAIL ? '<button onclick="showSection(\'admin\')" class="btn-primary" style="width: auto; margin-top: 1rem;">⚙️ Subir Canciones</button>' : ''}
+                    </div>
+                `;
+                return;
+            }
+            
+            console.log(`🎵 Encontradas ${songs.length} canciones`);
+            
+            // ✅ Actualizar playlist actual
             currentPlaylist = songs;
             
-            listDiv.innerHTML = '<ul>' + songs.map((song, idx) => `
-                <li>
-                    <div onclick="playSongFromPlaylist(${idx})" style="flex: 1;">${song.title}</div>
-                    <div class="song-actions">
-                        <span class="play-icon" onclick="playSongFromPlaylist(${idx})">▶</span>
-                    </div>
-                </li>
-            `).join('') + '</ul>';
+            // ✅ Obtener favoritos y descargas
+            const favorites = getLocalFavorites();
+            const downloaded = await getAllDownloadedSongs();
+            const downloadedIds = downloaded.map(s => s.id);
+            
+            // ✅ HTML de lista de canciones
+            listDiv.innerHTML = `
+                <ul>
+                    ${songs.map((song, idx) => `
+                        <li>
+                            <div onclick="playSongFromPlaylist(${idx})" style="flex: 1; cursor: pointer;">
+                                <strong>${song.title}</strong>
+                            </div>
+                            <div class="song-actions">
+                                <span onclick="toggleFavorite('${song.id}', this)" style="cursor: pointer; color: ${favorites.includes(song.id) ? '#1DB954' : '#666'}; font-size: 1.2rem;" title="${favorites.includes(song.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}">${favorites.includes(song.id) ? '❤️' : '🤍'}</span>
+                                <span class="download-icon ${downloadedIds.includes(song.id) ? 'downloaded' : ''}" onclick="downloadSong(${JSON.stringify(song).replace(/"/g, '&quot;')}, ${JSON.stringify(album).replace(/"/g, '&quot;')}, this)" title="${downloadedIds.includes(song.id) ? 'Ya descargada' : 'Descargar para offline'}" style="cursor: pointer; color: ${downloadedIds.includes(song.id) ? '#1DB954' : '#666'}; font-size: 1.2rem;">${downloadedIds.includes(song.id) ? '✓' : '↓'}</span>
+                                <span class="play-icon" onclick="playSongFromPlaylist(${idx})" style="cursor: pointer; color: #1DB954; font-size: 1.2rem;" title="Reproducir">▶</span>
+                            </div>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+            
+            console.log('✅ Lista de canciones mostrada');
             
         } catch (error) {
-            document.getElementById('detail-song-list').innerHTML = `<div style="text-align: center; color: #ff4757;">Error: ${error.message}</div>`;
+            console.error('❌ Error cargando canciones:', error);
+            document.getElementById('detail-song-list').innerHTML = `
+                <div style="text-align: center; color: #ff4757; padding: 2rem;">
+                    <h3>❌ Error cargando canciones</h3>
+                    <p>${error.message}</p>
+                    <button onclick="showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})" class="btn-primary" style="width: auto; margin-top: 1rem;">🔄 Reintentar</button>
+                </div>
+            `;
+        }
+    }
+    
+    // ✅ FUNCIÓN OBTENER DESCARGAS HÍBRIDA
+    async function getAllDownloadedSongs() {
+        try {
+            if (isCordovaApp) {
+                // 📱 Cordova: localStorage
+                return JSON.parse(localStorage.getItem('cordova_offline_songs') || '[]');
+            } else {
+                // 🌐 Web: IndexedDB
+                if (!window.indexedDB) {
+                    return [];
+                }
+                
+                const db = await new Promise((resolve, reject) => {
+                    const request = indexedDB.open('KLMZMusicDB', 1);
+                    request.onerror = () => resolve(null);
+                    request.onsuccess = (event) => resolve(event.target.result);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('songs')) {
+                            db.createObjectStore('songs', { keyPath: 'id' });
+                        }
+                    };
+                });
+                
+                if (!db) return [];
+                
+                return await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['songs'], 'readonly');
+                    const store = transaction.objectStore('songs');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result || []);
+                    request.onerror = () => resolve([]);
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error obteniendo descargas:', error);
+            return [];
         }
     }
     
     // ✅ REPRODUCIR CANCIÓN
     window.playSong = function(song, album, playlist = [song], index = 0) {
-        console.log('🎵 Reproduciendo:', song.title);
+        console.log('🎵 === REPRODUCIENDO CANCIÓN ===');
+        console.log('Título:', song.title);
+        console.log('Álbum:', album.title);
+        console.log('Entorno:', isCordovaApp ? 'CORDOVA APK' : 'NAVEGADOR WEB');
         
         currentSong = song;
         currentAlbum = album;
@@ -472,81 +893,89 @@
         updateAllPlayers();
         
         audio.load();
-        audio.play().then(() => {
-            console.log('✅ Reproducción iniciada');
-        }).catch(error => {
-            console.error('❌ Error reproduciendo:', error);
-        });
+        audio.play()
+            .then(() => {
+                console.log('✅ Reproducción iniciada exitosamente');
+            })
+            .catch(error => {
+                console.error('❌ Error reproduciendo:', error);
+                alert(`❌ Error reproduciendo: ${error.message}`);
+            });
     }
-        
-        // ✅ ACTUALIZAR REPRODUCTORES
-        function updateAllPlayers() {
-            updateMiniPlayer();
-            updateFullPlayer();
+    
+    // ✅ RESTO DE FUNCIONES BÁSICAS
+    function updateAllPlayers() {
+        updateMiniPlayer();
+        updateFullPlayer();
+        updatePlayButtons();
+    }
+    
+    function updateMiniPlayer() {
+        const miniPlayer = document.getElementById('mini-player');
+        if (currentSong && currentAlbum) {
+            miniPlayer.style.display = 'flex';
+            document.getElementById('mini-player-img').src = currentAlbum.cover_url || '';
+            document.getElementById('mini-player-title').textContent = currentSong.title || 'Sin título';
+            document.getElementById('mini-player-artist').textContent = currentAlbum.artist || 'Desconocido';
+        }
+    }
+    
+    function updateFullPlayer() {
+        if (currentSong && currentAlbum) {
+            document.getElementById('full-player-cover').src = currentAlbum.cover_url || '';
+            document.getElementById('full-player-title').textContent = currentSong.title || 'Sin título';
+            document.getElementById('full-player-artist').textContent = currentAlbum.artist || 'Desconocido';
+        }
+    }
+    
+    function updatePlayButtons() {
+        const playText = isPlaying ? '⏸' : '▶';
+        document.getElementById('mini-play-btn').textContent = playText;
+        document.getElementById('full-play-btn').textContent = playText;
+    }
+    
+    window.togglePlay = function() {
+        const audio = document.getElementById('audio-player');
+        if (isPlaying) {
+            audio.pause();
+        } else {
+            audio.play();
+        }
+    }
+    
+    window.nextSong = function() {
+        if (currentPlaylist.length === 0) return;
+        currentIndex = (currentIndex + 1) % currentPlaylist.length;
+        playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
+    }
+    
+    window.previousSong = function() {
+        if (currentPlaylist.length === 0) return;
+        currentIndex = currentIndex > 0 ? currentIndex - 1 : currentPlaylist.length - 1;
+        playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
+    }
+    
+    function handleSongEnded() {
+        if (repeatMode === 'all' || currentIndex < currentPlaylist.length - 1) {
+            nextSong();
+        } else {
+            isPlaying = false;
             updatePlayButtons();
         }
+    }
         
-        function updateMiniPlayer() {
-            const miniPlayer = document.getElementById('mini-player');
-            if (currentSong && currentAlbum) {
-                miniPlayer.style.display = 'flex';
-                document.getElementById('mini-player-img').src = currentAlbum.cover_url || '';
-                document.getElementById('mini-player-title').textContent = currentSong.title || 'Sin título';
-                document.getElementById('mini-player-artist').textContent = currentAlbum.artist || 'Desconocido';
-            }
-        }
-        
-        function updateFullPlayer() {
-            if (currentSong && currentAlbum) {
-                document.getElementById('full-player-cover').src = currentAlbum.cover_url || '';
-                document.getElementById('full-player-title').textContent = currentSong.title || 'Sin título';
-                document.getElementById('full-player-artist').textContent = currentAlbum.artist || 'Desconocido';
-            }
-        }
-        
-        function updatePlayButtons() {
-            const playText = isPlaying ? '⏸' : '▶';
-            document.getElementById('mini-play-btn').textContent = playText;
-            document.getElementById('full-play-btn').textContent = playText;
-        }
-        
-        // ✅ CONTROLES DE REPRODUCCIÓN
-        window.togglePlay = function() {
-            const audio = document.getElementById('audio-player');
-            if (isPlaying) {
-                audio.pause();
-            } else {
-                audio.play();
-            }
-        }
-        
-        window.nextSong = function() {
-            if (currentPlaylist.length === 0) return;
-            currentIndex = (currentIndex + 1) % currentPlaylist.length;
-            playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
-        }
-        
-        window.previousSong = function() {
-            if (currentPlaylist.length === 0) return;
-            currentIndex = currentIndex > 0 ? currentIndex - 1 : currentPlaylist.length - 1;
-            playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex);
-        }
-        
-        function handleSongEnded() {
-            if (repeatMode === 'all' || currentIndex < currentPlaylist.length - 1) {
-                nextSong();
-            } else {
-                isPlaying = false;
-                updatePlayButtons();
-            }
-        }
-        
-        // ✅ PANEL ADMIN BÁSICO
+        // ✅ PANEL ADMIN COMPLETAMENTE FUNCIONAL
         async function renderAdminPanel() {
-            console.log('⚙️ Renderizando panel admin...');
+            console.log('⚙️ === RENDERIZANDO PANEL ADMIN ===');
+            
             const adminContent = document.getElementById('admin-content');
+            const offlineCount = (await getAllDownloadedSongs()).length;
             
             adminContent.innerHTML = `
+                <div style="background: #1a4a2e; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #1DB954;">
+                    <h3 style="margin: 0; color: #1DB954;">📊 Estadísticas del Sistema</h3>
+                </div>
+                
                 <div class="admin-stats">
                     <div class="stat-card">
                         <div class="stat-number">${allAlbums.length}</div>
@@ -556,10 +985,18 @@
                         <div class="stat-number">${allSongs.length}</div>
                         <div class="stat-label">🎵 Canciones</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${offlineCount}</div>
+                        <div class="stat-label">📱 Descargas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${isCordovaApp ? '📱' : '🌐'}</div>
+                        <div class="stat-label">${isCordovaApp ? 'APK' : 'Web'}</div>
+                    </div>
                 </div>
                 
                 <div class="admin-section">
-                    <h3>📀 Gestión de Álbumes</h3>
+                    <h3>📀 Crear Álbum</h3>
                     <form id="album-form" class="admin-form">
                         <div class="form-group">
                             <label>Título del Álbum:</label>
@@ -579,7 +1016,7 @@
                 </div>
                 
                 <div class="admin-section">
-                    <h3>🎼 Gestión de Canciones</h3>
+                    <h3>🎼 Subir Canciones</h3>
                     <form id="song-form" class="admin-form">
                         <div class="form-group">
                             <label>Seleccionar Álbum:</label>
@@ -591,7 +1028,7 @@
                             <label>Archivos de Audio (Múltiples):</label>
                             <input type="file" id="song-files" accept="audio/*" multiple required>
                             <div class="multiple-files-info">
-                                💡 <strong>Tip:</strong> Selecciona múltiples archivos de audio a la vez.
+                                💡 <strong>Consejo:</strong> Puedes seleccionar múltiples archivos MP3 a la vez para subirlos todos juntos.
                             </div>
                         </div>
                         <button type="submit" class="btn-primary">📤 Subir Canciones</button>
@@ -601,29 +1038,36 @@
                 </div>
             `;
             
-            // Llenar select de álbumes
+            // ✅ Llenar select de álbumes
             const albumSelect = document.getElementById('song-album-select');
-            if (albumSelect) {
+            if (albumSelect && allAlbums.length > 0) {
                 albumSelect.innerHTML = '<option value="">-- Seleccionar Álbum --</option>' + 
                     allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('');
             }
             
+            // ✅ Renderizar listas
             await renderAdminLists();
+            
+            // ✅ Configurar formularios - ESTO ES CRÍTICO
             setupAdminForms();
-            console.log('✅ Panel admin renderizado');
+            
+            console.log('✅ Panel admin renderizado completamente');
         }
         
         async function renderAdminLists() {
+            console.log('📋 Renderizando listas de admin...');
+            
             const albumList = document.getElementById('admin-album-list');
             const songList = document.getElementById('admin-song-list');
             
+            // ✅ Lista de álbumes
             if (albumList) {
                 if (allAlbums.length > 0) {
                     albumList.innerHTML = allAlbums.map(album => `
                         <div class="admin-item">
                             <div class="admin-item-info">
                                 <strong>${album.title}</strong>
-                                <small>👤 ${album.artist}</small>
+                                <small>👤 ${album.artist} | 📅 ${new Date(album.created_at).toLocaleDateString()}</small>
                             </div>
                             <div class="admin-item-actions">
                                 <button class="btn-danger" onclick="deleteAlbum('${album.id}')">🗑️ Eliminar</button>
@@ -635,13 +1079,14 @@
                 }
             }
             
+            // ✅ Lista de canciones
             if (songList) {
                 if (allSongs.length > 0) {
                     songList.innerHTML = allSongs.map(song => `
                         <div class="admin-item">
                             <div class="admin-item-info">
                                 <strong>${song.title}</strong>
-                                <small>📀 ${song.albums?.title || 'Sin álbum'}</small>
+                                <small>📀 ${song.albums?.title || 'Sin álbum'} | 👤 ${song.albums?.artist || 'Sin artista'}</small>
                             </div>
                             <div class="admin-item-actions">
                                 <button class="btn-danger" onclick="deleteSong('${song.id}')">🗑️ Eliminar</button>
@@ -654,17 +1099,20 @@
             }
         }
         
-        // ✅ SETUP ADMIN FORMS CORREGIDO
+        // ✅ CONFIGURAR FORMULARIOS - FUNCIÓN CRÍTICA CORREGIDA
         function setupAdminForms() {
-            console.log('🔧 Configurando formularios del admin...');
+            console.log('🔧 === CONFIGURANDO EVENT LISTENERS ===');
             
+            // ✅ FORMULARIO DE ÁLBUMES
             const albumForm = document.getElementById('album-form');
-            const songForm = document.getElementById('song-form');
-            
             if (albumForm) {
-                albumForm.addEventListener('submit', async (e) => {
+                // ✅ Remover listeners anteriores para evitar duplicados
+                const newAlbumForm = albumForm.cloneNode(true);
+                albumForm.parentNode.replaceChild(newAlbumForm, albumForm);
+                
+                newAlbumForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    console.log('📀 Creando álbum...');
+                    console.log('📀 === CREANDO ÁLBUM ===');
                     
                     if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
                         alert('❌ Solo ' + ADMIN_EMAIL + ' puede crear álbumes');
@@ -680,41 +1128,60 @@
                         return;
                     }
                     
+                    if (!coverInput.files || coverInput.files.length === 0) {
+                        alert('❌ Selecciona una portada');
+                        return;
+                    }
+                    
                     try {
-                        let cover_url = null;
-                        if (coverInput.files && coverInput.files.length > 0) {
-                            cover_url = await uploadFile(coverInput.files[0]);
+                        console.log('📤 Subiendo portada...');
+                        const cover_url = await uploadFile(coverInput.files[0]);
+                        console.log('✅ Portada subida:', cover_url);
+                        
+                        console.log('💾 Creando álbum en BD...');
+                        const { data, error } = await supabase
+                            .from('albums')
+                            .insert([{ 
+                                title: title, 
+                                artist: artist, 
+                                cover_url: cover_url 
+                            }])
+                            .select();
+                        
+                        if (error) {
+                            console.error('❌ Error BD:', error);
+                            throw error;
                         }
                         
-                        if (!cover_url) {
-                            alert('❌ Selecciona una portada');
-                            return;
-                        }
+                        console.log('✅ Álbum creado en BD:', data);
+                        alert(`✅ Álbum "${title}" creado exitosamente`);
                         
-                        const { data, error } = await supabase.from('albums').insert([{ 
-                            title, 
-                            artist, 
-                            cover_url 
-                        }]).select();
+                        // ✅ Limpiar formulario
+                        newAlbumForm.reset();
                         
-                        if (error) throw error;
-                        
-                        alert('✅ Álbum "' + title + '" creado exitosamente');
-                        albumForm.reset();
+                        // ✅ Recargar datos
                         await loadAllData();
                         await renderAdminPanel();
                         
                     } catch (err) {
-                        console.error('❌ Error:', err);
-                        alert('❌ Error: ' + err.message);
+                        console.error('❌ Error creando álbum:', err);
+                        alert(`❌ Error creando álbum: ${err.message}`);
                     }
                 });
+                
+                console.log('✅ Event listener de álbum configurado');
             }
             
+            // ✅ FORMULARIO DE CANCIONES
+            const songForm = document.getElementById('song-form');
             if (songForm) {
-                songForm.addEventListener('submit', async (e) => {
+                // ✅ Remover listeners anteriores para evitar duplicados
+                const newSongForm = songForm.cloneNode(true);
+                songForm.parentNode.replaceChild(newSongForm, songForm);
+                
+                newSongForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    console.log('🎵 Subiendo canciones...');
+                    console.log('🎵 === SUBIENDO CANCIONES ===');
                     
                     if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
                         alert('❌ Solo ' + ADMIN_EMAIL + ' puede subir canciones');
@@ -722,7 +1189,8 @@
                     }
                     
                     const albumId = document.getElementById('song-album-select').value;
-                    const songFiles = document.getElementById('song-files').files;
+                    const filesInput = document.getElementById('song-files');
+                    const songFiles = filesInput.files;
                     
                     if (!albumId) {
                         alert('❌ Selecciona un álbum');
@@ -734,29 +1202,39 @@
                         return;
                     }
                     
+                    console.log(`🎵 Subiendo ${songFiles.length} archivos al álbum ${albumId}`);
+                    
                     try {
                         const results = await uploadMultipleSongs(Array.from(songFiles), albumId);
                         
                         let message = '';
                         if (results.success.length > 0) {
-                            message += `✅ ${results.success.length} canciones subidas exitosamente\n`;
+                            message += `✅ ${results.success.length} canciones subidas exitosamente`;
                         }
                         if (results.errors.length > 0) {
+                            if (message) message += '\n';
                             message += `❌ ${results.errors.length} errores durante la subida`;
                         }
                         
+                        console.log('📊 Resultados finales:', results);
                         alert(message);
-                        songForm.reset();
+                        
+                        // ✅ Limpiar formulario
+                        newSongForm.reset();
+                        
+                        // ✅ Recargar panel
                         await renderAdminPanel();
                         
                     } catch (err) {
-                        console.error('❌ Error:', err);
-                        alert('❌ Error: ' + err.message);
+                        console.error('❌ Error subiendo canciones:', err);
+                        alert(`❌ Error subiendo canciones: ${err.message}`);
                     }
                 });
+                
+                console.log('✅ Event listener de canciones configurado');
             }
             
-            console.log('✅ Formularios configurados');
+            console.log('✅ === TODOS LOS EVENT LISTENERS CONFIGURADOS ===');
         }
         
         // ✅ FUNCIONES DE UTILIDAD
@@ -805,10 +1283,10 @@
         
         // ✅ TEMA BÁSICO
         window.changeTheme = function(theme) {
-            console.log('🎨 Cambiando tema:', theme);
+            console.log('🎨 Tema seleccionado:', theme);
         }
         
-        // ✅ AUTENTICACIÓN BÁSICA
+        // ✅ AUTENTICACIÓN
         function updateAuthUI() {
             const headerLockIcon = document.getElementById('header-lock-icon');
             const userInfo = document.getElementById('user-info-section');
@@ -885,7 +1363,7 @@
             }
         }
         
-        // ✅ NAVEGACIÓN BÁSICA
+        // ✅ NAVEGACIÓN
         window.toggleUserMenu = function() { 
             document.getElementById('user-dropdown').classList.toggle('show'); 
         }
@@ -902,6 +1380,8 @@
         }
         
         window.showSection = function(section) {
+            console.log('🧭 Navegando a sección:', section);
+            
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.getElementById(`${section}-section`).classList.add('active');
             document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active'));
@@ -911,9 +1391,11 @@
             if (navItem) navItem.classList.add('active');
             
             if (section === 'home') showAlbumsGrid();
+            if (section === 'favorites') loadFavorites();
+            if (section === 'downloads') loadDownloads();
             if (section === 'admin') {
                 if (currentUser?.email !== ADMIN_EMAIL) {
-                    alert('🔒 Solo klmzr@gmail.com puede acceder');
+                    alert('🔒 Solo klmzr@gmail.com puede acceder al panel de administración');
                     showSection('home');
                     return;
                 }
@@ -930,12 +1412,111 @@
             playSong(currentPlaylist[index], currentAlbum, currentPlaylist, index); 
         }
         
-        window.searchMusic = function() {
-            console.log('🔍 Buscando música...');
+        // ✅ FAVORITOS
+        const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
+        const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
+        
+        window.toggleFavorite = function(songId, el) {
+            let favorites = getLocalFavorites();
+            const isFavorite = favorites.includes(songId);
+            
+            if (isFavorite) {
+                favorites = favorites.filter(id => id !== songId);
+            } else {
+                favorites.push(songId);
+            }
+            
+            saveLocalFavorites(favorites);
+            if (el) {
+                el.style.color = isFavorite ? '#666' : '#1DB954';
+                el.innerHTML = isFavorite ? '🤍' : '❤️';
+            }
         }
         
+        async function loadFavorites() {
+            console.log('❤️ Cargando favoritos...');
+            const content = document.getElementById('favorites-content');
+            const favorites = getLocalFavorites();
+            
+            if (favorites.length === 0) {
+                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>❤️ No tienes favoritos</h2><p style="color: #666;">Marca canciones como favoritas desde cualquier álbum</p></div>';
+                return;
+            }
+            
+            try {
+                const { data: songs } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites);
+                content.innerHTML = '<div class="favorites-list">' + songs.map(song => `
+                    <div class="favorite-item" onclick="playSong(${JSON.stringify(song)}, ${JSON.stringify(song.albums)})">
+                        <div class="favorite-info">
+                            <div class="favorite-title">${song.title}</div>
+                            <div class="favorite-artist">${song.albums.artist}</div>
+                        </div>
+                    </div>
+                `).join('') + '</div>';
+            } catch (error) {
+                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>❌ Error cargando favoritos</h2></div>';
+            }
+        }
+        
+        // ✅ DESCARGAS
+        async function loadDownloads() {
+            console.log('📥 Cargando descargas...');
+            const content = document.getElementById('downloads-content');
+            
+            try {
+                const downloadedSongs = await getAllDownloadedSongs();
+                
+                if (downloadedSongs.length === 0) {
+                    content.innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            <h3>📥 No tienes descargas</h3>
+                            <p style="color: #666;">Descarga canciones desde el botón ↓ en cualquier álbum</p>
+                            <p style="color: #666; font-size: 0.9rem;">Entorno: ${isCordovaApp ? '📱 Android APK' : '🌐 Navegador Web'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                content.innerHTML = '<div class="downloads-list">' + downloadedSongs.map(songItem => {
+                    const song = songItem.metadata;
+                    const album = songItem.album;
+                    return `
+                        <div class="download-item" onclick="playOfflineSong('${song.id}')">
+                            <div class="download-info">
+                                <div class="download-title">${song.title}</div>
+                                <div class="download-artist">${album?.artist || 'Artista desconocido'}</div>
+                                <small style="color: #666;">📅 ${new Date(songItem.downloadedAt).toLocaleDateString()} | 📱 ${songItem.platform || 'unknown'}</small>
+                            </div>
+                            <div style="color: #1DB954; font-size: 1.2rem;">✓</div>
+                        </div>
+                    `;
+                }).join('') + '</div>';
+                
+            } catch (error) {
+                console.error('Error cargando descargas:', error);
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <h3>❌ Error cargando descargas</h3>
+                        <p style="color: #666;">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        window.playOfflineSong = async (songId) => {
+            console.log('🎵 Reproduciendo canción offline:', songId);
+            // TODO: Implementar reproducción offline específica
+            alert('Función de reproducción offline en desarrollo');
+        }
+        
+        // ✅ BUSCAR
+        window.searchMusic = function() {
+            console.log('🔍 Función de búsqueda en desarrollo');
+        }
+        
+        // ✅ FUNCIONES ADMIN ADICIONALES
         window.deleteAlbum = async function(albumId) {
-            if (!confirm('¿Eliminar álbum?')) return;
+            if (!confirm('¿Eliminar álbum y todas sus canciones?')) return;
             try {
                 const { error } = await supabase.from('albums').delete().eq('id', albumId);
                 if (error) throw error;
@@ -948,7 +1529,7 @@
         }
         
         window.deleteSong = async function(songId) {
-            if (!confirm('¿Eliminar canción?')) return;
+            if (!confirm('¿Eliminar esta canción?')) return;
             try {
                 const { error } = await supabase.from('songs').delete().eq('id', songId);
                 if (error) throw error;
@@ -960,6 +1541,7 @@
             }
         }
         
+        // ✅ UTILIDADES
         function showLoadingIndicator(show) { 
             const indicator = document.getElementById('loading-indicator');
             if (indicator) indicator.style.display = show ? 'block' : 'none'; 
@@ -974,12 +1556,15 @@
             if (confirm('¿Cerrar sesión?')) logout(); 
         }
         
-        // ✅ INICIALIZACIÓN SIMPLE
+        // ✅ INICIALIZACIÓN PRINCIPAL
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 Inicializando KLMZ MUSIC...');
+            console.log('🚀 === INICIALIZANDO KLMZ MUSIC ===');
             
+            // ✅ Detectar entorno
+            detectCordova();
+            
+            // ✅ Configurar audio player
             const audio = document.getElementById('audio-player');
-            
             if (audio) {
                 audio.addEventListener('ended', handleSongEnded);
                 audio.addEventListener('timeupdate', updateProgressBar);
@@ -991,8 +1576,11 @@
                     isPlaying = false; 
                     updatePlayButtons(); 
                 });
+                
+                console.log('🎵 Audio player configurado');
             }
             
+            // ✅ Configurar mini player
             const miniPlayer = document.getElementById('mini-player');
             if (miniPlayer) {
                 miniPlayer.addEventListener('click', (e) => {
@@ -1000,14 +1588,25 @@
                         openFullPlayer(); 
                     }
                 });
+                
+                console.log('🎵 Mini player configurado');
             }
             
+            // ✅ Cargar aplicación
             loadSupabase().then(() => {
-                console.log('✅ KLMZ MUSIC inicializado correctamente');
+                console.log('✅ === KLMZ MUSIC INICIADO CORRECTAMENTE ===');
             });
         });
         
-        console.log('✅ Script cargado completamente');
+        // ✅ INICIALIZACIÓN CORDOVA
+        if (typeof window.cordova !== 'undefined') {
+            document.addEventListener('deviceready', () => {
+                console.log('📱 === CORDOVA DEVICE READY ===');
+                detectCordova();
+            }, false);
+        }
+        
+        console.log('✅ === SCRIPT CARGADO COMPLETAMENTE ===');
     </script>
 </body>
 </html>
