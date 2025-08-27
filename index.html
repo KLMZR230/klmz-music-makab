@@ -5,7 +5,6 @@
     <title>KLMZ MUSIC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1DB954">
-    <link rel="manifest" href="./manifest.json">
     <script defer src="https://cdn.jsdelivr.net/npm/appwrite@18.2.0"></script>
     <style>
         * { box-sizing: border-box; }
@@ -322,7 +321,7 @@
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
 
-## 🎯 **PARTE 2: JavaScript BÁSICO (Con MediaSession ARREGLADA)**
+## 🎯 **PARTE 2: JavaScript BÁSICO (CON DETECCIÓN DE WEBVIEW)**
 
 <script>
     let supabase = null;
@@ -339,34 +338,52 @@
     let shuffleMode = false;
     let db;
     let mediaSessionSupported = false;
+    let isAndroidWebView = false;
     
     const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
     const ADMIN_EMAIL = 'klmzr@gmail.com';
     
-    // ✅ MEDIA SESSION API MEJORADA PARA PANTALLA DE BLOQUEO
+    // ✅ DETECCIÓN DE ANDROID WEBVIEW
+    function detectAndroidWebView() {
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        
+        // Detección más precisa de Android WebView
+        const isAndroid = /Android/i.test(userAgent);
+        const isWebView = /wv$$/i.test(userAgent) || 
+                         /Version\/[0-9\.]+/i.test(userAgent) && /Chrome\/[0-9\.]+/i.test(userAgent) ||
+                         typeof window.Android !== 'undefined' ||
+                         /; wv$$/i.test(userAgent);
+        
+        isAndroidWebView = isAndroid && isWebView;
+        
+        if (isAndroidWebView) {
+            console.log('📱 Android WebView detectado - Service Worker DESACTIVADO');
+            console.log('📱 UserAgent:', userAgent);
+            console.log('📱 Android interface:', typeof window.Android !== 'undefined' ? 'DISPONIBLE' : 'NO DISPONIBLE');
+        } else {
+            console.log('🌐 Navegador web detectado - Service Worker HABILITADO');
+        }
+        
+        return isAndroidWebView;
+    }
+    
+    // ✅ MEDIA SESSION API OPTIMIZADA PARA WEBVIEW
     function setupMediaSession() {
-        if ('mediaSession' in navigator) {
+        if ('mediaSession' in navigator && !isAndroidWebView) {
             mediaSessionSupported = true;
             console.log('🔒 MediaSession API disponible - configurando controles de pantalla de bloqueo');
             
-            // Configurar action handlers
-            navigator.mediaSession.setActionHandler('play', handleMediaSessionPlay);
-            navigator.mediaSession.setActionHandler('pause', handleMediaSessionPause);
-            navigator.mediaSession.setActionHandler('previoustrack', handleMediaSessionPrevious);
-            navigator.mediaSession.setActionHandler('nexttrack', handleMediaSessionNext);
-            navigator.mediaSession.setActionHandler('stop', handleMediaSessionStop);
-            
-            // Intentar configurar seekto si está disponible
             try {
+                navigator.mediaSession.setActionHandler('play', handleMediaSessionPlay);
+                navigator.mediaSession.setActionHandler('pause', handleMediaSessionPause);
+                navigator.mediaSession.setActionHandler('previoustrack', handleMediaSessionPrevious);
+                navigator.mediaSession.setActionHandler('nexttrack', handleMediaSessionNext);
+                navigator.mediaSession.setActionHandler('stop', handleMediaSessionStop);
+                
+                // Configurar seekto solo si no es WebView
                 navigator.mediaSession.setActionHandler('seekto', handleMediaSessionSeekTo);
-                console.log('✅ Seek action handler configurado');
-            } catch (error) {
-                console.log('⚠️ Seek action no soportado:', error);
-            }
-            
-            // Configurar seekbackward y seekforward si están disponibles
-            try {
+                
                 navigator.mediaSession.setActionHandler('seekbackward', () => {
                     const audio = document.getElementById('audio-player');
                     if (audio) {
@@ -380,18 +397,24 @@
                         audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
                     }
                 });
-                console.log('✅ Seek forward/backward configurados');
+                
+                console.log('✅ MediaSession handlers configurados correctamente');
             } catch (error) {
-                console.log('⚠️ Seek forward/backward no soportados:', error);
+                console.log('⚠️ Error configurando MediaSession:', error);
             }
-            
+        } else if (isAndroidWebView) {
+            console.log('📱 Android WebView: MediaSession desactivado, usando controles nativos Android');
+            mediaSessionSupported = false;
         } else {
             console.log('⚠️ MediaSession API no soportada en este navegador');
+            mediaSessionSupported = false;
         }
     }
     
-    // ✅ HANDLERS MEJORADOS PARA MEDIA SESSION
+    // ✅ HANDLERS MEJORADOS PARA MEDIA SESSION (SOLO NAVEGADORES WEB)
     function handleMediaSessionPlay() {
+        if (isAndroidWebView) return; // No usar en WebView
+        
         console.log('🎵 MediaSession: Play desde pantalla de bloqueo/auriculares');
         const audio = document.getElementById('audio-player');
         if (currentSong && audio && audio.paused) {
@@ -402,6 +425,8 @@
     }
     
     function handleMediaSessionPause() {
+        if (isAndroidWebView) return; // No usar en WebView
+        
         console.log('⏸️ MediaSession: Pause desde pantalla de bloqueo/auriculares');
         const audio = document.getElementById('audio-player');
         if (audio && !audio.paused) {
@@ -411,16 +436,19 @@
     }
     
     function handleMediaSessionPrevious() {
+        if (isAndroidWebView) return;
         console.log('⏮️ MediaSession: Previous desde pantalla de bloqueo/auriculares');
         previousSong();
     }
     
     function handleMediaSessionNext() {
+        if (isAndroidWebView) return;
         console.log('⏭️ MediaSession: Next desde pantalla de bloqueo/auriculares');
         nextSong();
     }
     
     function handleMediaSessionStop() {
+        if (isAndroidWebView) return;
         console.log('⏹️ MediaSession: Stop desde pantalla de bloqueo');
         const audio = document.getElementById('audio-player');
         if (audio) {
@@ -431,6 +459,7 @@
     }
     
     function handleMediaSessionSeekTo(details) {
+        if (isAndroidWebView) return;
         console.log('⏩ MediaSession: Seek to', details.seekTime);
         const audio = document.getElementById('audio-player');
         if (audio && details.seekTime !== null && details.seekTime !== undefined) {
@@ -438,9 +467,9 @@
         }
     }
     
-    // ✅ ACTUALIZAR METADATA Y ESTADO DE MEDIA SESSION
+    // ✅ ACTUALIZAR METADATA SOLO EN NAVEGADORES WEB
     function updateMediaSessionMetadata(song, album) {
-        if (!mediaSessionSupported || !song) return;
+        if (!mediaSessionSupported || !song || isAndroidWebView) return;
         
         const title = song.title || 'Sin título';
         const artist = album ? album.artist : 'Artista desconocido';
@@ -468,7 +497,7 @@
     }
     
     function updateMediaSessionPlaybackState(state) {
-        if (!mediaSessionSupported) return;
+        if (!mediaSessionSupported || isAndroidWebView) return;
         
         try {
             navigator.mediaSession.playbackState = state;
@@ -699,9 +728,10 @@
         }
     }
     
-    // ✅ FUNCIÓN PLAYSIDE MEJORADA CON MEDIA SESSION
+    // ✅ FUNCIÓN PLAYSIDE OPTIMIZADA PARA WEBVIEW Y WEB
     window.playSong = async function(song, album, playlist = [song], index = 0) {
         console.log('🎵 Reproduciendo canción:', song.title);
+        console.log('📱 Entorno:', isAndroidWebView ? 'Android WebView' : 'Navegador Web');
         
         currentSong = song;
         currentAlbum = album;
@@ -727,11 +757,13 @@
             audio.src = song.song_url;
         }
         
-        // Actualizar MediaSession ANTES de reproducir
-        updateMediaSessionMetadata(song, album);
+        // ✅ SOLO ACTUALIZAR MEDIASESSION SI NO ES WEBVIEW
+        if (!isAndroidWebView) {
+            updateMediaSessionMetadata(song, album);
+        }
         
-        // Comunicación con Android (si está disponible)
-        if (typeof Android !== 'undefined' && Android.playFromJS) {
+        // ✅ COMUNICACIÓN CON ANDROID (MEJORADA PARA WEBVIEW)
+        if (isAndroidWebView && typeof Android !== 'undefined' && Android.playFromJS) {
             try {
                 Android.playFromJS(
                     song.song_url,
@@ -739,9 +771,9 @@
                     album ? album.artist : 'Artista desconocido',
                     album ? album.cover_url : ''
                 );
-                console.log('✅ Enviado a Android para controles nativos');
+                console.log('✅ Enviado a Android para controles nativos (WebView)');
             } catch (error) {
-                console.log('⚠️ Android interface no disponible:', error);
+                console.log('⚠️ Error comunicándose con Android:', error);
             }
         }
         
@@ -752,11 +784,15 @@
         audio.play()
             .then(() => {
                 console.log('✅ Reproducción iniciada exitosamente');
-                updateMediaSessionPlaybackState('playing');
+                if (!isAndroidWebView) {
+                    updateMediaSessionPlaybackState('playing');
+                }
             })
             .catch(error => {
                 console.error('❌ Error al reproducir:', error);
-                updateMediaSessionPlaybackState('paused');
+                if (!isAndroidWebView) {
+                    updateMediaSessionPlaybackState('paused');
+                }
             });
     }
         
@@ -789,10 +825,21 @@
             const audio = document.getElementById('audio-player');
             if (isPlaying) {
                 audio.pause();
-                updateMediaSessionPlaybackState('paused');
+                if (!isAndroidWebView) {
+                    updateMediaSessionPlaybackState('paused');
+                }
+                
+                // Comunicar con Android si está en WebView
+                if (isAndroidWebView && typeof Android !== 'undefined' && Android.pauseFromJS) {
+                    Android.pauseFromJS();
+                }
             } else {
                 audio.play()
-                    .then(() => updateMediaSessionPlaybackState('playing'))
+                    .then(() => {
+                        if (!isAndroidWebView) {
+                            updateMediaSessionPlaybackState('playing');
+                        }
+                    })
                     .catch(console.error);
             }
         }
@@ -815,7 +862,9 @@
             } else {
                 isPlaying = false;
                 updatePlayButtons();
-                updateMediaSessionPlaybackState('paused');
+                if (!isAndroidWebView) {
+                    updateMediaSessionPlaybackState('paused');
+                }
             }
         }
         
@@ -836,8 +885,8 @@
                         <div class="stat-label">🎵 Canciones</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">${mediaSessionSupported ? '✅' : '❌'}</div>
-                        <div class="stat-label">🔒 MediaSession</div>
+                        <div class="stat-number">${isAndroidWebView ? '📱' : (mediaSessionSupported ? '✅' : '❌')}</div>
+                        <div class="stat-label">${isAndroidWebView ? 'WebView' : 'MediaSession'}</div>
                     </div>
                 </div>
                 
@@ -1064,7 +1113,7 @@
             }
         }
         
-        // ✅ FUNCIONES DE UTILIDAD
+        // ✅ RESTO DE FUNCIONES DE UTILIDAD
         window.setVolume = (value) => { document.getElementById('audio-player').volume = value / 100; }
         function updateProgressBar() {
             const audio = document.getElementById('audio-player');
@@ -1111,7 +1160,7 @@
             changeTheme(savedTheme);
         }
         
-        // ✅ AUTENTICACIÓN Y NAVEGACIÓN
+        // ✅ AUTENTICACIÓN Y NAVEGACIÓN (igual que antes)
         function updateAuthUI() {
             const headerLockIcon = document.getElementById('header-lock-icon');
             const userInfo = document.getElementById('user-info-section');
@@ -1331,9 +1380,12 @@
         function goToAdmin() { document.getElementById('user-dropdown').classList.remove('show'); showSection('admin'); }
         function confirmLogout() { if (confirm('¿Cerrar sesión?')) logout(); }
         
-        // ✅ INICIALIZACIÓN COMPLETA CON MEDIA SESSION ARREGLADA
+        // ✅ INICIALIZACIÓN COMPLETA CON DETECCIÓN DE WEBVIEW
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con MediaSession mejorada...');
+            console.log('🚀 KLMZ MUSIC iniciando...');
+            
+            // ✅ DETECTAR ANDROID WEBVIEW PRIMERO
+            detectAndroidWebView();
             
             const audio = document.getElementById('audio-player');
             audio.addEventListener('ended', handleSongEnded);
@@ -1341,42 +1393,52 @@
             audio.addEventListener('play', () => { 
                 isPlaying = true; 
                 updatePlayButtons();
-                updateMediaSessionPlaybackState('playing');
+                if (!isAndroidWebView) {
+                    updateMediaSessionPlaybackState('playing');
+                }
             });
             audio.addEventListener('pause', () => { 
                 isPlaying = false; 
                 updatePlayButtons(); 
-                updateMediaSessionPlaybackState('paused');
+                if (!isAndroidWebView) {
+                    updateMediaSessionPlaybackState('paused');
+                }
             });
             
             document.getElementById('mini-player').addEventListener('click', (e) => {
                 if (!e.target.closest('.player-controls-inline')) { openFullPlayer(); }
             });
             
-            // ✅ CONFIGURAR MEDIA SESSION AL INICIO
-            setupMediaSession();
+            // ✅ CONFIGURAR MEDIA SESSION SOLO SI NO ES WEBVIEW
+            if (!isAndroidWebView) {
+                setupMediaSession();
+            }
             
             loadSavedTheme();
             initDB().then(() => loadSupabase()).catch(console.error);
             
-            console.log('✅ KLMZ MUSIC iniciado con:');
-            console.log('  🔒 MediaSession API:', mediaSessionSupported ? 'ACTIVADO' : 'NO DISPONIBLE');
+            console.log('✅ KLMZ MUSIC iniciado correctamente:');
+            console.log('  📱 Entorno:', isAndroidWebView ? 'Android WebView' : 'Navegador Web');
+            console.log('  🔒 MediaSession:', mediaSessionSupported ? 'ACTIVADO' : 'DESACTIVADO');
+            console.log('  📱 Controles Android:', (isAndroidWebView && typeof Android !== 'undefined') ? 'DISPONIBLES' : 'NO DISPONIBLES');
             console.log('  📱 Descargas offline: ACTIVADAS');
             console.log('  🎨 6 temas visuales: ACTIVADOS');
             console.log('  ⚙️ Panel admin: ACTIVADO');
         });
         
-        // ✅ SERVICE WORKER PARA PWA (OPCIONAL)
-        if ('serviceWorker' in navigator) {
+        // ✅ SERVICE WORKER SOLO EN NAVEGADORES WEB (NO EN WEBVIEW)
+        if ('serviceWorker' in navigator && !detectAndroidWebView()) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => {
-                        console.log('✅ Service Worker registrado');
+                        console.log('✅ Service Worker registrado para navegador web');
                     })
                     .catch(error => {
                         console.log('⚠️ Service Worker no registrado:', error);
                     });
             });
+        } else {
+            console.log('📱 Service Worker OMITIDO en Android WebView - esto evita errores');
         }
     </script>
 </body>
