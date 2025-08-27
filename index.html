@@ -129,7 +129,7 @@
         .btn-cancel { background: #6c757d; color: #fff; border: none; padding: 0.7rem 1.5rem; border-radius: 999px; cursor: pointer; margin-top: 0.5rem; }
         .btn-cancel:hover { background: #5a6268; }
         
-        /* ✅ TEMAS CON BORDES DE COLORES ARREGLADOS */
+        /* ✅ TEMAS CON BORDES DE COLORES */
         body.theme-neon { 
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0f0f23 100%) !important; 
             color: #00ff88 !important; 
@@ -909,7 +909,6 @@
             }
         }
         
-        // ✅ FUNCIÓN PLAYSONG CON NOTIFICACIÓN ANDROID
         window.playSong = async function(song, album, playlist = [song], index = 0) {
             currentSong = song;
             currentAlbum = album;
@@ -918,20 +917,6 @@
             const audio = document.getElementById('audio-player');
             audio.pause();
             updateAllPlayers();
-            
-            // ✅ LLAMAR AL SERVICIO ANDROID PARA NOTIFICACIONES
-            if (typeof Android !== 'undefined' && Android.playFromJS) {
-                try {
-                    Android.playFromJS(
-                        song.song_url,
-                        song.title,
-                        album ? album.artist : 'Artista desconocido',
-                        album ? album.cover_url : ''
-                    );
-                } catch (error) {
-                    console.log('Android interface no disponible:', error);
-                }
-            }
             
             try {
                 const downloadedSong = await getSongFromDB(song.id);
@@ -983,25 +968,9 @@
             document.getElementById('full-play-btn').textContent = playText;
         }
         
-        // ✅ CONTROLES CON COMUNICACIÓN A ANDROID
         window.togglePlay = function() {
             const audio = document.getElementById('audio-player');
-            if (isPlaying) {
-                audio.pause();
-                if (typeof Android !== 'undefined' && Android.pauseFromJS) {
-                    Android.pauseFromJS();
-                }
-            } else {
-                audio.play();
-                if (typeof Android !== 'undefined' && Android.playFromJS && currentSong) {
-                    Android.playFromJS(
-                        currentSong.song_url,
-                        currentSong.title,
-                        currentAlbum ? currentAlbum.artist : 'Artista desconocido',
-                        currentAlbum ? currentAlbum.cover_url : ''
-                    );
-                }
-            }
+            if (isPlaying) audio.pause(); else audio.play();
         }
         
         window.nextSong = function() {
@@ -1299,7 +1268,7 @@
             }
         }
         
-        // ✅ FIX 1: FUNCIÓN SEARCHMUSIC CORREGIDA PARA QUE LAS CANCIONES SE REPRODUZCAN
+        // ✅ FIX: FUNCIÓN SEARCHMUSIC CORREGIDA PARA QUE LAS CANCIONES SE REPRODUZCAN
         window.searchMusic = function() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             const results = document.getElementById('search-results');
@@ -1356,7 +1325,7 @@
             });
         }
         
-        // ✅ ADMIN PANEL CON MÚLTIPLES ARCHIVOS Y EDICIÓN
+        // ✅ ADMIN PANEL
         async function renderAdminPanel() {
             const adminContent = document.getElementById('admin-content');
             adminContent.innerHTML = `
@@ -1605,7 +1574,7 @@
         
         // ✅ INICIALIZACIÓN COMPLETA
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 KLMZ MUSIC iniciando con MediaSession...');
+            console.log('🚀 KLMZ MUSIC iniciando correctamente...');
             
             const audio = document.getElementById('audio-player');
             audio.addEventListener('ended', handleSongEnded);
@@ -1619,238 +1588,31 @@
                 updatePlayButtons(); 
             });
             
-            document.getElementById('mini
             document.getElementById('mini-player').addEventListener('click', (e) => {
                 if (!e.target.closest('.player-controls-inline')) {
                     openFullPlayer();
                 }
             });
             
-            // ✅ INICIALIZAR MEDIA SESSION API PARA PANTALLA DE BLOQUEO
-            if ('mediaSession' in navigator) {
-                console.log('🎵 MediaSession API disponible - configurando controles de pantalla de bloqueo');
-                setupMediaSession();
-            } else {
-                console.log('⚠️ MediaSession API no disponible en este navegador');
-            }
-            
             loadSavedTheme();
             
             initDB().then(() => {
-                console.log('✅ IndexedDB inicializada correctamente');
+                console.log('✅ IndexedDB OK');
                 return loadSupabase();
             }).then(() => {
-                console.log('✅ KLMZ MUSIC completamente funcional con controles de pantalla de bloqueo');
+                console.log('✅ KLMZ MUSIC listo con los fixes aplicados');
             }).catch(err => {
-                console.error("❌ Error crítico durante inicialización:", err);
-                document.getElementById('albums').innerHTML = `
-                    <div style="text-align: center; padding: 3rem;">
-                        <h2>❌ Error de inicialización</h2>
-                        <p>Hubo un problema inicializando la aplicación: ${err.message}</p>
-                        <button onclick="location.reload()" style="background: #1DB954; color: #fff; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer;">🔄 Recargar</button>
-                    </div>
-                `;
+                console.error("❌ Error:", err);
             });
         });
         
-        // ✅ SETUP MEDIA SESSION API PARA CONTROLES EN PANTALLA DE BLOQUEO
-        function setupMediaSession() {
-            console.log('🔒 Configurando MediaSession para pantalla de bloqueo...');
-            
-            // ✅ CONFIGURAR METADATA INICIAL
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'KLMZ MUSIC',
-                artist: 'Listo para reproducir',
-                album: 'Tu música favorita',
-                artwork: [
-                    { src: './icon-192.png', sizes: '192x192', type: 'image/png' },
-                    { src: './icon-512.png', sizes: '512x512', type: 'image/png' }
-                ]
-            });
-            
-            // ✅ CONFIGURAR ACTION HANDLERS
-            try {
-                navigator.mediaSession.setActionHandler('play', () => {
-                    console.log('🎵 MediaSession: Play desde pantalla de bloqueo');
-                    if (currentSong) {
-                        const audio = document.getElementById('audio-player');
-                        audio.play().catch(console.error);
-                        navigator.mediaSession.playbackState = 'playing';
-                    }
-                });
-                
-                navigator.mediaSession.setActionHandler('pause', () => {
-                    console.log('⏸️ MediaSession: Pause desde pantalla de bloqueo');
-                    const audio = document.getElementById('audio-player');
-                    audio.pause();
-                    navigator.mediaSession.playbackState = 'paused';
-                });
-                
-                navigator.mediaSession.setActionHandler('previoustrack', () => {
-                    console.log('⏮️ MediaSession: Previous track desde pantalla de bloqueo');
-                    previousSong();
-                });
-                
-                navigator.mediaSession.setActionHandler('nexttrack', () => {
-                    console.log('⏭️ MediaSession: Next track desde pantalla de bloqueo');
-                    nextSong();
-                });
-                
-                navigator.mediaSession.setActionHandler('stop', () => {
-                    console.log('⏹️ MediaSession: Stop desde pantalla de bloqueo');
-                    const audio = document.getElementById('audio-player');
-                    audio.pause();
-                    audio.currentTime = 0;
-                    navigator.mediaSession.playbackState = 'none';
-                });
-                
-                navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-                    console.log('⏪ MediaSession: Seek backward desde pantalla de bloqueo');
-                    const audio = document.getElementById('audio-player');
-                    const skipTime = details.seekOffset || 10;
-                    audio.currentTime = Math.max(0, audio.currentTime - skipTime);
-                    updatePositionState();
-                });
-                
-                navigator.mediaSession.setActionHandler('seekforward', (details) => {
-                    console.log('⏩ MediaSession: Seek forward desde pantalla de bloqueo');
-                    const audio = document.getElementById('audio-player');
-                    const skipTime = details.seekOffset || 10;
-                    audio.currentTime = Math.min(audio.duration, audio.currentTime + skipTime);
-                    updatePositionState();
-                });
-                
-                navigator.mediaSession.setActionHandler('seekto', (details) => {
-                    console.log('🎯 MediaSession: Seek to desde pantalla de bloqueo');
-                    const audio = document.getElementById('audio-player');
-                    if (details.seekTime && audio.duration) {
-                        audio.currentTime = details.seekTime;
-                        updatePositionState();
-                    }
-                });
-                
-                console.log('✅ MediaSession action handlers configurados correctamente');
-                
-            } catch (error) {
-                console.error('❌ Error configurando MediaSession:', error);
-            }
-        }
-        
-        // ✅ ACTUALIZAR METADATA DE LA CANCIÓN ACTUAL
-        function updateMediaSessionMetadata(song, album) {
-            if ('mediaSession' in navigator && navigator.mediaSession) {
-                const artwork = [];
-                
-                if (album && album.cover_url) {
-                    artwork.push(
-                        { src: album.cover_url, sizes: '96x96', type: 'image/jpeg' },
-                        { src: album.cover_url, sizes: '128x128', type: 'image/jpeg' },
-                        { src: album.cover_url, sizes: '192x192', type: 'image/jpeg' },
-                        { src: album.cover_url, sizes: '256x256', type: 'image/jpeg' },
-                        { src: album.cover_url, sizes: '384x384', type: 'image/jpeg' },
-                        { src: album.cover_url, sizes: '512x512', type: 'image/jpeg' }
-                    );
-                }
-                
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: song.title || 'Sin título',
-                    artist: album ? album.artist : 'Artista desconocido',
-                    album: album ? album.title : 'KLMZ MUSIC',
-                    artwork: artwork
-                });
-                
-                console.log('🎵 MediaSession metadata actualizado:', {
-                    title: song.title,
-                    artist: album ? album.artist : 'Desconocido'
-                });
-            }
-        }
-        
-        // ✅ ACTUALIZAR ESTADO DE POSICIÓN PARA SCRUBBING
-        function updatePositionState() {
-            if ('mediaSession' in navigator && navigator.mediaSession.setPositionState) {
-                const audio = document.getElementById('audio-player');
-                if (audio.duration && !isNaN(audio.duration)) {
-                    try {
-                        navigator.mediaSession.setPositionState({
-                            duration: audio.duration,
-                            playbackRate: audio.playbackRate,
-                            position: audio.currentTime
-                        });
-                    } catch (error) {
-                        console.log('⚠️ Error actualizando posición MediaSession:', error);
-                    }
-                }
-            }
-        }
-        
-        // ✅ MODIFICAR FUNCIÓN PLAYSONG PARA INCLUIR MEDIASESSION
-        const originalPlaySong = window.playSong;
-        window.playSong = async function(song, album, playlist = [song], index = 0) {
-            // Llamar función original
-            await originalPlaySong(song, album, playlist, index);
-            
-            // ✅ ACTUALIZAR MEDIASESSION
-            updateMediaSessionMetadata(song, album);
-            
-            // ✅ CONFIGURAR PLAYBACK STATE
-            const audio = document.getElementById('audio-player');
-            audio.addEventListener('loadstart', () => {
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = 'none';
-                }
-            });
-            
-            audio.addEventListener('play', () => {
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = 'playing';
-                    updatePositionState();
-                }
-            });
-            
-            audio.addEventListener('pause', () => {
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = 'paused';
-                }
-            });
-            
-            audio.addEventListener('timeupdate', () => {
-                updatePositionState();
-            });
-            
-            console.log('🔒 MediaSession configurado para:', song.title);
-        }
-        
-        // ✅ SERVICE WORKER PARA PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(registration => {
-                        console.log('✅ Service Worker registrado exitosamente:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('⚠️ Service Worker registro falló:', error);
-                    });
+                    .then(registration => console.log('✅ SW registrado:', registration.scope))
+                    .catch(error => console.log('⚠️ SW falló:', error));
             });
         }
-        
-        // ✅ MANEJO DE ERRORES GLOBALES
-        window.addEventListener('error', (event) => {
-            console.error('❌ Error global capturado:', event.error);
-        });
-        
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('❌ Promise rechazada sin manejar:', event.reason);
-        });
-        
-        // ✅ DETECCIÓN DE MODO OFFLINE
-        window.addEventListener('online', () => {
-            console.log('🌐 Conexión restaurada');
-        });
-        
-        window.addEventListener('offline', () => {
-            console.log('📡 Modo offline - Usando música descargada');
-        });
     </script>
 </body>
 </html>
