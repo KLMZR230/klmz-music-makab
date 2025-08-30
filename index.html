@@ -334,7 +334,6 @@
             </form>
         </div>
     </div>
-    
     <div class="modal" id="edit-song-modal">
         <div class="modal-content">
             <button class="close-modal" onclick="closeEditSongModal()">&times;</button>
@@ -353,7 +352,6 @@
     <audio id="audio-player" preload="metadata"></audio>
 
     <script>
-        // ... (Variables iniciales sin cambios) ...
         let supabase = null;
         let currentSong = null;
         let currentAlbum = null;
@@ -370,26 +368,43 @@
         let mediaSessionSupported = false;
         let nativePlayerDuration = 0;
         let songPlayCount = 0;
+
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
+        
         const appwriteBucketId = '68ad019f00207b1df467';
         const appwriteProjectId = '68ab0cf2000365979a71';
         const appwriteEndpoint = 'https://nyc.cloud.appwrite.io/v1';
+
         let appwriteClient, appwriteStorage;
         const isAndroidApp = typeof Android !== 'undefined';
         const audio = document.getElementById('audio-player');
         
-        // --- Funciones de comunicación con Android (sin cambios) ---
         window.onNativePlaybackStateChanged = function(nativeIsPlaying) { if (isPlaying !== nativeIsPlaying) { isPlaying = nativeIsPlaying; updatePlayButtons(); } };
         window.onNativeProgressUpdate = function(currentPosition, duration) { nativePlayerDuration = duration; if (duration > 0) { const progress = (currentPosition / duration) * 100; document.getElementById('full-progress-fill').style.width = `${progress}%`; document.getElementById('full-current-time').textContent = formatTime(currentPosition / 1000); document.getElementById('full-total-time').textContent = formatTime(duration / 1000); } };
         window.onNativeSongEnded = function() { nextSong(); };
-        window.onSongSavedNatively = async function(songId, localFilePath) { try { const song = songsWithAlbumInfo.find(s => s.id === songId); if (!song) return; await saveSongToDB({ id: song.id, metadata: song, localPath: localFilePath }); document.querySelectorAll('.download-icon').forEach(icon => { if (icon.onclick.toString().includes(`'${songId}'`)) { icon.classList.add('downloaded'); icon.textContent = '↓'; } }); if (document.getElementById('downloads-section').classList.contains('active')) { loadDownloads(); } } catch (error) { console.error('Error al guardar datos desde nativo:', error); } };
-        
-        // --- Lógica de anuncios (sin cambios) ---
+        window.onSongSavedNatively = async function(songId, localFilePath) { try { const song = songsWithAlbumInfo.find(s => s.id === songId); if (!song) return; await saveSongToDB({ id: song.id, metadata: song, localPath: localFilePath }); document.querySelectorAll('.download-icon').forEach(icon => { if (icon.onclick.toString().includes(`'${songId}'`)) { icon.classList.add('downloaded'); icon.textContent = '↓'; } }); if (document.getElementById('downloads-section').classList.contains('active')) { loadDownloads(); } } catch (error) { console.error('Error al guardar datos desde nativo:', error); } }
+
         function maybeShowInterstitialAd() { songPlayCount++; if (isAndroidApp && songPlayCount % 3 === 0) { if (Android && Android.showInterstitialAd) { Android.showInterstitialAd(); } } }
 
-        // --- Descargas y Reproducción (CORRECCIÓN IMPORTANTE) ---
+        window.downloadSong = async function(songId, element) { if (element.classList.contains('downloaded')) return; const song = songsWithAlbumInfo.find(s => s.id === songId); if (!song) return; element.textContent = '...'; if (isAndroidApp && Android.downloadAndSaveSong) { Android.downloadAndSaveSong(JSON.stringify(song)); } else { try { const response = await fetch(song.song_url); const audioBlob = await response.blob(); await saveSongToDB({ id: song.id, metadata: song, audio: audioBlob }); alert(`${song.title} descargada para offline en el navegador.`); element.classList.add('downloaded'); element.textContent = '↓'; } catch (error) { alert('Error al descargar para el navegador'); element.textContent = '↓'; } } }
+
+        window.playDownloadedSong = async (songId) => {
+            const allDownloads = await getAllDownloadedSongs();
+            if (!allDownloads || allDownloads.length === 0) return;
+            const offlinePlaylist = allDownloads.map(item => {
+                const songMeta = item.metadata;
+                songMeta.localPath = item.localPath; // Adjuntamos la ruta local
+                return songMeta;
+            });
+            const clickedIndex = offlinePlaylist.findIndex(song => song.id === songId);
+            if (clickedIndex > -1) {
+                const songToPlay = offlinePlaylist[clickedIndex];
+                playSong(songToPlay, songToPlay.albums, offlinePlaylist, clickedIndex);
+            }
+        }
+
         window.playSong = async function(song, album, playlist, index) {
             const isNewSong = !currentSong || currentSong.id !== song.id;
             if (isNewSong) {
@@ -399,21 +414,18 @@
             currentAlbum = album;
             currentPlaylist = playlist;
             currentIndex = index;
-            audio.pause();
+            
+            audio.pause(); 
             updateAllPlayers();
             if (isNewSong) {
-                // CORRECCIÓN: Resetea la barra de progreso en la UI inmediatamente
                 document.getElementById('full-progress-fill').style.width = `0%`;
                 document.getElementById('full-current-time').textContent = formatTime(0);
-                // Si la duración es 0, no la mostramos para evitar "NaN"
-                if (nativePlayerDuration > 0 || audio.duration > 0) {
-                     document.getElementById('full-total-time').textContent = formatTime((nativePlayerDuration / 1000) || audio.duration || 0);
-                } else {
-                     document.getElementById('full-total-time').textContent = "0:00";
-                }
+                document.getElementById('full-total-time').textContent = formatTime(0);
             }
+
             const localSong = await getSongFromDB(song.id);
             const songUrlToPlay = localSong?.localPath || song.song_url;
+
             if (isAndroidApp) {
                 const songData = { url: songUrlToPlay, title: song.title, artist: album.artist, cover: album.cover_url };
                 if (isNewSong) {
@@ -429,71 +441,10 @@
             updateMediaSessionMetadata(song, album);
         }
 
-        // --- INICIO: NUEVAS FUNCIONES PARA EDITAR CANCIONES ---
-        window.openEditSongModal = function(song) {
-            document.getElementById('edit-song-id').value = song.id;
-            document.getElementById('edit-song-title').value = song.title;
-            document.getElementById('edit-song-modal').style.display = 'flex';
-        }
-
-        window.closeEditSongModal = function() {
-            document.getElementById('edit-song-modal').style.display = 'none';
-        }
-
-        async function handleEditSongSubmit(event) {
-            event.preventDefault();
-            const songId = document.getElementById('edit-song-id').value;
-            const newTitle = document.getElementById('edit-song-title').value;
-
-            try {
-                const { error } = await supabase
-                    .from('songs')
-                    .update({ title: newTitle })
-                    .eq('id', songId);
-                
-                if (error) throw error;
-                
-                alert('✅ Canción actualizada correctamente.');
-                closeEditSongModal();
-                await loadAllData(); // Recargamos todos los datos
-                await renderAdminPanel(); // Redibujamos el panel de admin
-
-            } catch (err) {
-                alert('❌ Error al actualizar la canción: ' + err.message);
-            }
-        }
-        // --- FIN: NUEVAS FUNCIONES ---
-
-        async function renderAdminLists() {
-            const albumList = document.getElementById('admin-album-list');
-            albumList.innerHTML = allAlbums.length ? allAlbums.map(album => `<div class="admin-item"><div class="admin-item-info"><strong>${album.title}</strong><small>👤 ${album.artist}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="openEditAlbumModal(${JSON.stringify(album).replace(/"/g, '&quot;')})">✏️ Editar</button><button class="btn-danger" onclick="deleteAlbum('${album.id}')">🗑️ Eliminar</button></div></div>`).join('') : '<p style="text-align: center; color: #666;">No hay álbumes</p>';
-            
-            const songList = document.getElementById('admin-song-list');
-            // MODIFICACIÓN: Añadimos el botón de editar canción
-            songList.innerHTML = allSongs.length ? allSongs.map(song => `
-                <div class="admin-item">
-                    <div class="admin-item-info"><strong>${song.title}</strong><small>📀 ${song.albums?.title || 'Sin álbum'}</small></div>
-                    <div class="admin-item-actions">
-                        <button class="btn-secondary" onclick="openEditSongModal(${JSON.stringify(song).replace(/"/g, '&quot;')})">✏️ Editar</button>
-                        <button class="btn-danger" onclick="deleteSong('${song.id}')">🗑️ Eliminar</button>
-                    </div>
-                </div>`).join('') : '<p style="text-align: center; color: #666;">No hay canciones</p>';
-        }
-
-        function setupAdminForms() {
-            // (Manejador de formulario de álbum sin cambios)
-            document.getElementById('album-form').addEventListener('submit', async (e) => { e.preventDefault(); const title = document.getElementById('album-title').value; const artist = document.getElementById('album-artist').value; const coverInput = document.getElementById('album-cover'); if (!coverInput.files.length) { alert('❌ Selecciona una portada'); return; } const progressContainer = document.getElementById('upload-progress-container'); const progressLabel = document.getElementById('upload-progress-label'); const progressBar = document.getElementById('upload-progress-bar'); progressContainer.style.display = 'block'; try { const onProgress = (p) => { progressLabel.textContent = `Subiendo portada: ${p.progress}%`; progressBar.style.width = `${p.progress}%`; }; const cover_url = await uploadFile(coverInput.files[0], onProgress); const { error } = await supabase.from('albums').insert([{ title, artist, cover_url }]); if (error) throw error; alert('✅ Álbum "' + title + '" creado'); e.target.reset(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { progressContainer.style.display = 'none'; } });
-            // (Manejador de formulario de canción sin cambios)
-            document.getElementById('song-form').addEventListener('submit', async (e) => { e.preventDefault(); const album_id = document.getElementById('song-album-select').value; const songFiles = document.getElementById('song-files').files; if (!album_id || !songFiles.length) { alert('❌ Selecciona un álbum y archivos'); return; } try { const results = await uploadMultipleSongs(Array.from(songFiles), album_id); let message = results.success.length ? `✅ ${results.success.length} canciones subidas.` : ''; if (results.errors.length) message += `\n❌ ${results.errors.length} errores.`; if (message) alert(message); e.target.reset(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } });
-            // (Manejador de formulario de editar álbum sin cambios)
-            document.getElementById('edit-album-form').addEventListener('submit', handleEditAlbumSubmit);
-            // MODIFICACIÓN: Añadimos el manejador para el nuevo formulario de editar canción
-            document.getElementById('edit-song-form').addEventListener('submit', handleEditSongSubmit);
-        }
-
-        // El resto del código (más de 200 líneas) no ha cambiado y se incluye a continuación
-        // para asegurar que el archivo esté 100% completo.
-        
+        window.togglePlay = function() { if (!currentSong) return; if (isAndroidApp) { if (isPlaying) { Android.pauseSong(); } else { Android.resumeSong(); } } else { if (isPlaying) { audio.pause(); } else { audio.play().catch(console.error); } } }
+        window.seekToFull = (event) => { const progressBar = event.currentTarget; const rect = progressBar.getBoundingClientRect(); const clickPosition = (event.clientX - rect.left) / rect.width; if (isAndroidApp) { if(currentSong && nativePlayerDuration > 0) { const seekPositionMs = Math.floor(clickPosition * nativePlayerDuration); Android.seekTo(seekPositionMs); } } else { if (!audio.duration) return; audio.currentTime = clickPosition * audio.duration; } }
+        window.nextSong = function() { if (!currentPlaylist || currentPlaylist.length === 0) return; currentIndex = (currentIndex + 1) % currentPlaylist.length; const nextSong = currentPlaylist[currentIndex]; const albumForNextSong = allAlbums.find(a => a.id === nextSong.album_id) || currentAlbum; playSong(nextSong, albumForNextSong, currentPlaylist, currentIndex); }
+        window.previousSong = function() { if (!currentPlaylist || currentPlaylist.length === 0) return; currentIndex = (currentIndex > 0) ? currentIndex - 1 : currentPlaylist.length - 1; const prevSong = currentPlaylist[currentIndex]; const albumForPrevSong = allAlbums.find(a => a.id === prevSong.album_id) || currentAlbum; playSong(prevSong, albumForPrevSong, currentPlaylist, currentIndex); }
         async function uploadFile(file, onProgress) { const fileId = Appwrite.ID.unique(); try { const response = await appwriteStorage.createFile(appwriteBucketId, fileId, file, undefined, (progressEvent) => { if (onProgress) onProgress(progressEvent); }); return `${appwriteEndpoint}/storage/buckets/${appwriteBucketId}/files/${response.$id}/view?project=${appwriteProjectId}`; } catch (error) { console.error("Error detallado de Appwrite:", error); throw new Error(error.message || 'Error al subir a Appwrite. Revisa los permisos del bucket.'); } }
         async function uploadMultipleSongs(files, albumId) { const results = { success: [], errors: [] }; const progressContainer = document.getElementById('upload-progress-container'); const progressLabel = document.getElementById('upload-progress-label'); const progressBar = document.getElementById('upload-progress-bar'); progressContainer.style.display = 'block'; for (let i = 0; i < files.length; i++) { const file = files[i]; try { const onProgress = (p) => { progressLabel.textContent = `Subiendo "${file.name}" (${i + 1}/${files.length}): ${p.progress}%`; progressBar.style.width = `${p.progress}%`; }; const song_url = await uploadFile(file, onProgress); const title = file.name.replace(/\.[^/.]+$/, ""); const { error } = await supabase.from('songs').insert([{ title, album_id: albumId, song_url }]); if (error) throw new Error(`Error BD: ${error.message}`); results.success.push({ filename: file.name, title, url: song_url }); } catch (error) { results.errors.push({ filename: file.name, error: error.message }); alert(`Error con ${file.name}: ${error.message}`); } } progressContainer.style.display = 'none'; await loadAllData(); return results; }
         function setupMediaSession() { if ('mediaSession' in navigator) { mediaSessionSupported = true; navigator.mediaSession.setActionHandler('play', () => togglePlay()); navigator.mediaSession.setActionHandler('pause', () => togglePlay()); navigator.mediaSession.setActionHandler('previoustrack', () => previousSong()); navigator.mediaSession.setActionHandler('nexttrack', () => nextSong()); } }
@@ -531,7 +482,7 @@
         window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
         window.showSection = function(section) { document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active')); document.getElementById(`${section}-section`).classList.add('active'); document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active')); const navItem = document.getElementById(`nav-${{home:'home',search:'search',downloads:'downloads',favorites:'favs'}[section]}`); if(navItem) navItem.classList.add('active'); if (section === 'home') showAlbumsGrid(); if (section === 'favorites') loadFavorites(); if (section === 'downloads') loadDownloads(); if (section === 'admin') { if (currentUser?.email !== ADMIN_EMAIL) { alert('🔒 Solo el admin puede acceder'); showSection('home'); return; } renderAdminPanel(); } }
         window.showAlbumsGrid = function() { document.getElementById('album-detail').style.display = 'none'; document.getElementById('albums').style.display = 'grid'; }
-        window.playSongFromPlaylist = function(index) { playSong(currentPlaylist[index], currentPlaylist[index].albums, currentPlaylist, index); }
+        window.playSongFromPlaylist = function(index) { playSong(currentPlaylist[index], currentAlbum, currentPlaylist, index); }
         const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
         const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
         window.toggleFavorite = function(songId, el) { let favorites = getLocalFavorites(); const isFavorite = favorites.includes(songId); if (isFavorite) { favorites = favorites.filter(id => id !== songId); } else { favorites.push(songId); } saveLocalFavorites(favorites); if (el) { el.style.color = isFavorite ? '#666' : '#1DB954'; el.innerHTML = isFavorite ? '🤍' : '❤️'; } }
