@@ -34,11 +34,37 @@
         .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease;}
         .song-list li:hover { color:#fff; background: rgba(255,255,255,.05);}
         .play-icon { font-size: 1.1rem; }
-        /* Resto del CSS igual... */
+        .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
+        .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; font-size: 1.14rem; padding: 4px 0 0 0; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
+        .bottom-nav-item.active { color: #1DB954; background: rgba(29,185,84,.09);}
+        .bottom-nav-item:hover {background:rgba(255,255,255,0.05);}
+        .bottom-nav-item .icon { font-size: 1.12rem; }
+        .bottom-nav-item small { font-size: 0.67rem;}
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
+        .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
+        .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
+        .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; max-height:90vh; overflow-y:auto; transition: all 0.3s ease; }
+        .form-group { margin-bottom:1rem;}
+        .form-group label { display:block; margin-bottom:0.5rem;}
+        .form-group input, .form-group select { width:100%; padding:.7rem; background:#404040; border:1px solid #555; border-radius:4px; color:#fff; transition: all 0.3s ease;}
+        .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
+        .btn-primary:hover { background:#1ed760; }
+        .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
+        .user-menu { position: relative; display: inline-block; }
+        .user-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #282828; min-width: 200px; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 1000; border: 1px solid #404040; transition: all 0.3s ease; }
+        .user-dropdown.show { display: block; animation: dropdownFadeIn 0.2s ease; }
+        .user-dropdown-item { padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid #404040; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; transition: all 0.3s ease; }
+        .user-dropdown-item:last-child { border-bottom: none; }
+        .user-dropdown-item:hover { background: #404040; }
+        .user-dropdown-item.logout { color: #ff4757; border-top: 1px solid #404040; margin-top: 0.3rem; }
+        .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; }
+        .user-info strong { color: #fff; font-size: 0.9rem; }
+        @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
-    <!-- HTML igual... -->
     <div class="loading-indicator" id="loading-indicator" style="display:none;">🎵 Cargando...</div>
     <header>
         <span class="logo">KLMZ MUSIC</span>
@@ -64,40 +90,61 @@
             </div>
         </div>
     </header>
-
     <div class="app-container">
         <main>
             <section class="content-section active" id="home-section">
                 <div class="section-title">Albums</div>
                 <div class="album-grid" id="albums"><div style="text-align: center; padding: 2rem;">Cargando álbumes...</div></div>
             </section>
+            <section class="content-section" id="search-section">
+                <div class="section-title">Buscar música</div>
+                <input type="text" placeholder="¿Qué quieres escuchar?" id="search-input" onkeyup="searchMusic()">
+                <div id="search-results"></div>
+            </section>
+            <section class="content-section" id="favorites-section">
+                <div class="section-title">❤️ Mis Favoritos</div>
+                <div id="favorites-content"><div style="text-align: center; padding: 2rem;">No tienes favoritos</div></div>
+            </section>
         </main>
     </div>
-
     <nav class="bottom-nav">
         <div class="bottom-nav-item active" onclick="showSection('home')" id="nav-home"><span class="icon">⌂</span><small>Inicio</small></div>
+        <div class="bottom-nav-item" onclick="showSection('search')" id="nav-search"><span class="icon">⌕</span><small>Buscar</small></div>
+        <div class="bottom-nav-item" onclick="showSection('favorites')" id="nav-favs"><span class="icon">♡</span><small>Favoritos</small></div>
     </nav>
-
+    <div class="modal" id="auth-modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeAuth()">&times;</button>
+            <div id="login-form">
+                <h2>Iniciar sesión</h2>
+                <form onsubmit="login(event)" enctype="application/x-www-form-urlencoded">
+                    <div class="form-group"><label>Email:</label><input type="email" id="login-email" required></div>
+                    <div class="form-group"><label>Contraseña:</label><input type="password" id="login-password" required></div>
+                    <button type="submit" class="btn-primary">Iniciar sesión</button>
+                </form>
+            </div>
+        </div>
+    </div>
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
     <audio id="audio-player" preload="metadata"></audio>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ✅ VARIABLES GLOBALES
+        // ✅ VARIABLES GLOBALES CORRECTAS
         let allAlbums = [];
         let allSongs = [];
         let currentUser = null;
         let supabase = null;
         
+        // ✅ CONSTANTES
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
 
-        // ✅ FUNCIÓN UPLOADFILE CORREGIDA PARA R2
+        // ✅ FUNCIÓN UPLOADFILE CORREGIDA - SIN mode: 'no-cors'
         async function uploadFile(file, onProgress) {
             try {
                 console.log('🚀 Iniciando subida a R2:', file.name);
                 
-                // Paso 1: Obtener URL firmada de la Edge Function
                 const functionUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co/functions/v1/generate-upload-url';
                 
                 const response = await fetch(functionUrl, {
@@ -131,7 +178,7 @@
                 
                 console.log('✅ URL firmada obtenida, subiendo a R2...');
                 
-                // Paso 2: Subir archivo directo a R2 - SIN mode: 'no-cors'
+                // ✅ SIN mode: 'no-cors' - ESTO CAUSABA EL ERROR
                 const uploadResponse = await fetch(data.signedUrl, {
                     method: 'PUT',
                     body: file,
@@ -140,14 +187,12 @@
                     }
                 });
 
-                // Verificar si la subida fue exitosa
                 if (!uploadResponse.ok) {
-                    throw new Error(`Error subiendo a R2: ${uploadResponse.status} ${uploadResponse.statusText}`);
+                    throw new Error(`Error al subir a R2: ${uploadResponse.status} ${uploadResponse.statusText}`);
                 }
                 
                 console.log('✅ Archivo subido exitosamente a R2');
                 
-                // URL pública de R2
                 const publicUrl = data.publicUrl || `https://pub-943d9fd3a7704f19a27dd4b375e3f126.r2.dev/${data.fileName}`;
                 
                 console.log('✅ URL pública:', publicUrl);
@@ -233,7 +278,11 @@
         }
 
         window.showSection = function(section) {
-            console.log('Mostrando sección:', section);
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active')); 
+            document.getElementById(`${section}-section`).classList.add('active'); 
+            document.querySelectorAll('.bottom-nav-item').forEach(a => a.classList.remove('active')); 
+            const navItem = document.getElementById(`nav-${section === 'home' ? 'home' : section === 'search' ? 'search' : 'favs'}`); 
+            if(navItem) navItem.classList.add('active'); 
         }
 
         window.changeTheme = function(theme) {
@@ -248,11 +297,30 @@
         }
 
         window.showAuth = function(type) {
-            console.log('Mostrar auth:', type);
+            document.getElementById('auth-modal').style.display = 'flex';
+        }
+
+        window.closeAuth = function() {
+            document.getElementById('auth-modal').style.display = 'none';
         }
 
         window.confirmLogout = function() {
             console.log('Logout');
+        }
+
+        window.login = async function(event) {
+            event.preventDefault();
+            console.log('Login attempt');
+        }
+
+        window.searchMusic = function() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim(); 
+            const results = document.getElementById('search-results'); 
+            if (!query) { 
+                results.innerHTML = ''; 
+                return; 
+            } 
+            results.innerHTML = '<h3>🔍 Buscando...</h3>';
         }
         
         // ✅ INICIALIZAR AL CARGAR LA PÁGINA
