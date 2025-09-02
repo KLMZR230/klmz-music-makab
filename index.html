@@ -133,7 +133,7 @@
         #upload-progress-bar-background { background: #444; border-radius: 4px; padding: 3px; }
         #upload-progress-bar { width: 0%; height: 12px; background: #1DB954; border-radius: 2px; transition: width 0.3s ease; }
         
-        /* ✅ TEMAS COMPLETOS */
+        /* TEMAS */
         body.theme-fire { background: radial-gradient(ellipse at center, #3d0303 0%, #1a0000 70%) !important; color: #ffcc80 !important; }
         body.theme-fire .logo { font-family: 'Metal Mania', cursive !important; font-size: 1.8rem !important; color: #ff4500 !important; text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000 !important; animation: logo-flicker 2s infinite linear alternate; }
         body.theme-fire .section-title { font-family: 'Metal Mania', cursive !important; color: #ff8c00 !important; }
@@ -318,7 +318,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ✅ VARIABLES GLOBALES
+        // VARIABLES GLOBALES
         let currentSong = null;
         let currentAlbum = null;
         let currentPlaylist = [];
@@ -333,12 +333,64 @@
         let db = null;
         let supabase = null;
         
-        // ✅ CONSTANTES
+        // CONSTANTES
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
-        const isAndroidApp = typeof Android !== 'undefined' && Android;
         const audio = document.getElementById('audio-player');
+
+        // ✅ FUNCIÓN SOLO CLOUDFLARE R2 - SIN FALLBACK
+        async function uploadFileR2Only(file) {
+            console.log('🔥 Subiendo SOLO a Cloudflare R2:', file.name);
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'apikey': supabaseKey
+                    },
+                    body: formData
+                });
+
+                console.log('📊 Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ R2 Response Error:', errorText);
+                    throw new Error(`R2 upload failed: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('📊 R2 Response data:', data);
+                
+                if (!data.success || data.error) {
+                    throw new Error(data.error || 'R2 upload failed - no success flag');
+                }
+
+                if (!data.publicUrl) {
+                    throw new Error('R2 upload failed - no public URL returned');
+                }
+
+                // ✅ VERIFICAR QUE LA URL ES DE R2
+                if (!data.publicUrl.includes('r2.dev')) {
+                    throw new Error('❌ URL returned is not from R2: ' + data.publicUrl);
+                }
+
+                console.log('✅ Archivo subido exitosamente a R2:', data.publicUrl);
+                return data.publicUrl;
+                
+            } catch (error) {
+                console.error("💥 Error subiendo a R2:", error);
+                
+                // ❌ SIN FALLBACK - FALLA COMPLETAMENTE
+                alert('❌ Error subiendo a R2: ' + error.message + '\n\n🔧 Revisa:\n• Edge Function desplegada\n• Variables R2 configuradas\n• Permisos del token R2\n• Logs de Edge Function');
+                throw error;
+            }
+        }
 
         // ✅ INICIALIZACIÓN DE SUPABASE
         async function loadSupabase() {
@@ -379,7 +431,7 @@
             }
         }
         
-        // ✅ CARGA DE DATOS
+        // CARGA DE DATOS
         async function loadAllData() {
             try {
                 const albumsResult = await supabase
@@ -413,7 +465,7 @@
             }
         }
         
-        // ✅ MOSTRAR ÁLBUMES
+        // MOSTRAR ÁLBUMES
         function displayAlbums(albums) { 
             const container = document.getElementById('albums'); 
             if (!albums || albums.length === 0) { 
@@ -435,7 +487,7 @@
             ).join('');
         }
         
-        // ✅ MOSTRAR DETALLE DE ÁLBUM
+        // MOSTRAR DETALLE DE ÁLBUM
         async function showAlbumDetail(album) {
             currentAlbum = album; 
             
@@ -490,9 +542,9 @@
             } 
         }
         
-        // ✅ DELEGACIÓN DE EVENTOS - ESTO ARREGLA LOS CLICKS
+        // ✅ DELEGACIÓN DE EVENTOS - ARREGLA LOS CLICKS
         document.addEventListener('click', function(event) {
-            // ✅ CLICKS EN ÁLBUMES
+            // CLICKS EN ÁLBUMES
             const albumCard = event.target.closest('.album-card');
             if (albumCard) {
                 const index = parseInt(albumCard.getAttribute('data-album-index'));
@@ -502,7 +554,7 @@
                 return;
             }
             
-            // ✅ CLICKS EN CANCIONES
+            // CLICKS EN CANCIONES
             const songLi = event.target.closest('.song-list li');
             const playIcon = event.target.closest('.play-icon');
             const songIndex = event.target.getAttribute('data-song-index');
@@ -515,7 +567,7 @@
                 return;
             }
             
-            // ✅ CLICKS EN ITEMS DE BÚSQUEDA
+            // CLICKS EN BÚSQUEDA
             const searchItem = event.target.closest('.search-song-item');
             if (searchItem) {
                 const songId = searchItem.getAttribute('data-song-id');
@@ -526,7 +578,7 @@
                 return;
             }
             
-            // ✅ CLICKS EN FAVORITOS
+            // CLICKS EN FAVORITOS
             const favoriteItem = event.target.closest('.favorite-item');
             if (favoriteItem) {
                 const songData = favoriteItem.getAttribute('data-song');
@@ -542,7 +594,7 @@
             }
         });
         
-        // ✅ FUNCIONES DE TEMAS
+        // FUNCIONES DE TEMAS
         function changeTheme(theme) { 
             document.body.classList.remove('theme-fire', 'theme-neon', 'theme-minimal', 'theme-sunset', 'theme-pastel', 'theme-luxury', 'theme-oceanic');
             if (theme && theme !== 'default') { 
@@ -560,55 +612,7 @@
             }
         }
         
-        // ✅ SUBIR ARCHIVOS (CON FALLBACK AUTOMÁTICO)
-        async function uploadFile(file) {
-            console.log('📤 Subiendo archivo:', file.name);
-            
-            try {
-                // Intentar R2 primero si existe la función
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${supabaseKey}`,
-                        'apikey': supabaseKey
-                    },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.publicUrl) {
-                        console.log('✅ Subido a R2:', data.publicUrl);
-                        return data.publicUrl;
-                    }
-                }
-                
-                throw new Error('R2 no disponible');
-                
-            } catch (error) {
-                console.log('⚠️ R2 fallo, usando Supabase Storage:', error.message);
-                
-                // Fallback a Supabase Storage
-                const fileName = `${Date.now()}_${file.name}`;
-                const { data, error: storageError } = await supabase.storage
-                    .from('music-files')
-                    .upload(fileName, file);
-                
-                if (storageError) throw storageError;
-                
-                const { data: urlData } = supabase.storage
-                    .from('music-files')
-                    .getPublicUrl(fileName);
-                
-                console.log('✅ Subido a Supabase Storage:', urlData.publicUrl);
-                return urlData.publicUrl;
-            }
-        }
-        
-        // ✅ PANEL DE ADMIN
+        // PANEL DE ADMIN
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
             
@@ -625,7 +629,11 @@
                 </div>
                 
                 <div class="admin-section">
-                    <h3>📀 Crear Álbum</h3>
+                    <h3>📀 Crear Álbum (Solo Cloudflare R2)</h3>
+                    <div style="background:rgba(255,193,7,0.1); padding:1rem; border-radius:8px; border-left:4px solid #ffc107; margin-bottom:1rem;">
+                        <strong style="color:#ffc107;">⚠️ IMPORTANTE:</strong><br>
+                        <small>Los archivos se suben ÚNICAMENTE a Cloudflare R2. Si falla, revisa las variables de entorno.</small>
+                    </div>
                     <form id="album-form">
                         <div class="form-group">
                             <label>Título:</label>
@@ -636,15 +644,22 @@
                             <input type="text" id="album-artist" required>
                         </div>
                         <div class="form-group">
-                            <label>Portada:</label>
+                            <label>Portada (se sube a R2):</label>
                             <input type="file" id="album-cover-file" accept="image/*" required>
                         </div>
-                        <button type="submit" class="btn-primary">Crear Álbum</button>
+                        <button type="submit" class="btn-primary">🔥 Crear Álbum en R2</button>
                     </form>
+                    
+                    <div id="upload-progress-container">
+                        <div id="upload-progress-label">Subiendo a Cloudflare R2...</div>
+                        <div id="upload-progress-bar-background">
+                            <div id="upload-progress-bar"></div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="admin-section">
-                    <h3>🎼 Agregar Canción</h3>
+                    <h3>🎼 Agregar Canción (Solo Cloudflare R2)</h3>
                     <form id="song-form">
                         <div class="form-group">
                             <label>Álbum:</label>
@@ -658,10 +673,10 @@
                             <input type="text" id="song-title" required>
                         </div>
                         <div class="form-group">
-                            <label>Audio:</label>
+                            <label>Audio (se sube a R2):</label>
                             <input type="file" id="song-audio-file" accept="audio/*" required>
                         </div>
-                        <button type="submit" class="btn-primary">Agregar Canción</button>
+                        <button type="submit" class="btn-primary">🔥 Agregar Canción a R2</button>
                     </form>
                 </div>
                 
@@ -696,8 +711,15 @@
                     
                     if (!coverFile) return;
                     
+                    const progressContainer = document.getElementById('upload-progress-container');
+                    const progressLabel = document.getElementById('upload-progress-label');
+                    progressContainer.style.display = 'block';
+                    progressLabel.textContent = 'Subiendo portada a Cloudflare R2...';
+                    
                     try { 
-                        const coverUrl = await uploadFile(coverFile);
+                        const coverUrl = await uploadFileR2Only(coverFile);
+                        
+                        progressLabel.textContent = 'Guardando álbum...';
                         
                         const { error } = await supabase
                             .from('albums')
@@ -705,12 +727,14 @@
                         
                         if (error) throw error; 
                         
-                        alert('✅ Álbum creado'); 
+                        alert('✅ Álbum creado exitosamente en Cloudflare R2!'); 
                         e.target.reset(); 
                         await loadAllData(); 
                         await renderAdminPanel(); 
                     } catch (err) { 
                         alert('❌ Error: ' + err.message); 
+                    } finally {
+                        progressContainer.style.display = 'none';
                     }
                 }); 
             }
@@ -726,8 +750,15 @@
                     
                     if (!albumId || !audioFile) return;
                     
+                    const progressContainer = document.getElementById('upload-progress-container');
+                    const progressLabel = document.getElementById('upload-progress-label');
+                    progressContainer.style.display = 'block';
+                    progressLabel.textContent = 'Subiendo audio a Cloudflare R2...';
+                    
                     try { 
-                        const audioUrl = await uploadFile(audioFile);
+                        const audioUrl = await uploadFileR2Only(audioFile);
+                        
+                        progressLabel.textContent = 'Guardando canción...';
                         
                         const { error } = await supabase
                             .from('songs')
@@ -735,12 +766,14 @@
                         
                         if (error) throw error; 
                         
-                        alert('✅ Canción agregada'); 
+                        alert('✅ Canción agregada exitosamente a Cloudflare R2!'); 
                         e.target.reset(); 
                         await loadAllData(); 
                         await renderAdminPanel(); 
                     } catch (err) { 
                         alert('❌ Error: ' + err.message); 
+                    } finally {
+                        progressContainer.style.display = 'none';
                     }
                 }); 
             }
@@ -760,7 +793,7 @@
             } 
         }
         
-        // ✅ REPRODUCTOR
+        // REPRODUCTOR
         function openFullPlayer() { 
             document.getElementById('full-player').classList.add('active'); 
         }
@@ -810,7 +843,7 @@
             return `${min}:${sec}`; 
         }
         
-        // ✅ NAVEGACIÓN
+        // NAVEGACIÓN
         window.showSection = function(section) { 
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active')); 
             document.getElementById(`${section}-section`).classList.add('active'); 
@@ -902,7 +935,7 @@
             if (fullBtn) fullBtn.textContent = playText; 
         }
         
-        // ✅ AUTENTICACIÓN
+        // AUTENTICACIÓN
         function updateAuthUI() { 
             const userInfo = document.getElementById('user-info-section'); 
             const userEmail = document.getElementById('user-email-display'); 
@@ -1006,7 +1039,7 @@
             if (confirm('¿Cerrar sesión?')) logout(); 
         }
         
-        // ✅ FAVORITOS
+        // FAVORITOS
         const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
         const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
         
@@ -1058,7 +1091,7 @@
             }
         }
         
-        // ✅ BÚSQUEDA
+        // BÚSQUEDA
         window.searchMusic = function() { 
             const query = document.getElementById('search-input').value.toLowerCase().trim(); 
             const results = document.getElementById('search-results'); 
@@ -1086,13 +1119,13 @@
                 '<h3>❌ Sin resultados</h3>'; 
         }
         
-        // ✅ UTILIDADES
+        // UTILIDADES
         function showLoadingIndicator(show) { 
             const indicator = document.getElementById('loading-indicator'); 
             if (indicator) indicator.style.display = show ? 'block' : 'none'; 
         }
         
-        // ✅ INICIALIZACIÓN
+        // INICIALIZACIÓN
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🎵 Iniciando KLMZ MUSIC...');
             
@@ -1137,7 +1170,7 @@
             setTimeout(loadSupabase, 200);
         });
         
-        // ✅ CERRAR DROPDOWNS
+        // CERRAR DROPDOWNS
         document.addEventListener('click', function(event) {
             const userMenu = document.getElementById('user-dropdown');
             const userButton = document.getElementById('header-lock-icon');
