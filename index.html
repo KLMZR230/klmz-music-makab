@@ -140,6 +140,20 @@
         #upload-progress-bar { width: 0%; height: 12px; background: #1DB954; border-radius: 2px; transition: width 0.3s ease; }
         .offline-indicator { background: #ff4757; color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem; }
         
+        /* 🎵 NUEVOS ESTILOS PARA SUBIDA MÚLTIPLE */
+        .multi-upload-section { background: rgba(29,185,84,0.1); border: 2px dashed #1DB954; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; }
+        .multi-upload-section h4 { color: #1DB954; margin-top: 0; }
+        .file-queue { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
+        .file-queue-item { background: #333; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+        .file-queue-item.uploading { border-left: 3px solid #ff9800; }
+        .file-queue-item.success { border-left: 3px solid #4caf50; }
+        .file-queue-item.error { border-left: 3px solid #f44336; }
+        .file-remove { color: #ff4757; cursor: pointer; font-size: 1.2rem; }
+        .file-remove:hover { transform: scale(1.2); }
+        .batch-upload-progress { margin-top: 1rem; }
+        .batch-progress-bar { background: #444; height: 8px; border-radius: 4px; overflow: hidden; }
+        .batch-progress-fill { background: #1DB954; height: 100%; width: 0%; transition: width 0.3s ease; }
+        
         /* TEMAS */
         body.theme-fire { background: radial-gradient(ellipse at center, #3d0303 0%, #1a0000 70%) !important; color: #ffcc80 !important; }
         body.theme-fire .logo { font-family: 'Metal Mania', cursive !important; font-size: 1.8rem !important; color: #ff4500 !important; text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000 !important; animation: logo-flicker 2s infinite linear alternate; }
@@ -321,7 +335,7 @@
     </div>
     
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
-    <audio id="audio-player" preload="metadata"></audio>
+    <audio id="audio-player" preload="auto"></audio>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -340,6 +354,15 @@
         let db = null;
         let supabase = null;
         
+        // ⚡ OPTIMIZACIONES DE REPRODUCCIÓN RÁPIDA
+        let audioUrlCache = new Map();
+        let audioContext = null;
+        let audioPreloadQueue = [];
+        
+        // 🎵 VARIABLES PARA SUBIDA MÚLTIPLE
+        let fileQueue = [];
+        let isUploading = false;
+        
         // ✅ CONSTANTES
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
@@ -349,6 +372,28 @@
 
         // ✅ DESCARGAS OFFLINE - INDEXEDDB
         let downloadDB = null;
+
+        // ⚡ PRELOAD AGRESIVO PARA REPRODUCCIÓN RÁPIDA
+        function preloadNextSongs() {
+            if (!currentPlaylist || currentPlaylist.length <= 1) return;
+            
+            // Precargar siguiente canción
+            const nextIndex = (currentIndex + 1) % currentPlaylist.length;
+            const nextSong = currentPlaylist[nextIndex];
+            
+            if (nextSong && nextSong.song_url && !nextSong.isOffline) {
+                const preloadAudio = new Audio();
+                preloadAudio.preload = 'auto';
+                preloadAudio.src = nextSong.song_url;
+                audioPreloadQueue.push(preloadAudio);
+                
+                // Mantener solo 2 archivos precargados
+                if (audioPreloadQueue.length > 2) {
+                    const oldAudio = audioPreloadQueue.shift();
+                    oldAudio.src = '';
+                }
+            }
+        }
 
         // Inicializar IndexedDB para descargas
         async function initDownloadDB() {
@@ -370,6 +415,58 @@
                     }
                 };
             });
+        }
+
+        // Inicializar AudioContext para decodificación rápida
+        async function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
+
+        // ⚡ PRE-CREAR OBJECT URLS PARA REPRODUCCIÓN INSTANTÁNEA
+        async function preloadOfflineAudio(songId) {
+            if (audioUrlCache.has(songId)) {
+                return audioUrlCache.get(songId);
+            }
+            
+            try {
+                const transaction = downloadDB.transaction(['songs'], 'readonly');
+                const store = transaction.objectStore('songs');
+                const request = store.get(songId);
+                
+                return new Promise((resolve) => {
+                    request.onsuccess = () => {
+                        const songData = request.result;
+                        if (songData && songData.audioBlob) {
+                            // Crear object URL y cachear
+                            const audioUrl = URL.createObjectURL(songData.audioBlob);
+                            let coverUrl = null;
+                            
+                            if (songData.coverBlob) {
+                                coverUrl = URL.createObjectURL(songData.coverBlob);
+                            }
+                            
+                            const cachedData = {
+                                audioUrl,
+                                coverUrl,
+                                songData
+                            };
+                            
+                            audioUrlCache.set(songId, cachedData);
+                            resolve(cachedData);
+                        } else {
+                            resolve(null);
+                        }
+                    };
+                    request.onerror = () => resolve(null);
+                });
+                
+            } catch (error) {
+                console.error('Error preloading audio:', error);
+                return null;
+            }
         }
 
         // Verificar si una canción está descargada
@@ -462,7 +559,123 @@
             }
         }
 
-        // Eliminar canción descargada
+        // ⚡ REPRODUCIR CANCIÓN OFFLINE OPTIMIZADA
+        async function playOfflineSong(songId) {
+            try {
+                // Pre-cargar si no está en cache
+                let cachedData = audioUrlCache.get(songId);
+                if (!cachedData) {
+                    cachedData = await preloadOfflineAudio(songId);
+                }
+                
+                if (!cachedData) {
+                    alert('❌ Canción no encontrada en descargas');
+                    return;
+                }
+                
+                const { audioUrl, coverUrl, songData } = cachedData;
+                
+                // Crear objeto canción offline
+                const offlineSong = {
+                    id: songData.id,
+                    title: songData.title,
+                    song_url: audioUrl,
+                    isOffline: true
+                };
+                
+                const offlineAlbum = {
+                    title: songData.albumTitle,
+                    artist: songData.artist,
+                    cover_url: coverUrl || songData.coverUrl
+                };
+                
+                // Reproducir inmediatamente
+                playSong(offlineSong, offlineAlbum, [offlineSong], 0);
+                
+            } catch (error) {
+                console.error('❌ Error reproduciendo canción offline:', error);
+                alert('❌ Error reproduciendo canción offline');
+            }
+        }
+
+        // ✅ FUNCIÓN HELPER PARA CLICKS EN LA LISTA
+        window.playOfflineFromList = async function(songId) {
+            await playOfflineSong(songId);
+        }
+
+        // ⚡ CARGAR DESCARGAS CON PRELOAD AUTOMÁTICO
+        async function loadDownloads() {
+            const content = document.getElementById('downloads-content');
+            
+            if (!downloadDB) {
+                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>🔄 Cargando descargas...</h2></div>';
+                return;
+            }
+            
+            try {
+                const transaction = downloadDB.transaction(['songs'], 'readonly');
+                const store = transaction.objectStore('songs');
+                const request = store.getAll();
+                
+                request.onsuccess = async () => {
+                    const downloads = request.result;
+                    
+                    if (downloads.length === 0) {
+                        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📱 No tienes descargas</h2><p style="color: #b3b3b3;">Usa la flechita ↓ en las canciones para descargar</p></div>';
+                        return;
+                    }
+                    
+                    // ⚡ PRE-CARGAR LAS PRIMERAS 3 CANCIONES PARA REPRODUCCIÓN RÁPIDA
+                    const topSongs = downloads.slice(0, 3);
+                    for (const song of topSongs) {
+                        preloadOfflineAudio(song.id).catch(console.error);
+                    }
+                    
+                    const totalSize = downloads.reduce((sum, d) => sum + (d.size || 0), 0);
+                    const sizeText = totalSize > 1024 * 1024 ? 
+                        `${(totalSize / (1024 * 1024)).toFixed(1)} MB` : 
+                        `${(totalSize / 1024).toFixed(1)} KB`;
+                    
+                    content.innerHTML = `
+                        <div style="background: #333; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center;">
+                            <strong style="color: #1DB954;">${downloads.length} canciones descargadas</strong>
+                            <div style="color: #b3b3b3; margin-top: 0.5rem;">Total: ${sizeText}</div>
+                            <div style="color: #888; font-size: 0.8rem; margin-top: 0.3rem;">⚡ Primeras 3 precargadas para reproducción rápida</div>
+                        </div>
+                        <div class="downloads-list">
+                            ${downloads.map((song, index) => `
+                                <div class="download-item ${index < 3 ? 'preloaded' : ''}" 
+                                     data-song='${JSON.stringify({
+                                         id: song.id,
+                                         title: song.title,
+                                         isOffline: true
+                                     })}' 
+                                     onclick="playOfflineFromList('${song.id}')"
+                                     style="${index < 3 ? 'border-left-color: #00ff88;' : ''}">
+                                    <div class="download-info">
+                                        <div class="download-title">${song.title} ${index < 3 ? '⚡' : ''}</div>
+                                        <div class="download-artist">${song.artist} • ${song.albumTitle}</div>
+                                        <div style="color: #666; font-size: 0.8rem; margin-top: 0.2rem;">
+                                            Descargada: ${new Date(song.downloadedAt).toLocaleDateString()}
+                                            ${index < 3 ? ' • Precargada' : ''}
+                                        </div>
+                                    </div>
+                                    <div class="download-item-actions">
+                                        <span class="delete-download" onclick="event.stopPropagation(); deleteDownload('${song.id}')" title="Eliminar descarga">🗑️</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                };
+                
+            } catch (error) {
+                console.error('❌ Error cargando descargas:', error);
+                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>❌ Error cargando descargas</h2></div>';
+            }
+        }
+
+        // ⚡ LIMPIAR CACHE AL ELIMINAR DESCARGAS
         async function deleteDownload(songId) {
             if (!confirm('¿Eliminar esta descarga?')) return;
             
@@ -470,6 +683,14 @@
                 const transaction = downloadDB.transaction(['songs'], 'readwrite');
                 const store = transaction.objectStore('songs');
                 await store.delete(songId);
+                
+                // Limpiar URLs del cache
+                const cachedData = audioUrlCache.get(songId);
+                if (cachedData) {
+                    if (cachedData.audioUrl) URL.revokeObjectURL(cachedData.audioUrl);
+                    if (cachedData.coverUrl) URL.revokeObjectURL(cachedData.coverUrl);
+                    audioUrlCache.delete(songId);
+                }
                 
                 console.log('🗑️ Descarga eliminada:', songId);
                 
@@ -484,111 +705,6 @@
                 
             } catch (error) {
                 console.error('❌ Error eliminando descarga:', error);
-            }
-        }
-
-        // Cargar canciones descargadas
-        async function loadDownloads() {
-            const content = document.getElementById('downloads-content');
-            
-            if (!downloadDB) {
-                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>🔄 Cargando descargas...</h2></div>';
-                return;
-            }
-            
-            try {
-                const transaction = downloadDB.transaction(['songs'], 'readonly');
-                const store = transaction.objectStore('songs');
-                const request = store.getAll();
-                
-                request.onsuccess = () => {
-                    const downloads = request.result;
-                    
-                    if (downloads.length === 0) {
-                        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📱 No tienes descargas</h2><p style="color: #b3b3b3;">Usa la flechita ↓ en las canciones para descargar</p></div>';
-                        return;
-                    }
-                    
-                    const totalSize = downloads.reduce((sum, d) => sum + (d.size || 0), 0);
-                    const sizeText = totalSize > 1024 * 1024 ? 
-                        `${(totalSize / (1024 * 1024)).toFixed(1)} MB` : 
-                        `${(totalSize / 1024).toFixed(1)} KB`;
-                    
-                    content.innerHTML = `
-                        <div style="background: #333; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center;">
-                            <strong style="color: #1DB954;">${downloads.length} canciones descargadas</strong>
-                            <div style="color: #b3b3b3; margin-top: 0.5rem;">Total: ${sizeText}</div>
-                        </div>
-                        <div class="downloads-list">
-                            ${downloads.map(song => `
-                                <div class="download-item" data-song='${JSON.stringify({
-                                    id: song.id,
-                                    title: song.title,
-                                    isOffline: true
-                                })}'>
-                                    <div class="download-info">
-                                        <div class="download-title">${song.title}</div>
-                                        <div class="download-artist">${song.artist} • ${song.albumTitle}</div>
-                                        <div style="color: #666; font-size: 0.8rem; margin-top: 0.2rem;">
-                                            Descargada: ${new Date(song.downloadedAt).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                    <div class="download-item-actions">
-                                        <span class="delete-download" onclick="deleteDownload('${song.id}')" title="Eliminar descarga">🗑️</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                };
-                
-            } catch (error) {
-                console.error('❌ Error cargando descargas:', error);
-                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>❌ Error cargando descargas</h2></div>';
-            }
-        }
-
-        // Reproducir canción offline
-        async function playOfflineSong(songId) {
-            try {
-                const transaction = downloadDB.transaction(['songs'], 'readonly');
-                const store = transaction.objectStore('songs');
-                const request = store.get(songId);
-                
-                request.onsuccess = () => {
-                    const songData = request.result;
-                    if (!songData) {
-                        alert('❌ Canción no encontrada en descargas');
-                        return;
-                    }
-                    
-                    // Crear URL temporal del blob
-                    const audioUrl = URL.createObjectURL(songData.audioBlob);
-                    let coverUrl = null;
-                    if (songData.coverBlob) {
-                        coverUrl = URL.createObjectURL(songData.coverBlob);
-                    }
-                    
-                    // Reproducir
-                    const offlineSong = {
-                        id: songData.id,
-                        title: songData.title,
-                        song_url: audioUrl,
-                        isOffline: true
-                    };
-                    
-                    const offlineAlbum = {
-                        title: songData.albumTitle,
-                        artist: songData.artist,
-                        cover_url: coverUrl || songData.coverUrl
-                    };
-                    
-                    playSong(offlineSong, offlineAlbum, [offlineSong], 0);
-                };
-                
-            } catch (error) {
-                console.error('❌ Error reproduciendo canción offline:', error);
-                alert('❌ Error reproduciendo canción offline');
             }
         }
 
@@ -649,11 +765,131 @@
                 
             } catch (error) {
                 console.error("💥 Error subiendo a R2:", error);
-                
-                // ❌ SIN FALLBACK - FALLA COMPLETAMENTE
-                alert('❌ Error subiendo a R2: ' + error.message + '\n\n🔧 Revisa:\n• Edge Function desplegada\n• Variables R2 configuradas\n• Permisos del token R2\n• Logs de Edge Function');
                 throw error;
             }
+        }
+
+        // 🎵 FUNCIONES DE SUBIDA MÚLTIPLE
+        function addFilesToQueue(files, albumId = null) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const queueItem = {
+                    id: Date.now() + i,
+                    file: file,
+                    name: file.name,
+                    albumId: albumId,
+                    status: 'pending', // pending, uploading, success, error
+                    url: null,
+                    error: null
+                };
+                fileQueue.push(queueItem);
+            }
+            updateFileQueueUI();
+        }
+
+        function removeFromQueue(itemId) {
+            fileQueue = fileQueue.filter(item => item.id !== itemId);
+            updateFileQueueUI();
+        }
+
+        function updateFileQueueUI() {
+            const container = document.getElementById('file-queue-container');
+            if (!container) return;
+
+            if (fileQueue.length === 0) {
+                container.innerHTML = '<p style="color: #666; text-align: center;">No hay archivos en cola</p>';
+                return;
+            }
+
+            container.innerHTML = fileQueue.map(item => `
+                <div class="file-queue-item ${item.status}" id="queue-item-${item.id}">
+                    <div>
+                        <strong>${item.name}</strong>
+                        <div style="font-size: 0.8rem; color: #b3b3b3;">
+                            ${item.status === 'pending' ? '⏳ Pendiente' : 
+                              item.status === 'uploading' ? '📤 Subiendo...' :
+                              item.status === 'success' ? '✅ Completado' :
+                              item.status === 'error' ? `❌ Error: ${item.error}` : ''}
+                        </div>
+                    </div>
+                    ${item.status === 'pending' ? 
+                        `<span class="file-remove" onclick="removeFromQueue(${item.id})" title="Eliminar">🗑️</span>` : 
+                        ''}
+                </div>
+            `).join('');
+        }
+
+        async function processBatchUpload(albumId) {
+            if (isUploading || fileQueue.length === 0) return;
+
+            isUploading = true;
+            const totalFiles = fileQueue.length;
+            let processedFiles = 0;
+
+            const progressContainer = document.getElementById('batch-upload-progress');
+            const progressBar = document.getElementById('batch-progress-fill');
+            const progressLabel = document.getElementById('batch-progress-label');
+
+            progressContainer.style.display = 'block';
+
+            for (const item of fileQueue) {
+                if (item.status !== 'pending') continue;
+
+                try {
+                    item.status = 'uploading';
+                    updateFileQueueUI();
+
+                    progressLabel.textContent = `Subiendo: ${item.name}`;
+
+                    // Subir archivo
+                    const fileUrl = await uploadFileR2Only(item.file);
+                    
+                    // Obtener título del nombre del archivo (sin extensión)
+                    const title = item.name.replace(/\.[^/.]+$/, "");
+
+                    // Guardar en base de datos
+                    const { error } = await supabase
+                        .from('songs')
+                        .insert([{ 
+                            title: title, 
+                            album_id: albumId, 
+                            song_url: fileUrl 
+                        }]);
+
+                    if (error) throw error;
+
+                    item.status = 'success';
+                    item.url = fileUrl;
+
+                } catch (error) {
+                    console.error('Error uploading file:', item.name, error);
+                    item.status = 'error';
+                    item.error = error.message;
+                }
+
+                processedFiles++;
+                const progress = (processedFiles / totalFiles) * 100;
+                progressBar.style.width = `${progress}%`;
+                updateFileQueueUI();
+            }
+
+            progressLabel.textContent = 'Subida completada';
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                fileQueue = fileQueue.filter(item => item.status !== 'success');
+                updateFileQueueUI();
+            }, 2000);
+
+            isUploading = false;
+
+            // Recargar datos
+            await loadAllData();
+            await renderAdminPanel();
+
+            const successCount = fileQueue.filter(item => item.status === 'success').length;
+            const errorCount = fileQueue.filter(item => item.status === 'error').length;
+
+            alert(`✅ Subida completada!\n• ${successCount} archivos exitosos\n• ${errorCount} errores`);
         }
 
         // ✅ INICIALIZACIÓN DE SUPABASE
@@ -672,6 +908,10 @@
                 // Inicializar IndexedDB para descargas
                 await initDownloadDB();
                 console.log('✅ IndexedDB para descargas inicializada');
+                
+                // Inicializar AudioContext
+                await initAudioContext();
+                console.log('✅ AudioContext inicializado');
                 
                 supabase.auth.onAuthStateChange((event, session) => {
                     currentUser = session?.user || null;
@@ -871,23 +1111,6 @@
                 }
                 return;
             }
-            
-            // ✅ CLICKS EN DESCARGAS OFFLINE
-            const downloadItem = event.target.closest('.download-item');
-            if (downloadItem) {
-                const songData = downloadItem.getAttribute('data-song');
-                if (songData) {
-                    try {
-                        const song = JSON.parse(songData);
-                        if (song.isOffline) {
-                            playOfflineSong(song.id);
-                        }
-                    } catch (e) {
-                        console.error('Error parsing offline song data:', e);
-                    }
-                }
-                return;
-            }
         });
         
         // ✅ FUNCIONES DE TEMAS
@@ -908,7 +1131,7 @@
             }
         }
         
-        // ✅ PANEL DE ADMIN
+        // ✅ PANEL DE ADMIN CON SUBIDA MÚLTIPLE
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
             
@@ -926,10 +1149,6 @@
                 
                 <div class="admin-section">
                     <h3>📀 Crear Álbum (Cloudflare R2)</h3>
-                    <div style="background:rgba(29,185,84,0.1); padding:1rem; border-radius:8px; border-left:4px solid #1DB954; margin-bottom:1rem;">
-                        <strong style="color:#1DB954;">✅ FUNCIONANDO:</strong><br>
-                        <small>Los archivos se suben a Cloudflare R2 correctamente.</small>
-                    </div>
                     <form id="album-form">
                         <div class="form-group">
                             <label>Título:</label>
@@ -945,17 +1164,10 @@
                         </div>
                         <button type="submit" class="btn-primary">🔥 Crear Álbum</button>
                     </form>
-                    
-                    <div id="upload-progress-container">
-                        <div id="upload-progress-label">Subiendo a Cloudflare R2...</div>
-                        <div id="upload-progress-bar-background">
-                            <div id="upload-progress-bar"></div>
-                        </div>
-                    </div>
                 </div>
                 
                 <div class="admin-section">
-                    <h3>🎼 Agregar Canción (Cloudflare R2)</h3>
+                    <h3>🎼 Agregar Canción Individual (Cloudflare R2)</h3>
                     <form id="song-form">
                         <div class="form-group">
                             <label>Álbum:</label>
@@ -975,6 +1187,48 @@
                         <button type="submit" class="btn-primary">🔥 Agregar Canción</button>
                     </form>
                 </div>
+
+                <div class="admin-section">
+                    <h3>🎵 Subida Múltiple de Canciones</h3>
+                    <div class="multi-upload-section">
+                        <h4>📁 Seleccionar Múltiples Archivos de Audio</h4>
+                        <div class="form-group">
+                            <label>Álbum de destino:</label>
+                            <select id="batch-album-select" required>
+                                <option value="">Seleccionar álbum</option>
+                                ${allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Seleccionar archivos de audio:</label>
+                            <input type="file" id="batch-audio-files" accept="audio/*" multiple>
+                            <small style="color: #b3b3b3; display: block; margin-top: 0.5rem;">
+                                Puedes seleccionar múltiples archivos MP3, WAV, etc.
+                            </small>
+                        </div>
+                        <button type="button" onclick="startBatchUpload()" class="btn-primary">
+                            📤 Agregar Archivos a la Cola
+                        </button>
+                    </div>
+
+                    <div class="file-queue">
+                        <h4>📋 Cola de Archivos</h4>
+                        <div id="file-queue-container">
+                            <p style="color: #666; text-align: center;">No hay archivos en cola</p>
+                        </div>
+                        <button type="button" onclick="processBatchUpload(document.getElementById('batch-album-select').value)" 
+                                class="btn-primary" style="margin-top: 1rem;" ${fileQueue.length === 0 ? 'disabled' : ''}>
+                            🚀 Subir Todos los Archivos
+                        </button>
+                    </div>
+
+                    <div id="batch-upload-progress" class="batch-upload-progress" style="display: none;">
+                        <div id="batch-progress-label" style="margin-bottom: 0.5rem; color: #b3b3b3;">Preparando subida...</div>
+                        <div class="batch-progress-bar">
+                            <div id="batch-progress-fill" class="batch-progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="admin-section">
                     <h3>📋 Contenido</h3>
@@ -985,7 +1239,6 @@
                                 <small>${album.artist}</small>
                             </div>
                             <div class="admin-item-actions">
-                                <button class
                                 <button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar</button>
                             </div>
                         </div>
@@ -996,7 +1249,34 @@
             setupAdminForms(); 
         }
 
+        // 🎵 FUNCIONES DE SUBIDA MÚLTIPLE
+        window.startBatchUpload = function() {
+            const albumSelect = document.getElementById('batch-album-select');
+            const filesInput = document.getElementById('batch-audio-files');
+            
+            if (!albumSelect.value) {
+                alert('❌ Selecciona un álbum primero');
+                return;
+            }
+            
+            if (!filesInput.files.length) {
+                alert('❌ Selecciona archivos de audio');
+                return;
+            }
+            
+            addFilesToQueue(filesInput.files, albumSelect.value);
+            filesInput.value = ''; // Limpiar input
+            
+            // Actualizar botón de subida
+            const uploadButton = document.querySelector('button[onclick*="processBatchUpload"]');
+            if (uploadButton) {
+                uploadButton.disabled = fileQueue.length === 0;
+                uploadButton.textContent = `🚀 Subir ${fileQueue.length} Archivos`;
+            }
+        }
+
         function setupAdminForms() {
+            // Formulario individual de álbum
             const albumForm = document.getElementById('album-form');
             if (albumForm) {
                 albumForm.addEventListener('submit', async (e) => { 
@@ -1008,15 +1288,10 @@
                     
                     if (!coverFile) return;
                     
-                    const progressContainer = document.getElementById('upload-progress-container');
-                    const progressLabel = document.getElementById('upload-progress-label');
-                    progressContainer.style.display = 'block';
-                    progressLabel.textContent = 'Subiendo portada a Cloudflare R2...';
+                    showLoadingIndicator(true);
                     
                     try { 
                         const coverUrl = await uploadFileR2Only(coverFile);
-                        
-                        progressLabel.textContent = 'Guardando álbum...';
                         
                         const { error } = await supabase
                             .from('albums')
@@ -1031,11 +1306,12 @@
                     } catch (err) { 
                         alert('❌ Error: ' + err.message); 
                     } finally {
-                        progressContainer.style.display = 'none';
+                        showLoadingIndicator(false);
                     }
                 }); 
             }
             
+            // Formulario individual de canción
             const songForm = document.getElementById('song-form');
             if (songForm) {
                 songForm.addEventListener('submit', async (e) => { 
@@ -1047,15 +1323,10 @@
                     
                     if (!albumId || !audioFile) return;
                     
-                    const progressContainer = document.getElementById('upload-progress-container');
-                    const progressLabel = document.getElementById('upload-progress-label');
-                    progressContainer.style.display = 'block';
-                    progressLabel.textContent = 'Subiendo audio a Cloudflare R2...';
+                    showLoadingIndicator(true);
                     
                     try { 
                         const audioUrl = await uploadFileR2Only(audioFile);
-                        
-                        progressLabel.textContent = 'Guardando canción...';
                         
                         const { error } = await supabase
                             .from('songs')
@@ -1070,7 +1341,7 @@
                     } catch (err) { 
                         alert('❌ Error: ' + err.message); 
                     } finally {
-                        progressContainer.style.display = 'none';
+                        showLoadingIndicator(false);
                     }
                 }); 
             }
@@ -1169,6 +1440,7 @@
             playSong(currentPlaylist[index], currentAlbum, currentPlaylist, index); 
         }
         
+        // ⚡ REPRODUCCIÓN OPTIMIZADA PARA VELOCIDAD
         window.playSong = function(song, album, playlist, index) {
             console.log('🎵 Reproduciendo:', song.title);
             currentSong = song;
@@ -1179,9 +1451,51 @@
             updateAllPlayers();
             
             if (audio && song.song_url) {
+                // ⚡ REPRODUCCIÓN INMEDIATA SIN ESPERAR CARGA COMPLETA
                 audio.src = song.song_url;
+                audio.preload = 'auto';
+                
+                // Empezar a reproducir tan pronto como sea posible
+                audio.addEventListener('loadstart', () => {
+                    console.log('⚡ Audio loading started');
+                });
+                
+                audio.addEventListener('canplay', () => {
+                    console.log('⚡ Audio can start playing');
+                    showLoadingIndicator(false);
+                    if (!isPlaying) {
+                        audio.play().catch(console.error);
+                    }
+                }, { once: true });
+                
+                // Si no es offline, mostrar loading mientras carga
+                if (!song.isOffline) {
+                    showLoadingIndicator(true);
+                }
+                
                 audio.load();
-                audio.play().catch(console.error);
+                
+                // Intentar reproducir inmediatamente
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            console.log('⚡ Audio started playing immediately');
+                            showLoadingIndicator(false);
+                        })
+                        .catch(error => {
+                            console.log('⚡ Waiting for data to play:', error.message);
+                            // El audio se reproducirá cuando tenga suficientes datos
+                        });
+                }
+                
+                // Preload siguiente canción
+                setTimeout(() => preloadNextSongs(), 1000);
+                
+                // Timeout de seguridad
+                setTimeout(() => {
+                    showLoadingIndicator(false);
+                }, 5000);
             }
         }
         
@@ -1190,7 +1504,10 @@
             if (isPlaying) {
                 audio.pause();
             } else {
-                audio.play().catch(console.error);
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(console.error);
+                }
             }
         }
         
@@ -1253,7 +1570,7 @@
                     if (adminMenu) adminMenu.style.display = 'flex'; 
                 } else { 
                     if (adminMenu) adminMenu.style.display = 'none'; 
-                } 
+                }
             } else { 
                 if (userInfo) userInfo.style.display = 'none'; 
                 if (adminMenu) adminMenu.style.display = 'none'; 
@@ -1423,6 +1740,22 @@
             if (indicator) indicator.style.display = show ? 'block' : 'none'; 
         }
         
+        // ⚡ LIMPIAR CACHE AL CERRAR LA APLICACIÓN
+        window.addEventListener('beforeunload', () => {
+            // Liberar object URLs para evitar memory leaks
+            for (const [songId, data] of audioUrlCache.entries()) {
+                if (data.audioUrl) URL.revokeObjectURL(data.audioUrl);
+                if (data.coverUrl) URL.revokeObjectURL(data.coverUrl);
+            }
+            audioUrlCache.clear();
+            
+            // Limpiar preload queue
+            audioPreloadQueue.forEach(audio => {
+                audio.src = '';
+            });
+            audioPreloadQueue = [];
+        });
+        
         // ✅ INICIALIZACIÓN
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🎵 Iniciando KLMZ MUSIC...');
@@ -1435,14 +1768,18 @@
             updateOnlineStatus();
             
             if (audio) {
+                // ⚡ EVENTOS DE AUDIO OPTIMIZADOS PARA VELOCIDAD
                 audio.addEventListener('play', () => { 
                     isPlaying = true; 
                     updatePlayButtons(); 
+                    console.log('⚡ Audio started playing');
                 });
+                
                 audio.addEventListener('pause', () => { 
                     isPlaying = false; 
                     updatePlayButtons(); 
                 });
+                
                 audio.addEventListener('ended', () => {
                     isPlaying = false;
                     updatePlayButtons();
@@ -1452,6 +1789,7 @@
                         nextSong();
                     }
                 });
+                
                 audio.addEventListener('timeupdate', () => { 
                     if (audio.duration) { 
                         const progress = (audio.currentTime / audio.duration) * 100;
@@ -1464,6 +1802,35 @@
                         if (totalTimeEl) totalTimeEl.textContent = formatTime(audio.duration);
                     } 
                 });
+                
+                // ⚡ EVENTOS PARA REPRODUCCIÓN RÁPIDA
+                audio.addEventListener('loadstart', () => {
+                    console.log('⚡ Audio load started');
+                });
+                
+                audio.addEventListener('canplay', () => {
+                    console.log('⚡ Audio can play - ready for immediate playback');
+                });
+                
+                audio.addEventListener('waiting', () => {
+                    console.log('⚡ Audio waiting for data');
+                    showLoadingIndicator(true);
+                });
+                
+                audio.addEventListener('playing', () => {
+                    console.log('⚡ Audio playing successfully');
+                    showLoadingIndicator(false);
+                });
+                
+                audio.addEventListener('error', (e) => {
+                    console.error('❌ Audio error:', e);
+                    showLoadingIndicator(false);
+                    alert('❌ Error reproduciendo audio. Verifica tu conexión.');
+                });
+                
+                // ⚡ CONFIGURACIONES DE PERFORMANCE
+                audio.preload = 'auto'; // Precargar automáticamente
+                audio.volume = 0.7; // Volumen por defecto
             }
             
             const miniPlayer = document.getElementById('mini-player');
@@ -1475,6 +1842,7 @@
                 });
             }
             
+            // Inicializar después de un pequeño delay
             setTimeout(loadSupabase, 200);
         });
         
@@ -1495,7 +1863,32 @@
                 closeAuth();
                 closeFullPlayer();
             }
+            
+            // ⚡ ATAJOS DE TECLADO PARA REPRODUCCIÓN RÁPIDA
+            if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+                e.preventDefault();
+                togglePlay();
+            }
+            
+            if (e.key === 'ArrowRight' && currentSong) {
+                e.preventDefault();
+                nextSong();
+            }
+            
+            if (e.key === 'ArrowLeft' && currentSong) {
+                e.preventDefault();
+                previousSong();
+            }
         });
+
+        // ⚡ OPTIMIZACIONES FINALES
+        console.log('🎵 KLMZ MUSIC cargado con optimizaciones:');
+        console.log('• ⚡ Reproducción de audio optimizada');
+        console.log('• 📱 Descargas offline con precarga');
+        console.log('• 🎵 Subida múltiple de archivos');
+        console.log('• 🔥 Cloudflare R2 funcionando');
+        console.log('• 🎨 8 temas visuales disponibles');
+        console.log('• ⌨️ Atajos de teclado habilitados');
     </script>
 </body>
 </html>
