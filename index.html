@@ -375,6 +375,47 @@
         // ✅ DESCARGAS OFFLINE - INDEXEDDB
         let downloadDB = null;
 
+        // ✅ FUNCIÓN CORREGIDA - CONVERTIR BLOB A ARRAYBUFFER
+        async function blobToArrayBuffer(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(blob);
+            });
+        }
+
+        // ✅ FUNCIÓN AUXILIAR PARA GUARDAR EN INDEXEDDB
+        async function saveToIndexedDB(data) {
+            return new Promise((resolve) => {
+                try {
+                    const transaction = downloadDB.transaction(['songs'], 'readwrite');
+                    const store = transaction.objectStore('songs');
+                    
+                    const request = store.put(data);
+                    
+                    request.onsuccess = () => {
+                        console.log('✅ Guardado exitosamente en IndexedDB');
+                        resolve(true);
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('❌ Error guardando en IndexedDB:', event.target.error);
+                        resolve(false);
+                    };
+                    
+                    transaction.onerror = (event) => {
+                        console.error('❌ Error en transacción IndexedDB:', event.target.error);
+                        resolve(false);
+                    };
+                    
+                } catch (error) {
+                    console.error('❌ Error creando transacción IndexedDB:', error);
+                    resolve(false);
+                }
+            });
+        }
+
         // ⚡ PRELOAD AGRESIVO PARA REPRODUCCIÓN RÁPIDA
         function preloadNextSongs() {
             if (!currentPlaylist || currentPlaylist.length <= 1) return;
@@ -427,7 +468,7 @@
             return audioContext;
         }
 
-        // ⚡ PRE-CREAR OBJECT URLS PARA REPRODUCCIÓN INSTANTÁNEA
+        // ✅ FUNCIÓN CORREGIDA - PRELOAD OFFLINE AUDIO CON ARRAYBUFFER
         async function preloadOfflineAudio(songId) {
             if (audioUrlCache.has(songId)) {
                 return audioUrlCache.get(songId);
@@ -441,13 +482,17 @@
                 return new Promise((resolve) => {
                     request.onsuccess = () => {
                         const songData = request.result;
-                        if (songData && songData.audioBlob) {
-                            // Crear object URL y cachear
-                            const audioUrl = URL.createObjectURL(songData.audioBlob);
-                            let coverUrl = null;
+                        if (songData && songData.audioBuffer) {
+                            // ⚡ CONVERTIR ARRAYBUFFER DE VUELTA A BLOB
+                            const audioBlob = new Blob([songData.audioBuffer], { 
+                                type: songData.audioType || 'audio/mpeg' 
+                            });
+                            const audioUrl = URL.createObjectURL(audioBlob);
                             
-                            if (songData.coverBlob) {
-                                coverUrl = URL.createObjectURL(songData.coverBlob);
+                            let coverUrl = null;
+                            if (songData.coverBuffer) {
+                                const coverBlob = new Blob([songData.coverBuffer], { type: 'image/jpeg' });
+                                coverUrl = URL.createObjectURL(coverBlob);
                             }
                             
                             const cachedData = {
@@ -471,23 +516,29 @@
             }
         }
 
-        // Verificar si una canción está descargada
+        // ✅ FUNCIÓN CORREGIDA - VERIFICAR SI CANCIÓN ESTÁ DESCARGADA
         async function isSongDownloaded(songId) {
             if (!downloadDB) return false;
             
             return new Promise((resolve) => {
-                const transaction = downloadDB.transaction(['songs'], 'readonly');
-                const store = transaction.objectStore('songs');
-                const request = store.get(songId);
-                
-                request.onsuccess = () => {
-                    resolve(!!request.result);
-                };
-                request.onerror = () => resolve(false);
+                try {
+                    const transaction = downloadDB.transaction(['songs'], 'readonly');
+                    const store = transaction.objectStore('songs');
+                    const request = store.get(songId);
+                    
+                    request.onsuccess = () => {
+                        const result = request.result;
+                        resolve(!!(result && result.audioBuffer));
+                    };
+                    request.onerror = () => resolve(false);
+                } catch (error) {
+                    console.error('Error checking download status:', error);
+                    resolve(false);
+                }
             });
         }
 
-        // Descargar canción para uso offline
+        // ✅ FUNCIÓN CORREGIDA - DESCARGAR CANCIÓN CON ARRAYBUFFER
         async function downloadSong(song, album) {
             const downloadIcon = document.querySelector(`[data-song-id="${song.id}"] .download-icon`);
             if (downloadIcon) {
@@ -497,45 +548,56 @@
             
             try {
                 console.log('📥 Descargando canción:', song.title);
+                showLoadingIndicator(true);
                 
                 // Descargar el archivo de audio
                 const response = await fetch(song.song_url);
-                if (!response.ok) throw new Error('Error descargando archivo');
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 
                 const audioBlob = await response.blob();
+                console.log('📦 Blob obtenido, tamaño:', audioBlob.size, 'bytes');
+                
+                // ⚡ CONVERTIR BLOB A ARRAYBUFFER PARA COMPATIBILIDAD
+                const audioArrayBuffer = await blobToArrayBuffer(audioBlob);
+                console.log('🔄 Convertido a ArrayBuffer');
                 
                 // Descargar imagen del álbum si existe
-                let coverBlob = null;
+                let coverArrayBuffer = null;
                 if (album?.cover_url) {
                     try {
                         const coverResponse = await fetch(album.cover_url);
                         if (coverResponse.ok) {
-                            coverBlob = await coverResponse.blob();
+                            const coverBlob = await coverResponse.blob();
+                            coverArrayBuffer = await blobToArrayBuffer(coverBlob);
+                            console.log('🖼️ Portada convertida a ArrayBuffer');
                         }
                     } catch (e) {
                         console.warn('No se pudo descargar la portada:', e);
                     }
                 }
                 
-                // Guardar en IndexedDB
+                // ✅ GUARDAR ARRAYBUFFERS EN INDEXEDDB
                 const downloadData = {
                     id: song.id,
                     title: song.title,
                     artist: album?.artist || 'Desconocido',
                     albumTitle: album?.title || 'Desconocido',
-                    audioBlob: audioBlob,
-                    coverBlob: coverBlob,
+                    audioBuffer: audioArrayBuffer, // ArrayBuffer en lugar de Blob
+                    coverBuffer: coverArrayBuffer, // ArrayBuffer en lugar de Blob
                     originalUrl: song.song_url,
                     coverUrl: album?.cover_url,
                     downloadedAt: new Date().toISOString(),
-                    size: audioBlob.size
+                    size: audioArrayBuffer.byteLength,
+                    audioType: audioBlob.type || 'audio/mpeg'
                 };
                 
-                const transaction = downloadDB.transaction(['songs'], 'readwrite');
-                const store = transaction.objectStore('songs');
-                await store.put(downloadData);
+                // Guardar con manejo de errores mejorado
+                const success = await saveToIndexedDB(downloadData);
+                if (!success) {
+                    throw new Error('Error guardando en IndexedDB');
+                }
                 
-                console.log('✅ Canción descargada:', song.title);
+                console.log('✅ Canción descargada exitosamente:', song.title);
                 
                 // Actualizar UI
                 if (downloadIcon) {
@@ -545,18 +607,20 @@
                 
                 // Recargar lista de descargas
                 loadDownloads();
+                showLoadingIndicator(false);
                 
                 return true;
                 
             } catch (error) {
                 console.error('❌ Error descargando canción:', error);
+                showLoadingIndicator(false);
                 
                 if (downloadIcon) {
                     downloadIcon.className = 'download-icon';
                     downloadIcon.textContent = '↓';
                 }
                 
-                alert(`❌ Error descargando: ${error.message}`);
+                alert(`❌ Error descargando "${song.title}":\n${error.message}`);
                 return false;
             }
         }
@@ -605,12 +669,12 @@
             await playOfflineSong(songId);
         }
 
-        // ⚡ CARGAR DESCARGAS CON PRELOAD AUTOMÁTICO
+        // ✅ FUNCIÓN CORREGIDA - CARGAR DESCARGAS CON MEJOR MANEJO
         async function loadDownloads() {
             const content = document.getElementById('downloads-content');
             
             if (!downloadDB) {
-                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>🔄 Cargando descargas...</h2></div>';
+                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>🔄 Inicializando sistema de descargas...</h2></div>';
                 return;
             }
             
@@ -621,13 +685,14 @@
                 
                 request.onsuccess = async () => {
                     const downloads = request.result;
+                    console.log(`📱 Encontradas ${downloads.length} descargas offline`);
                     
                     if (downloads.length === 0) {
-                        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📱 No tienes descargas</h2><p style="color: #b3b3b3;">Usa la flechita ↓ en las canciones para descargar</p></div>';
+                        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📱 No tienes descargas</h2><p style="color: #b3b3b3;">Usa la flechita ↓ en las canciones para descargar offline</p></div>';
                         return;
                     }
                     
-                    // ⚡ PRE-CARGAR LAS PRIMERAS 3 CANCIONES PARA REPRODUCCIÓN RÁPIDA
+                    // ⚡ PRE-CARGAR LAS PRIMERAS 3 CANCIONES
                     const topSongs = downloads.slice(0, 3);
                     for (const song of topSongs) {
                         preloadOfflineAudio(song.id).catch(console.error);
@@ -640,9 +705,9 @@
                     
                     content.innerHTML = `
                         <div style="background: #333; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center;">
-                            <strong style="color: #1DB954;">${downloads.length} canciones descargadas</strong>
-                            <div style="color: #b3b3b3; margin-top: 0.5rem;">Total: ${sizeText}</div>
-                            <div style="color: #888; font-size: 0.8rem; margin-top: 0.3rem;">⚡ Primeras 3 precargadas para reproducción rápida</div>
+                            <strong style="color: #1DB954;">${downloads.length} canciones offline</strong>
+                            <div style="color: #b3b3b3; margin-top: 0.5rem;">📦 Total: ${sizeText}</div>
+                            <div style="color: #00ff88; font-size: 0.8rem; margin-top: 0.3rem;">⚡ ArrayBuffer optimizado (compatible con todos los navegadores)</div>
                         </div>
                         <div class="downloads-list">
                             ${downloads.map((song, index) => `
@@ -658,8 +723,9 @@
                                         <div class="download-title">${song.title} ${index < 3 ? '⚡' : ''}</div>
                                         <div class="download-artist">${song.artist} • ${song.albumTitle}</div>
                                         <div style="color: #666; font-size: 0.8rem; margin-top: 0.2rem;">
-                                            Descargada: ${new Date(song.downloadedAt).toLocaleDateString()}
-                                            ${index < 3 ? ' • Precargada' : ''}
+                                            📅 ${new Date(song.downloadedAt).toLocaleDateString()}
+                                            ${index < 3 ? ' • ⚡ Precargada' : ''}
+                                            • 📦 ${(song.size / (1024 * 1024)).toFixed(1)} MB
                                         </div>
                                     </div>
                                     <div class="download-item-actions">
@@ -671,9 +737,14 @@
                     `;
                 };
                 
+                request.onerror = (event) => {
+                    console.error('❌ Error cargando descargas:', event.target.error);
+                    content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>❌ Error cargando descargas offline</h2><p style="color: #ff4757;">Intenta recargar la página</p></div>';
+                };
+                
             } catch (error) {
-                console.error('❌ Error cargando descargas:', error);
-                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>❌ Error cargando descargas</h2></div>';
+                console.error('❌ Error accediendo IndexedDB:', error);
+                content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>❌ Error del sistema de almacenamiento</h2><p style="color: #ff4757;">IndexedDB no disponible</p></div>';
             }
         }
 
@@ -1420,6 +1491,7 @@
             playSong(currentPlaylist[currentIndex], currentAlbum, currentPlaylist, currentIndex); 
         }
 
+        window.
         window.previousSong = function() { 
             if (!currentPlaylist || currentPlaylist.length === 0) return; 
             currentIndex = currentIndex > 0 ? currentIndex - 1 : currentPlaylist.length - 1; 
@@ -1904,13 +1976,14 @@
 
         // ⚡ OPTIMIZACIONES FINALES
         console.log('🎵 KLMZ MUSIC cargado con optimizaciones:');
-        console.log('• ⚡ Reproducción de audio optimizada');
-        console.log('• 📱 Descargas offline con precarga');
+        console.log('• ⚡ Reproducción de audio ultra-rápida');
+        console.log('• 📱 Descargas offline con ArrayBuffer (CORREGIDO)');
         console.log('• 🎵 Subida múltiple de archivos');
         console.log('• 🔥 Cloudflare R2 funcionando');
         console.log('• 🎨 8 temas visuales disponibles');
         console.log('• ⌨️ Atajos de teclado habilitados');
         console.log('• 🎯 Click en nombre de canción para reproducir');
+        console.log('• 📦 IndexedDB optimizado para iOS/Safari');
     </script>
 </body>
 </html>
