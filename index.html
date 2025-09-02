@@ -369,6 +369,7 @@
     <audio id="audio-player" preload="metadata"></audio>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // ✅ VARIABLES GLOBALES CORREGIDAS
         let currentSong = null;
         let currentAlbum = null;
         let currentPlaylist = [];
@@ -386,6 +387,7 @@
         let songPlayCount = 0;
         let lastScrollPosition = 0;
         
+        // ✅ CONSTANTES
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
@@ -442,8 +444,6 @@
                     }
                 });
 
-                // Con mode: 'no-cors' no podemos verificar uploadResponse.ok
-                // pero si llega aquí es que funcionó
                 console.log('✅ Archivo subido exitosamente a R2');
                 
                 // URL pública de R2
@@ -545,34 +545,102 @@
         
         // ✅ FUNCIÓN LOADSUPABASE CORREGIDA
         async function loadSupabase() { 
+            console.log('🔄 Iniciando loadSupabase...');
             showLoadingIndicator(true); 
+            
             try { 
-                // ✅ CORRECCIÓN: Verificar y usar correctamente el SDK global
+                console.log('🔍 Verificando window.supabase:', window.supabase);
+                
                 if (!window.supabase || !window.supabase.createClient) {
+                    console.error('❌ Supabase SDK no disponible');
                     throw new Error('Supabase SDK no está disponible');
                 }
                 
+                console.log('✅ Creando cliente Supabase...');
                 supabase = window.supabase.createClient(supabaseUrl, supabaseKey); 
+                console.log('✅ Cliente creado:', supabase);
                 
                 supabase.auth.onAuthStateChange((_, session) => { 
+                    console.log('🔐 Auth state change:', session?.user?.email || 'No user');
                     currentUser = session?.user || null; 
                     updateAuthUI(); 
                 }); 
                 
+                console.log('🔄 Obteniendo sesión...');
                 const { data: { session } } = await supabase.auth.getSession(); 
+                console.log('✅ Sesión obtenida:', session?.user?.email || 'No session');
                 currentUser = session?.user || null; 
                 updateAuthUI(); 
                 
+                console.log('🔄 Cargando datos...');
                 await loadAllData(); 
+                console.log('✅ loadSupabase completado');
+                
             } catch (error) { 
-                console.error('Error Supabase:', error); 
-                document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error de conexión</h2><p>Verifica la configuración de Supabase</p></div>`; 
+                console.error('💥 Error en loadSupabase:', error); 
+                console.error('📍 Stack trace:', error.stack);
+                document.getElementById('albums').innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <h2>❌ Error de conexión</h2>
+                        <p>Error: ${error.message}</p>
+                        <button onclick="location.reload()" class="btn-primary">🔄 Recargar</button>
+                    </div>`; 
             } finally { 
                 showLoadingIndicator(false); 
             } 
         }
         
-        async function loadAllData() { showLoadingIndicator(true); try { const { data: albums, error: albumsError } = await supabase.from('albums').select('*').order('created_at', { ascending: false }); if (albumsError) throw albumsError; const { data: songs, error: songsError } = await supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false }); if (songsError) throw songsError; allAlbums = albums || []; allSongs = songs || []; songsWithAlbumInfo = songs || []; displayAlbums(allAlbums); } catch (error) { console.error('❌ Error cargando datos:', error); document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error de conexión</h2><p>${error.message}</p></div>`; } finally { showLoadingIndicator(false); } }
+        async function loadAllData() { 
+            console.log('🔄 Iniciando loadAllData...');
+            showLoadingIndicator(true); 
+            
+            try { 
+                console.log('🔍 Consultando álbumes...');
+                const { data: albums, error: albumsError } = await supabase
+                    .from('albums')
+                    .select('*')
+                    .order('created_at', { ascending: false }); 
+                    
+                if (albumsError) {
+                    console.error('❌ Error álbumes:', albumsError);
+                    throw albumsError;
+                }
+                
+                console.log('✅ Álbumes obtenidos:', albums?.length || 0);
+                
+                console.log('🔍 Consultando canciones...');
+                const { data: songs, error: songsError } = await supabase
+                    .from('songs')
+                    .select('*, albums:album_id(*)')
+                    .order('created_at', { ascending: false }); 
+                    
+                if (songsError) {
+                    console.error('❌ Error canciones:', songsError);
+                    throw songsError;
+                }
+                
+                console.log('✅ Canciones obtenidas:', songs?.length || 0);
+                
+                allAlbums = albums || []; 
+                allSongs = songs || []; 
+                songsWithAlbumInfo = songs || []; 
+                
+                console.log('🔄 Mostrando álbumes...');
+                displayAlbums(allAlbums); 
+                console.log('✅ loadAllData completado');
+                
+            } catch (error) { 
+                console.error('💥 Error en loadAllData:', error); 
+                document.getElementById('albums').innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <h2>❌ Error cargando datos</h2>
+                        <p>${error.message}</p>
+                        <button onclick="loadAllData()" class="btn-primary">🔄 Reintentar</button>
+                    </div>`; 
+            } finally { 
+                showLoadingIndicator(false); 
+            } 
+        }
         
         function displayAlbums(albums) { const container = document.getElementById('albums'); if (!albums || albums.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📀 No hay álbumes</h2><p>Contacta al administrador para agregar contenido</p></div>'; return; } container.innerHTML = albums.map(album => `<div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'><img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`).join(''); }
         
@@ -732,8 +800,6 @@
             } 
         }
         
-        window.deleteSong = async function(songId) { 
-            if (!confirm
         window.deleteSong = async function(songId) { 
             if (!confirm('¿Eliminar esta canción?')) return; 
             try { 
