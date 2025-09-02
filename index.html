@@ -31,7 +31,9 @@
         .song-list { width:100%; margin-top:1rem; padding-bottom: 120px; }
         .song-list ul { list-style:none; padding:0; margin:0;}
         .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease;}
-        .song-list li:hover { color:#fff; background: rgba(255,255,255,.05);}
+        .song-list li:hover { color:#fff; background: rgba(255,255,255,.05); transform: translateX(2px);}
+        .song-list li > div:first-child { flex: 1; padding-right: 1rem; font-weight: 500; transition: all 0.3s ease; }
+        .song-list li:hover > div:first-child { color: #1DB954; font-weight: 600; }
         .song-actions { display: flex; gap: 0.8rem; align-items: center; }
         .play-icon { font-size: 1.1rem; cursor: pointer; }
         .download-icon { cursor: pointer; color: #666; font-size: 1.2rem; transition: all 0.3s ease; }
@@ -140,7 +142,7 @@
         #upload-progress-bar { width: 0%; height: 12px; background: #1DB954; border-radius: 2px; transition: width 0.3s ease; }
         .offline-indicator { background: #ff4757; color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem; }
         
-        /* 🎵 NUEVOS ESTILOS PARA SUBIDA MÚLTIPLE */
+        /* NUEVOS ESTILOS PARA SUBIDA MÚLTIPLE */
         .multi-upload-section { background: rgba(29,185,84,0.1); border: 2px dashed #1DB954; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; }
         .multi-upload-section h4 { color: #1DB954; margin-top: 0; }
         .file-queue { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
@@ -1061,7 +1063,7 @@
             } 
         }
         
-        // ✅ DELEGACIÓN DE EVENTOS - ESTO ARREGLA LOS CLICKS
+        // ✅ DELEGACIÓN DE EVENTOS - MODIFICADA PARA CLICK EN NOMBRE DE CANCIÓN
         document.addEventListener('click', function(event) {
             // ✅ CLICKS EN ÁLBUMES
             const albumCard = event.target.closest('.album-card');
@@ -1073,15 +1075,34 @@
                 return;
             }
             
-            // ✅ CLICKS EN CANCIONES
+            // ✅ CLICKS EN CANCIONES - MEJORADO PARA CLICK EN NOMBRE
             const songLi = event.target.closest('.song-list li');
-            const playIcon = event.target.closest('.play-icon');
-            const songIndex = event.target.getAttribute('data-song-index');
-            
-            if (songLi && (playIcon || songIndex !== null)) {
-                const idx = songIndex ? parseInt(songIndex) : parseInt(songLi.getAttribute('data-song-index'));
-                if (!isNaN(idx) && currentPlaylist[idx]) {
-                    playSongFromPlaylist(idx);
+            if (songLi) {
+                // Si el click fue en los botones de acción, no reproducir
+                const isActionButton = event.target.closest('.song-actions') || 
+                                      event.target.closest('.download-icon') || 
+                                      event.target.closest('.play-icon') ||
+                                      event.target.matches('[onclick*="toggleFavorite"]') ||
+                                      event.target.matches('[onclick*="downloadSong"]');
+                
+                if (!isActionButton) {
+                    // Click en el nombre de la canción - reproducir
+                    const idx = parseInt(songLi.getAttribute('data-song-index'));
+                    if (!isNaN(idx) && currentPlaylist[idx]) {
+                        playSongFromPlaylist(idx);
+                        return;
+                    }
+                }
+                
+                // Si fue click en play icon específicamente
+                const playIcon = event.target.closest('.play-icon');
+                const songIndex = event.target.getAttribute('data-song-index');
+                
+                if (playIcon || songIndex !== null) {
+                    const idx = songIndex ? parseInt(songIndex) : parseInt(songLi.getAttribute('data-song-index'));
+                    if (!isNaN(idx) && currentPlaylist[idx]) {
+                        playSongFromPlaylist(idx);
+                    }
                 }
                 return;
             }
@@ -1217,7 +1238,7 @@
                             <p style="color: #666; text-align: center;">No hay archivos en cola</p>
                         </div>
                         <button type="button" onclick="processBatchUpload(document.getElementById('batch-album-select').value)" 
-                                class="btn-primary" style="margin-top: 1rem;" ${fileQueue.length === 0 ? 'disabled' : ''}>
+                                class="btn-primary" style="margin-top: 1rem;">
                             🚀 Subir Todos los Archivos
                         </button>
                     </div>
@@ -1889,6 +1910,7 @@
         console.log('• 🔥 Cloudflare R2 funcionando');
         console.log('• 🎨 8 temas visuales disponibles');
         console.log('• ⌨️ Atajos de teclado habilitados');
+        console.log('• 🎯 Click en nombre de canción para reproducir');
     </script>
 </body>
 </html>
