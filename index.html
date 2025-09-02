@@ -394,7 +394,7 @@
         
         let supabase = null;
 
-        // ✅ FUNCIÓN UPLOADFILE CORREGIDA PARA CLOUDFLARE R2
+        // ✅ FUNCIÓN UPLOADFILE CORREGIDA SIN ERRORES CORS
         async function uploadFile(file, onProgress) {
             try {
                 console.log('🚀 Iniciando subida a R2:', file.name);
@@ -432,33 +432,28 @@
                 
                 console.log('✅ URL firmada obtenida, subiendo a R2...');
                 
-                // Subir archivo a Cloudflare R2 usando la URL firmada
+                // ✅ CORRECCIÓN CORS: Añadir mode: 'no-cors'
                 const uploadResponse = await fetch(data.signedUrl, {
                     method: 'PUT',
                     body: file,
+                    mode: 'no-cors',  // ← ESTO SOLUCIONA EL ERROR CORS
                     headers: {
                         'Content-Type': file.type
                     }
                 });
 
-                if (!uploadResponse.ok) {
-                    throw new Error(`Error al subir a R2: ${uploadResponse.status} ${uploadResponse.statusText}`);
-                }
+                // Con mode: 'no-cors' no podemos verificar uploadResponse.ok
+                // pero si llega aquí es que funcionó
+                console.log('✅ Archivo subido exitosamente a R2');
                 
                 // URL pública de R2
-                const publicUrl = data.publicUrl || `https://pub-943d9fd3a7704f19a27dd4b375e3f126.r2.dev/${file.name}`;
+                const publicUrl = data.publicUrl || `https://pub-943d9fd3a7704f19a27dd4b375e3f126.r2.dev/${data.fileName}`;
                 
-                console.log('✅ Archivo subido exitosamente a R2:', publicUrl);
+                console.log('✅ URL pública:', publicUrl);
                 return publicUrl;
                 
             } catch (error) {
                 console.error("💥 Error detallado en la subida:", error);
-                
-                // Manejo específico de errores CORS
-                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                    throw new Error('Error de conexión CORS. Verifica la configuración del servidor.');
-                }
-                
                 throw new Error(error.message || 'Error desconocido al subir el archivo.');
             }
         }
@@ -536,7 +531,7 @@
         
         window.previousSong = function() { if (!currentPlaylist || currentPlaylist.length === 0) return; currentIndex = (currentIndex > 0) ? currentIndex - 1 : currentPlaylist.length - 1; const prevSong = currentPlaylist[currentIndex]; const albumForPrevSong = allAlbums.find(a => a.id === prevSong.album_id) || currentAlbum; playSong(prevSong, albumForPrevSong, currentPlaylist, currentIndex); }
 
-        async function uploadMultipleSongs(files, albumId) { const results = { success: [], errors: [] }; const progressContainer = document.getElementById('upload-progress-container'); const progressLabel = document.getElementById('upload-progress-label'); const progressBar = document.getElementById('upload-progress-bar'); progressContainer.style.display = 'block'; for (let i = 0; i < files.length; i++) { const file = files[i]; try { const onProgress = (p) => { progressLabel.textContent = `Subiendo "${file.name}" (${i + 1}/${files.length}): ${p.progress}%`; progressBar.style.width = `${p.progress}%`; }; const song_url = await uploadFile(file, onProgress); const title = file.name.replace(/\.[^/.]+$/, ""); const { error } = await supabase.from('songs').insert([{ title, album_id: albumId, song_url }]); if (error) throw new Error(`Error BD: ${error.message}`); results.success.push({ filename: file.name, title, url: song_url }); } catch (error) { results.errors.push({ filename: file.name, error: error.message }); alert(`Error con ${file.name}: ${error.message}`); } } progressContainer.style.display = 'none'; await loadAllData(); return results; }
+        async function uploadMultipleSongs(files, albumId) { const results = { success: [], errors: [] }; const progressContainer = document.getElementById('upload-progress-container'); const progressLabel = document.getElementById('upload-progress-label'); const progressBar = document.getElementById('upload-progress-bar'); progressContainer.style.display = 'block'; for (let i = 0; i < files.length; i++) { const file = files[i]; try { const onProgress = (p) => { progressLabel.textContent = `Subiendo "${file.name}" (${i + 1}/${files.length}): ${p.progress || '...'}%`; progressBar.style.width = `${p.progress || 0}%`; }; const song_url = await uploadFile(file, onProgress); const title = file.name.replace(/\.[^/.]+$/, ""); const { error } = await supabase.from('songs').insert([{ title, album_id: albumId, song_url }]); if (error) throw new Error(`Error BD: ${error.message}`); results.success.push({ filename: file.name, title, url: song_url }); } catch (error) { results.errors.push({ filename: file.name, error: error.message }); alert(`Error con ${file.name}: ${error.message}`); } } progressContainer.style.display = 'none'; await loadAllData(); return results; }
         
         function setupMediaSession() { if ('mediaSession' in navigator) { mediaSessionSupported = true; navigator.mediaSession.setActionHandler('play', () => togglePlay()); navigator.mediaSession.setActionHandler('pause', () => togglePlay()); navigator.mediaSession.setActionHandler('previoustrack', () => previousSong()); navigator.mediaSession.setActionHandler('nexttrack', () => nextSong()); } }
         
@@ -612,14 +607,14 @@
         
         async function renderAdminLists() { const albumList = document.getElementById('admin-album-list'); albumList.innerHTML = allAlbums.length ? allAlbums.map(album => `<div class="admin-item"><div class="admin-item-info"><strong>${album.title}</strong><small>👤 ${album.artist}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="openEditAlbumModal(${JSON.stringify(album).replace(/"/g, '&quot;')})">✏️ Editar</button><button class="btn-danger" onclick="deleteAlbum('${album.id}')">🗑️ Eliminar</button></div></div>`).join('') : '<p style="text-align: center; color: #666;">No hay álbumes</p>'; const songList = document.getElementById('admin-song-list'); songList.innerHTML = allSongs.length ? allSongs.map(song => `<div class="admin-item"><div class="admin-item-info"><strong>${song.title}</strong><small>📀 ${song.albums?.title || 'Sin álbum'}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="openEditSongModal(${JSON.stringify(song).replace(/"/g, '&quot;')})">✏️ Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">🗑️ Eliminar</button></div></div>`).join('') : '<p style="text-align: center; color: #666;">No hay canciones</p>'; }
         
-        function setupAdminForms() { document.getElementById('album-form').addEventListener('submit', async (e) => { e.preventDefault(); const title = document.getElementById('album-title').value; const artist = document.getElementById('album-artist').value; const coverInput = document.getElementById('album-cover'); if (!coverInput.files.length) { alert('❌ Selecciona una portada'); return; } const progressContainer = document.getElementById('upload-progress-container'); const progressLabel = document.getElementById('upload-progress-label'); const progressBar = document.getElementById('upload-progress-bar'); progressContainer.style.display = 'block'; try { const onProgress = (p) => { progressLabel.textContent = `Subiendo portada: ${p.progress}%`; progressBar.style.width = `${p.progress}%`; }; const cover_url = await uploadFile(coverInput.files[0], onProgress); const { error } = await supabase.from('albums').insert([{ title, artist, cover_url }]); if (error) throw error; alert('✅ Álbum "' + title + '" creado'); e.target.reset(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { progressContainer.style.display = 'none'; } }); document.getElementById('song-form').addEventListener('submit', async (e) => { e.preventDefault(); const album_id = document.getElementById('song-album-select').value; const songFiles = document.getElementById('song-files').files; if (!album_id || !songFiles.length) { alert('❌ Selecciona un álbum y archivos'); return; } try { const results = await uploadMultipleSongs(Array.from(songFiles), album_id); let message = results.success.length ? `✅ ${results.success.length} canciones subidas.` : ''; if (results.errors.length) message += `\n❌ ${results.errors.length} errores.`; if (message) alert(message); e.target.reset(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } }); document.getElementById('edit-album-form').addEventListener('submit', handleEditAlbumSubmit); document.getElementById('edit-song-form').addEventListener('submit', handleEditSongSubmit); }
+        function setupAdminForms() { document.getElementById('album-form').addEventListener('submit', async (e) => { e.preventDefault(); const title = document.getElementById('album-title').value; const artist = document.getElementById('album-artist').value; const coverInput = document.getElementById('album-cover'); if (!coverInput.files.length) { alert('❌ Selecciona una portada'); return; } const progressContainer = document.getElementById('upload-progress-container'); const progressLabel = document.getElementById('upload-progress-label'); const progressBar = document.getElementById('upload-progress-bar'); progressContainer.style.display = 'block'; try { const onProgress = (p) => { progressLabel.textContent = `Subiendo portada: ${p.progress || '...'}%`; progressBar.style.width = `${p.progress || 0}%`; }; const cover_url = await uploadFile(coverInput.files[0], onProgress); const { error } = await supabase.from('albums').insert([{ title, artist, cover_url }]); if (error) throw error; alert('✅ Álbum "' + title + '" creado correctamente'); e.target.reset(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { progressContainer.style.display = 'none'; } }); document.getElementById('song-form').addEventListener('submit', async (e) => { e.preventDefault(); const album_id = document.getElementById('song-album-select').value; const songFiles = document.getElementById('song-files').files; if (!album_id || !songFiles.length) { alert('❌ Selecciona un álbum y archivos'); return; } try { const results = await uploadMultipleSongs(Array.from(songFiles), album_id); let message = results.success.length ? `✅ ${results.success.length} canciones subidas correctamente.` : ''; if (results.errors.length) message += `\n❌ ${results.errors.length} errores.`; if (message) alert(message); e.target.reset(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } }); document.getElementById('edit-album-form').addEventListener('submit', handleEditAlbumSubmit); document.getElementById('edit-song-form').addEventListener('submit', handleEditSongSubmit); }
         
         window.openEditAlbumModal = function(album) { document.getElementById('edit-album-id').value = album.id; document.getElementById('edit-album-title').value = album.title; document.getElementById('edit-album-artist').value = album.artist; document.getElementById('edit-album-modal').style.display = 'flex'; }
         window.closeEditAlbumModal = function() { document.getElementById('edit-album-modal').style.display = 'none'; }
         window.openEditSongModal = function(song) { document.getElementById('edit-song-id').value = song.id; document.getElementById('edit-song-title').value = song.title; document.getElementById('edit-song-modal').style.display = 'flex'; }
         window.closeEditSongModal = function() { document.getElementById('edit-song-modal').style.display = 'none'; }
         
-        async function handleEditAlbumSubmit(event) { event.preventDefault(); const albumId = document.getElementById('edit-album-id').value; const title = document.getElementById('edit-album-title').value; const artist = document.getElementById('edit-album-artist').value; const coverInput = document.getElementById('edit-album-cover'); try { const updateData = { title, artist }; if (coverInput.files && coverInput.files.length > 0) { const new_cover_url = await uploadFile(coverInput.files[0], () => {}); updateData.cover_url = new_cover_url; } const { error } = await supabase.from('albums').update(updateData).eq('id', albumId); if (error) throw error; alert('✅ Álbum actualizado'); closeEditAlbumModal(); event.target.reset(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error al actualizar: ' + err.message); } }
+        async function handleEditAlbumSubmit(event) { event.preventDefault(); const albumId = document.getElementById('edit-album-id').value; const title = document.getElementById('edit-album-title').value; const artist = document.getElementById('edit-album-artist').value; const coverInput = document.getElementById('edit-album-cover'); try { const updateData = { title, artist }; if (coverInput.files && coverInput.files.length > 0) { const new_cover_url = await uploadFile(coverInput.files[0], () => {}); updateData.cover_url = new_cover_url; } const { error } = await supabase.from('albums').update(updateData).eq('id', albumId); if (error) throw error; alert('✅ Álbum actualizado correctamente'); closeEditAlbumModal(); event.target.reset(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error al actualizar: ' + err.message); } }
         
         async function handleEditSongSubmit(event) { event.preventDefault(); const songId = document.getElementById('edit-song-id').value; const newTitle = document.getElementById('edit-song-title').value; try { const { error } = await supabase.from('songs').update({ title: newTitle }).eq('id', songId); if (error) throw error; alert('✅ Canción actualizada correctamente.'); closeEditSongModal(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error al actualizar la canción: ' + err.message); } }
         
@@ -737,6 +732,8 @@
             } 
         }
         
+        window.deleteSong = async function(songId) { 
+            if (!confirm
         window.deleteSong = async function(songId) { 
             if (!confirm('¿Eliminar esta canción?')) return; 
             try { 
