@@ -552,8 +552,12 @@
         async function loadSupabase() { 
             showLoadingIndicator(true); 
             try { 
-                const { createClient } = window.supabase;
-                supabase = createClient(supabaseUrl, supabaseKey); 
+                // ✅ CORRECCIÓN: Verificar y usar correctamente el SDK global
+                if (!window.supabase || !window.supabase.createClient) {
+                    throw new Error('Supabase SDK no está disponible');
+                }
+                
+                supabase = window.supabase.createClient(supabaseUrl, supabaseKey); 
                 
                 supabase.auth.onAuthStateChange((_, session) => { 
                     currentUser = session?.user || null; 
@@ -567,15 +571,15 @@
                 await loadAllData(); 
             } catch (error) { 
                 console.error('Error Supabase:', error); 
-                document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error de conexión</h2></div>`; 
+                document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error de conexión</h2><p>Verifica la configuración de Supabase</p></div>`; 
             } finally { 
                 showLoadingIndicator(false); 
             } 
         }
         
-        async function loadAllData() { showLoadingIndicator(true); try { const { data: albums, error: albumsError } = await supabase.from('albums').select('*').order('created_at', { ascending: false }); if (albumsError) throw albumsError; const { data: songs, error: songsError } = await supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false }); if (songsError) throw songsError; allAlbums = albums || []; allSongs = songs || []; songsWithAlbumInfo = songs || []; displayAlbums(allAlbums); } catch (error) { console.error('❌ Error cargando datos:', error); document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error de conexión</h2></div>`; } finally { showLoadingIndicator(false); } }
+        async function loadAllData() { showLoadingIndicator(true); try { const { data: albums, error: albumsError } = await supabase.from('albums').select('*').order('created_at', { ascending: false }); if (albumsError) throw albumsError; const { data: songs, error: songsError } = await supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false }); if (songsError) throw songsError; allAlbums = albums || []; allSongs = songs || []; songsWithAlbumInfo = songs || []; displayAlbums(allAlbums); } catch (error) { console.error('❌ Error cargando datos:', error); document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>❌ Error de conexión</h2><p>${error.message}</p></div>`; } finally { showLoadingIndicator(false); } }
         
-        function displayAlbums(albums) { const container = document.getElementById('albums'); if (!albums || albums.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📀 No hay álbumes</h2></div>'; return; } container.innerHTML = albums.map(album => `<div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'><img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`).join(''); }
+        function displayAlbums(albums) { const container = document.getElementById('albums'); if (!albums || albums.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>📀 No hay álbumes</h2><p>Contacta al administrador para agregar contenido</p></div>'; return; } container.innerHTML = albums.map(album => `<div class="album-card" onclick='showAlbumDetail(${JSON.stringify(album).replace(/"/g, '&quot;')})'><img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`).join(''); }
         
         async function showAlbumDetail(album) {
             lastScrollPosition = window.scrollY;
@@ -642,7 +646,6 @@
         window.showAuth = function(type) { document.getElementById('user-dropdown').classList.remove('show'); document.getElementById('login-form').style.display = type === 'login' ? 'block' : 'none'; document.getElementById('register-form').style.display = type === 'register' ? 'block' : 'none'; document.getElementById('auth-modal').style.display = 'flex'; }
         window.closeAuth = function() { document.getElementById('auth-modal').style.display = 'none'; }
         
-        window.showSection = function(section) { document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active')); document.getElementById(`${section}-section`).classList.add('active');
         window.showSection = function(section) { 
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active')); 
             document.getElementById(`${section}-section`).classList.add('active'); 
