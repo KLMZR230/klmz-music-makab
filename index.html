@@ -134,7 +134,7 @@
         #upload-progress-bar-background { background: #444; border-radius: 4px; padding: 3px; }
         #upload-progress-bar { width: 0%; height: 12px; background: #1DB954; border-radius: 2px; transition: width 0.3s ease; }
         
-        /* ✅ TEMAS CORREGIDOS */
+        /* ✅ TEMAS COMPLETOS */
         body.theme-fire { background: radial-gradient(ellipse at center, #3d0303 0%, #1a0000 70%) !important; color: #ffcc80 !important; }
         body.theme-fire .logo { font-family: 'Metal Mania', cursive !important; font-size: 1.8rem !important; color: #ff4500 !important; text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000 !important; animation: logo-flicker 2s infinite linear alternate; }
         body.theme-fire .section-title { font-family: 'Metal Mania', cursive !important; color: #ff8c00 !important; }
@@ -401,7 +401,7 @@
             }
         }
         
-        // ✅ CARGA DE DATOS CORREGIDA CON RLS FIX
+        // ✅ CARGA DE DATOS CORREGIDA
         async function loadAllData() {
             console.log('🔄 Cargando datos de Supabase...');
             showLoadingIndicator(true);
@@ -769,7 +769,39 @@
             }
         }
         
-        // ✅ PANEL DE ADMIN COMPLETO Y FUNCIONAL
+        // ✅ FUNCIONES DE SUBIDA A SUPABASE STORAGE
+        async function uploadFileToStorage(file, bucket, path) {
+            console.log('📤 Subiendo archivo:', file.name, 'a', bucket);
+            
+            try {
+                const { data, error } = await supabase.storage
+                    .from(bucket)
+                    .upload(path, file, {
+                        cacheControl: '3600',
+                        upsert: false,
+                        contentType: file.type
+                    });
+                    
+                if (error) {
+                    console.error('Error subiendo:', error);
+                    throw error;
+                }
+                
+                // Obtener URL pública
+                const { data: publicUrl } = supabase.storage
+                    .from(bucket)
+                    .getPublicUrl(path);
+                    
+                console.log('✅ Archivo subido:', publicUrl.publicUrl);
+                return publicUrl.publicUrl;
+                
+            } catch (error) {
+                console.error('💥 Error en upload:', error);
+                throw error;
+            }
+        }
+        
+        // ✅ PANEL DE ADMIN COMPLETO CON ARCHIVOS LOCALES
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
             
@@ -787,7 +819,7 @@
                 
                 <div class="admin-section">
                     <h3>📀 Crear Álbum</h3>
-                    <form id="album-form" class="admin-form">
+                    <form id="album-form" class="admin-form" enctype="multipart/form-data">
                         <div class="form-group">
                             <label>Título del Álbum:</label>
                             <input type="text" id="album-title" required>
@@ -797,14 +829,14 @@
                             <input type="text" id="album-artist" required>
                         </div>
                         <div class="form-group">
-                            <label>URL de Portada:</label>
-                            <input type="url" id="album-cover-url" placeholder="https://ejemplo.com/imagen.jpg" required>
+                            <label>Portada del Álbum (Archivo):</label>
+                            <input type="file" id="album-cover-file" accept="image/*" required>
                         </div>
                         <button type="submit" class="btn-primary">📤 Crear Álbum</button>
                     </form>
                     
                     <div id="upload-progress-container">
-                        <div id="upload-progress-label"></div>
+                        <div id="upload-progress-label">Subiendo...</div>
                         <div id="upload-progress-bar-background">
                             <div id="upload-progress-bar"></div>
                         </div>
@@ -813,7 +845,7 @@
                 
                 <div class="admin-section">
                     <h3>🎼 Agregar Canción</h3>
-                    <form id="song-form" class="admin-form">
+                    <form id="song-form" class="admin-form" enctype="multipart/form-data">
                         <div class="form-group">
                             <label>Seleccionar Álbum:</label>
                             <select id="song-album-select" required>
@@ -826,49 +858,35 @@
                             <input type="text" id="song-title" required>
                         </div>
                         <div class="form-group">
-                            <label>URL del Audio:</label>
-                            <input type="url" id="song-url" placeholder="https://ejemplo.com/cancion.mp3" required>
+                            <label>Archivo de Audio:</label>
+                            <input type="file" id="song-audio-file" accept="audio/*" required>
                         </div>
                         <button type="submit" class="btn-primary">🎵 Agregar Canción</button>
                     </form>
                 </div>
                 
                 <div class="admin-section">
-                    <h3>📋 Gestión de Contenido</h3>
-                    <div id="admin-content-list">
-                        <h4>Álbumes:</h4>
-                        ${allAlbums.map(album => `
-                            <div class="admin-item">
-                                <div class="admin-item-info">
-                                    <strong>${album.title}</strong>
-                                    <small>👤 ${album.artist}</small>
-                                </div>
-                                <div class="admin-item-actions">
-                                    <button class="btn-danger" onclick="deleteAlbum('${album.id}')">🗑️ Eliminar</button>
-                                </div>
+                    <h3>📋 Contenido Existente</h3>
+                    ${allAlbums.map(album => `
+                        <div class="admin-item">
+                            <div class="admin-item-info">
+                                <strong>${album.title}</strong>
+                                <small>👤 ${album.artist}</small>
                             </div>
-                        `).join('')}
-                        
-                        <h4 style="margin-top: 2rem;">Canciones:</h4>
-                        ${allSongs.map(song => `
-                            <div class="admin-item">
-                                <div class="admin-item-info">
-                                    <strong>${song.title}</strong>
-                                    <small>📀 ${song.albums?.title || 'Sin álbum'}</small>
-                                </div>
-                                <div class="admin-item-actions">
-                                    <button class="btn-danger" onclick="deleteSong('${song.id}')">🗑️ Eliminar</button>
-                                </div>
+                            <div class="admin-item-actions">
+                                <button class="btn-danger" onclick="deleteAlbum('${album.id}')">🗑️ Eliminar</button>
                             </div>
-                        `).join('')}
-                    </div>
+                        </div>
+                    `).join('')}
                 </div>
             `; 
             
             setupAdminForms(); 
         }
 
+        // ✅ FORMULARIOS CORREGIDOS CON FILE UPLOAD
         function setupAdminForms() {
+            // ✅ FORMULARIO DE ÁLBUM CON FILE INPUT
             const albumForm = document.getElementById('album-form');
             if (albumForm) {
                 albumForm.addEventListener('submit', async (e) => { 
@@ -876,11 +894,28 @@
                     
                     const title = document.getElementById('album-title').value; 
                     const artist = document.getElementById('album-artist').value; 
-                    const coverUrl = document.getElementById('album-cover-url').value;
+                    const coverFile = document.getElementById('album-cover-file').files[0];
                     
-                    console.log('📤 Creando álbum:', {title, artist, coverUrl});
+                    if (!coverFile) {
+                        alert('❌ Selecciona un archivo de portada');
+                        return;
+                    }
+                    
+                    console.log('📤 Creando álbum:', {title, artist, file: coverFile.name});
+                    
+                    const progressContainer = document.getElementById('upload-progress-container');
+                    const progressLabel = document.getElementById('upload-progress-label');
+                    progressContainer.style.display = 'block';
+                    progressLabel.textContent = 'Subiendo portada...';
                     
                     try { 
+                        // Subir portada a Supabase Storage
+                        const coverPath = `covers/${Date.now()}_${coverFile.name}`;
+                        const coverUrl = await uploadFileToStorage(coverFile, 'music-files', coverPath);
+                        
+                        progressLabel.textContent = 'Guardando álbum...';
+                        
+                        // Crear álbum en base de datos
                         const { error } = await supabase
                             .from('albums')
                             .insert([{ 
@@ -899,10 +934,13 @@
                     } catch (err) { 
                         console.error('Error creando álbum:', err);
                         alert('❌ Error: ' + err.message); 
+                    } finally {
+                        progressContainer.style.display = 'none';
                     }
                 }); 
             }
             
+            // ✅ FORMULARIO DE CANCIÓN CON FILE INPUT
             const songForm = document.getElementById('song-form');
             if (songForm) {
                 songForm.addEventListener('submit', async (e) => { 
@@ -910,22 +948,39 @@
                     
                     const albumId = document.getElementById('song-album-select').value; 
                     const title = document.getElementById('song-title').value;
-                    const songUrl = document.getElementById('song-url').value;
+                    const audioFile = document.getElementById('song-audio-file').files[0];
                     
                     if (!albumId) { 
                         alert('❌ Selecciona un álbum'); 
                         return; 
                     }
                     
-                    console.log('🎵 Agregando canción:', {title, albumId, songUrl});
+                    if (!audioFile) {
+                        alert('❌ Selecciona un archivo de audio');
+                        return;
+                    }
+                    
+                    console.log('🎵 Agregando canción:', {title, albumId, file: audioFile.name});
+                    
+                    const progressContainer = document.getElementById('upload-progress-container');
+                    const progressLabel = document.getElementById('upload-progress-label');
+                    progressContainer.style.display = 'block';
+                    progressLabel.textContent = 'Subiendo audio...';
                     
                     try { 
+                        // Subir audio a Supabase Storage
+                        const audioPath = `songs/${Date.now()}_${audioFile.name}`;
+                        const audioUrl = await uploadFileToStorage(audioFile, 'music-files', audioPath);
+                        
+                        progressLabel.textContent = 'Guardando canción...';
+                        
+                        // Crear canción en base de datos
                         const { error } = await supabase
                             .from('songs')
                             .insert([{ 
                                 title: title, 
                                 album_id: albumId, 
-                                song_url: songUrl 
+                                song_url: audioUrl 
                             }]); 
                         
                         if (error) throw error; 
@@ -938,7 +993,9 @@
                     } catch (err) { 
                         console.error('Error agregando canción:', err);
                         alert('❌ Error: ' + err.message); 
-                    } 
+                    } finally {
+                        progressContainer.style.display = 'none';
+                    }
                 }); 
             }
         }
@@ -974,6 +1031,81 @@
                 console.error('Error eliminando canción:', error);
                 alert('❌ Error: ' + error.message); 
             } 
+        }
+        
+        // ✅ REPRODUCTOR COMPLETO FUNCIONANDO
+        function openFullPlayer() { 
+            document.getElementById('full-player').classList.add('active'); 
+        }
+
+        window.closeFullPlayer = function() { 
+            document.getElementById('full-player').classList.remove('active'); 
+        }
+
+        window.toggleRepeatMode = function() { 
+            repeatMode = repeatMode === 'all' ? 'off' : 'all'; 
+            document.getElementById('repeat-btn').classList.toggle('active', repeatMode === 'all'); 
+        }
+
+        window.toggleShuffleMode = function() { 
+            shuffleMode = !shuffleMode; 
+            document.getElementById('shuffle-btn').classList.toggle('active', shuffleMode); 
+        }
+
+        window.setVolume = function(value) { 
+            if (isAndroidApp) { 
+                Android.setVolume(value / 100); 
+            } else { 
+                audio.volume = value / 100; 
+            } 
+        }
+
+        window.seekToFull = function(event) { 
+            const progressBar = event.currentTarget; 
+            const rect = progressBar.getBoundingClientRect(); 
+            const clickPosition = (event.clientX - rect.left) / rect.width; 
+            
+            if (isAndroidApp) { 
+                if(currentSong && nativePlayerDuration > 0) { 
+                    const seekPositionMs = Math.floor(clickPosition * nativePlayerDuration); 
+                    Android.seekTo(seekPositionMs); 
+                } 
+            } else { 
+                if (!audio.duration) return; 
+                audio.currentTime = clickPosition * audio.duration; 
+            } 
+        }
+
+        window.nextSong = function() { 
+            if (!currentPlaylist || currentPlaylist.length === 0) return; 
+            currentIndex = (currentIndex + 1) % currentPlaylist.length; 
+            const nextSong = currentPlaylist[currentIndex]; 
+            const albumForNextSong = allAlbums.find(a => a.id === nextSong.album_id) || currentAlbum; 
+            playSong(nextSong, albumForNextSong, currentPlaylist, currentIndex); 
+        }
+
+        window.previousSong = function() { 
+            if (!currentPlaylist || currentPlaylist.length === 0) return; 
+            currentIndex = (currentIndex > 0) ? currentIndex - 1 : currentPlaylist.length - 1; 
+            const prevSong = currentPlaylist[currentIndex]; 
+            const albumForPrevSong = allAlbums.find(a => a.id === prevSong.album_id) || currentAlbum; 
+            playSong(prevSong, albumForPrevSong, currentPlaylist, currentIndex); 
+        }
+
+        function updateFullPlayer() { 
+            const cover = document.getElementById('full-player-cover');
+            const title = document.getElementById('full-player-title');
+            const artist = document.getElementById('full-player-artist');
+            
+            if (cover) cover.src = currentAlbum?.cover_url || ''; 
+            if (title) title.textContent = currentSong?.title || 'Sin título'; 
+            if (artist) artist.textContent = currentAlbum?.artist || 'Desconocido'; 
+        }
+
+        function formatTime(seconds) { 
+            const min = Math.floor(seconds / 60); 
+            const sec = Math.floor(seconds % 60).toString().padStart(2, '0'); 
+            return `${min}:${sec}`; 
         }
         
         // ✅ FUNCIONES DE NAVEGACIÓN CORREGIDAS
@@ -1041,6 +1173,7 @@
         
         function updateAllPlayers() { 
             updateMiniPlayer(); 
+            updateFullPlayer();  // ← ESTA LÍNEA ERA LA QUE FALTABA
             updatePlayButtons(); 
         }
         
@@ -1062,7 +1195,9 @@
         function updatePlayButtons() { 
             const playText = isPlaying ? '⏸' : '▶'; 
             const miniBtn = document.getElementById('mini-play-btn');
+            const fullBtn = document.getElementById('full-play-btn');
             if (miniBtn) miniBtn.textContent = playText; 
+            if (fullBtn) fullBtn.textContent = playText; 
         }
         
         // ✅ FUNCIONES DE AUTENTICACIÓN CORREGIDAS
@@ -1313,14 +1448,27 @@
                     isPlaying = false;
                     updatePlayButtons();
                 });
+                // ✅ PROGRESO EN TIEMPO REAL PARA FULL PLAYER
+                audio.addEventListener('timeupdate', () => { 
+                    if (!isAndroidApp && audio.duration) { 
+                        const progress = (audio.currentTime / audio.duration) * 100;
+                        const progressFill = document.getElementById('full-progress-fill');
+                        const currentTimeEl = document.getElementById('full-current-time');
+                        const totalTimeEl = document.getElementById('full-total-time');
+                        
+                        if (progressFill) progressFill.style.width = `${progress}%`;
+                        if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
+                        if (totalTimeEl) totalTimeEl.textContent = formatTime(audio.duration);
+                    } 
+                });
             }
             
-            // 3. Configurar click del mini player
+            // 3. ✅ CONFIGURAR CLICK DEL MINI PLAYER PARA ABRIR FULL PLAYER
             const miniPlayer = document.getElementById('mini-player');
             if (miniPlayer) {
                 miniPlayer.addEventListener('click', (e) => { 
                     if (!e.target.closest('.player-controls-inline')) { 
-                        console.log('Abrir reproductor completo'); 
+                        openFullPlayer(); // ← AHORA ABRE CORRECTAMENTE
                     } 
                 });
             }
@@ -1358,6 +1506,7 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeAuth();
+                closeFullPlayer();
             }
         });
         
