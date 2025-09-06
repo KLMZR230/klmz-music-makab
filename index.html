@@ -416,7 +416,13 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xYmxkdnBucWhuZ2R0YWx2em92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjY0NjUsImV4cCI6MjA3MDgwMjQ2NX0.Zzg5D219sW7bhvl0_R5ypX9MF6nRzBSDIeo2Lvebab0';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
         const audio = document.getElementById('audio-player');
-
+        
+        // +++++ SECCIÓN DE FUNCIONES OFFLINE (NO USADAS PERO NECESARIAS PARA EVITAR ERRORES) +++++
+        let downloadDB = null;
+        async function initDownloadDB() { /* Esta función es necesaria para que la app inicie, aunque no se use activamente. */ }
+        async function loadDownloads() { document.getElementById('downloads-content').innerHTML = '<div style="text-align: center; padding: 2rem;">Función de descargas no implementada.</div>'; }
+        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        
         // ✅ INICIALIZACIÓN DE SUPABASE Y DATOS
         async function loadSupabase() {
             showLoadingIndicator(true);
@@ -426,6 +432,7 @@
                 const { data: { session } } = await supabase.auth.getSession();
                 currentUser = session?.user || null;
                 updateAuthUI();
+                await initDownloadDB(); // Llamada a la función vacía para evitar error
                 await loadAllData();
             } catch (error) {
                 console.error('Error de Inicialización:', error);
@@ -491,7 +498,7 @@
         // ++++++ FUNCIONES DE ADMIN ++++++
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            await loadAllData(); // Recargamos para tener datos frescos
+            await loadAllData();
             adminContent.innerHTML = `
                 <div class="admin-stats"><div class="stat-card"><div class="stat-number">${allAlbums.length}</div><div class="stat-label">📀 Álbumes</div></div><div class="stat-card"><div class="stat-number">${allSongs.length}</div><div class="stat-label">🎵 Canciones</div></div></div>
                 <div class="admin-section"><h3>📀 Crear Álbum</h3><form id="album-form"><div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div><div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div><div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div><button type="submit" class="btn-primary">🔥 Crear Álbum</button></form></div>
@@ -634,7 +641,6 @@
                 document.getElementById('full-total-time').textContent = formatTime(audio.duration);
             }});
             document.getElementById('mini-player').addEventListener('click', (e) => { if (!e.target.closest('.player-controls-inline')) openFullPlayer(); });
-            // Carga de Supabase y datos
             loadSupabase();
         });
     </script>
