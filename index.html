@@ -107,7 +107,8 @@
         .content-section.active { display: block; }
         .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; }
         .back-btn:hover { background: #333; }
-        .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
+        #startio-banner-container { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 10000; background: #0a0a0a; min-height: 50px; display: flex; justify-content: center; align-items: center; }
+        .copyright { text-align: center; padding: 2px 0; display: none; } /* Ocultamos el copyright original para dar espacio al banner */
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
         .search-song-item { background: #242424; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
         .search-song-item:hover { background: #333; }
@@ -396,7 +397,9 @@
         </div>
     </div>
     
+    <div id="startio-banner-container"></div>
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
+
     <audio id="audio-player" preload="auto"></audio>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -435,9 +438,12 @@
         const STARTIO_APP_ID = '207798485';
         let startio;
         let rewardedVideoAd;
+        let interstitialAd;
+        let interstitialTriggerCount = 0;
+        const INTERSTITIAL_TRIGGER_LIMIT = 3; // Mostrar anuncio cada 3 navegaciones
         let premiumAccessUntil = localStorage.getItem('klmz_premiumAccessUntil') ? parseInt(localStorage.getItem('klmz_premiumAccessUntil')) : 0;
         let premiumTimerInterval;
-        window.pendingAdAction = null; // Almacena la acción a ejecutar después del anuncio
+        window.pendingAdAction = null; 
 
         async function initAds() {
             try {
@@ -448,6 +454,8 @@
                 startio = new Startio(STARTIO_APP_ID);
                 console.log('✅ Start.io SDK initialized');
                 preloadRewardedAd();
+                preloadInterstitialAd();
+                showBannerAd();
             } catch (err) {
                 console.error('❌ Error initializing Start.io SDK:', err);
             }
@@ -457,17 +465,50 @@
             if (!startio) return;
             rewardedVideoAd = startio.createRewarded();
             rewardedVideoAd.on('adReward', grantPremiumAccess);
-            rewardedVideoAd.on('adLoad', () => console.log('✅ Anuncio recompensado cargado'));
-            rewardedVideoAd.on('adError', (err) => {
-                console.error('❌ Error en anuncio recompensado:', err);
-                // No mostramos alert aquí para no ser intrusivos, solo lo logueamos.
-                // El sistema reintentará cargar bajo demanda.
-            });
+            rewardedVideoAd.on('adLoad', () => console.log('✅ Anuncio RECOMPENSADO cargado'));
+            rewardedVideoAd.on('adError', (err) => console.error('❌ Error en anuncio RECOMPENSADO:', err));
             rewardedVideoAd.on('adClose', () => {
                 showLoadingIndicator(false);
-                 preloadRewardedAd(); // Vuelve a cargar para el próximo uso
+                preloadRewardedAd(); 
             });
             rewardedVideoAd.load();
+        }
+
+        function preloadInterstitialAd() {
+            if (!startio) return;
+            interstitialAd = startio.createInterstitial();
+            interstitialAd.on('adLoad', () => console.log('✅ Anuncio INTERSTICIAL cargado'));
+            interstitialAd.on('adError', (err) => console.error('❌ Error en anuncio INTERSTICIAL:', err));
+            interstitialAd.on('adClose', () => preloadInterstitialAd());
+            interstitialAd.load();
+        }
+
+        async function showBannerAd() {
+            if (!startio) return;
+            try {
+                const bannerContainer = document.getElementById('startio-banner-container');
+                const banner = startio.createBanner(bannerContainer);
+                await banner.load();
+                console.log('✅ Anuncio BANNER cargado');
+                document.body.style.paddingBottom = '134px'; // Ajustar padding para banner + nav
+            } catch (err) {
+                console.error("❌ Error al cargar el BANNER:", err);
+            }
+        }
+        
+        async function showInterstitialAd() {
+            interstitialTriggerCount++;
+            if (interstitialTriggerCount >= INTERSTITIAL_TRIGGER_LIMIT) {
+                 try {
+                     if (interstitialAd) {
+                        await interstitialAd.show();
+                        interstitialTriggerCount = 0; // Reset counter
+                     }
+                 } catch(e) {
+                     console.warn("No se pudo mostrar el intersticial, recargando:", e);
+                     preloadInterstitialAd(); // Precarga el siguiente
+                 }
+            }
         }
 
         function hasPremiumAccess() {
@@ -516,43 +557,31 @@
             window.pendingAdAction = pendingAction;
 
             try {
-                // Intenta mostrar el anuncio que ya podría estar cargado
                 if (rewardedVideoAd) {
                     await rewardedVideoAd.show();
                 } else {
-                    // Si no hay objeto de anuncio, lanza un error para ir al bloque catch
                     throw new Error("El objeto del anuncio no está inicializado.");
                 }
             } catch (error) {
                 console.warn("El anuncio precargado no estaba listo o falló:", error);
                 console.log("Intentando cargar un nuevo anuncio ahora...");
-
-                // Si falla, intenta cargar y mostrar uno nuevo
                 try {
-                    // Crea una nueva instancia para asegurarse de que no esté en un estado de error
                     const newAd = startio.createRewarded();
-                    
-                    // Configura los listeners para esta instancia
                     newAd.on('adReward', grantPremiumAccess);
-
                     newAd.on('adClose', () => {
                         showLoadingIndicator(false);
-                        preloadRewardedAd(); // Precarga el siguiente para el futuro
+                        preloadRewardedAd(); 
                     });
-                     
                     newAd.on('adError', (err) => {
                         console.error('❌ Error cargando anuncio bajo demanda:', err);
                         alert("No hay anuncios disponibles en este momento. Intenta más tarde.");
                         showLoadingIndicator(false);
                         window.pendingAdAction = null;
                     });
-                    
-                    // Listener especial para mostrarlo tan pronto como cargue
                     newAd.on('adLoad', async () => {
                         console.log('✅ Anuncio cargado bajo demanda, mostrando ahora.');
                         try {
                            await newAd.show();
-                           // El spinner se oculta en el evento 'adClose'
                         } catch(e) {
                            console.error('❌ No se pudo mostrar el anuncio recién cargado:', e);
                            alert("No se pudo mostrar el anuncio. Intenta de nuevo.");
@@ -560,10 +589,7 @@
                            window.pendingAdAction = null;
                         }
                     });
-
-                    // Inicia la carga
                     await newAd.load();
-
                 } catch (loadError) {
                     console.error("❌ Falla crítica al cargar el anuncio:", loadError);
                     alert("Ocurrió un error con el servicio de anuncios. Intenta más tarde.");
@@ -1901,9 +1927,6 @@
 
             showLoadingIndicator(true);
             try {
-                // Nota: Esto solo elimina el registro de la base de datos.
-                // El archivo de audio permanecerá en el almacenamiento de Cloudflare R2.
-                // Se necesitaría una función de backend para eliminar el archivo físico.
                 const { error } = await supabase
                     .from('songs')
                     .delete()
@@ -2008,6 +2031,7 @@
         window.showAlbumsGrid = function() { 
             document.getElementById('album-detail').style.display = 'none'; 
             document.getElementById('albums').style.display = 'grid';
+            showInterstitialAd();
         }
         
         window.playSongFromPlaylist = function(index) {
@@ -2484,7 +2508,7 @@
         console.log('• 🎵 Subida múltiple de archivos');
         console.log('• 🔥 Cloudflare R2 funcionando');
         console.log('• 🎨 10 temas visuales disponibles');
-        console.log('• 💰 Anuncios Recompensados de Start.io implementados');
+        console.log('• 💰 Anuncios (Banner, Intersticial, Recompensado) de Start.io implementados');
         console.log('• ⌨️ Atajos de teclado habilitados');
         console.log('• 🎯 Click en nombre de canción para reproducir');
         console.log('• 📦 IndexedDB robusto con fallbacks');
