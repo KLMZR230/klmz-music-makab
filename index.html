@@ -460,9 +460,8 @@
             rewardedVideoAd.on('adLoad', () => console.log('✅ Anuncio recompensado cargado'));
             rewardedVideoAd.on('adError', (err) => {
                 console.error('❌ Error en anuncio recompensado:', err);
-                alert('No se pudo cargar el anuncio. Intenta de nuevo más tarde.');
-                showLoadingIndicator(false);
-                window.pendingAdAction = null;
+                // No mostramos alert aquí para no ser intrusivos, solo lo logueamos.
+                // El sistema reintentará cargar bajo demanda.
             });
             rewardedVideoAd.on('adClose', () => {
                 showLoadingIndicator(false);
@@ -512,6 +511,66 @@
             }
         }
         
+        // ✅ Nueva función robusta para mostrar anuncios
+        async function showRewardedAd(pendingAction) {
+            showLoadingIndicator(true);
+            window.pendingAdAction = pendingAction;
+
+            // Intenta mostrar el anuncio precargado si existe
+            if (rewardedVideoAd) {
+                try {
+                    console.log("Intentando mostrar anuncio precargado...");
+                    await rewardedVideoAd.show();
+                    // Si tiene éxito, los callbacks 'adClose' o 'adReward' se encargarán del resto.
+                    return;
+                } catch (showError) {
+                    console.warn('No se pudo mostrar el anuncio precargado, se intentará cargar uno nuevo.', showError);
+                    // Si falla, continúa para cargar uno nuevo.
+                }
+            }
+            
+            // Si el anuncio no estaba precargado o falló al mostrarse, carga uno nuevo.
+            console.log("Anuncio no está listo. Cargando uno nuevo bajo demanda...");
+            try {
+                if (!startio) {
+                    await initAds(); // Reinicializar si es necesario
+                }
+                
+                const newAd = startio.createRewarded();
+                
+                newAd.on('adReward', grantPremiumAccess);
+                
+                newAd.on('adLoad', () => {
+                    console.log('✅ Anuncio cargado bajo demanda.');
+                    newAd.show().catch(err => {
+                         console.error('❌ Error al mostrar anuncio cargado bajo demanda:', err);
+                         alert("No se pudo mostrar el anuncio. Intenta de nuevo.");
+                         showLoadingIndicator(false);
+                         window.pendingAdAction = null;
+                    });
+                });
+                
+                newAd.on('adError', (err) => {
+                    console.error('❌ Error cargando anuncio bajo demanda:', err);
+                    alert("No hay anuncios disponibles en este momento. Intenta más tarde.");
+                    showLoadingIndicator(false);
+                    window.pendingAdAction = null;
+                });
+
+                newAd.on('adClose', () => {
+                    showLoadingIndicator(false);
+                    preloadRewardedAd(); // Precarga el siguiente anuncio
+                });
+
+                await newAd.load();
+            } catch (err) {
+                console.error('❌ Falla crítica al intentar cargar el anuncio:', err);
+                alert("Ocurrió un error con el servicio de anuncios. Intenta más tarde.");
+                showLoadingIndicator(false);
+                window.pendingAdAction = null;
+            }
+        }
+
         // ✅ DESCARGAS OFFLINE - INDEXEDDB CORREGIDO
         let downloadDB = null;
 
@@ -2201,14 +2260,7 @@
                 _toggleFavoriteLogic(songId, el);
             } else {
                 if (confirm('Mira un anuncio para obtener 1 hora de descargas y favoritos gratis.')) {
-                    showLoadingIndicator(true);
-                    window.pendingAdAction = () => _toggleFavoriteLogic(songId, el);
-                    if(rewardedVideoAd) {
-                        rewardedVideoAd.show();
-                    } else {
-                        alert("No hay anuncios disponibles en este momento. Intenta más tarde.");
-                        showLoadingIndicator(false);
-                    }
+                    showRewardedAd(() => _toggleFavoriteLogic(songId, el));
                 }
             }
         }
@@ -2419,14 +2471,7 @@
                 await downloadSong(song, album);
             } else {
                 if (confirm('Mira un anuncio para obtener 1 hora de descargas y favoritos gratis.')) {
-                    showLoadingIndicator(true);
-                    window.pendingAdAction = () => downloadSong(song, album);
-                     if(rewardedVideoAd) {
-                        rewardedVideoAd.show();
-                     } else {
-                        alert("No hay anuncios disponibles en este momento. Intenta más tarde.");
-                        showLoadingIndicator(false);
-                    }
+                    showRewardedAd(() => downloadSong(song, album));
                 }
             }
         }
@@ -2446,4 +2491,3 @@
     </script>
 </body>
 </html>
-
