@@ -511,63 +511,65 @@
             }
         }
         
-        // ✅ Nueva función robusta para mostrar anuncios
         async function showRewardedAd(pendingAction) {
             showLoadingIndicator(true);
             window.pendingAdAction = pendingAction;
 
-            // Intenta mostrar el anuncio precargado si existe
-            if (rewardedVideoAd) {
-                try {
-                    console.log("Intentando mostrar anuncio precargado...");
-                    await rewardedVideoAd.show();
-                    // Si tiene éxito, los callbacks 'adClose' o 'adReward' se encargarán del resto.
-                    return;
-                } catch (showError) {
-                    console.warn('No se pudo mostrar el anuncio precargado, se intentará cargar uno nuevo.', showError);
-                    // Si falla, continúa para cargar uno nuevo.
-                }
-            }
-            
-            // Si el anuncio no estaba precargado o falló al mostrarse, carga uno nuevo.
-            console.log("Anuncio no está listo. Cargando uno nuevo bajo demanda...");
             try {
-                if (!startio) {
-                    await initAds(); // Reinicializar si es necesario
+                // Intenta mostrar el anuncio que ya podría estar cargado
+                if (rewardedVideoAd) {
+                    await rewardedVideoAd.show();
+                } else {
+                    // Si no hay objeto de anuncio, lanza un error para ir al bloque catch
+                    throw new Error("El objeto del anuncio no está inicializado.");
                 }
-                
-                const newAd = startio.createRewarded();
-                
-                newAd.on('adReward', grantPremiumAccess);
-                
-                newAd.on('adLoad', () => {
-                    console.log('✅ Anuncio cargado bajo demanda.');
-                    newAd.show().catch(err => {
-                         console.error('❌ Error al mostrar anuncio cargado bajo demanda:', err);
-                         alert("No se pudo mostrar el anuncio. Intenta de nuevo.");
-                         showLoadingIndicator(false);
-                         window.pendingAdAction = null;
+            } catch (error) {
+                console.warn("El anuncio precargado no estaba listo o falló:", error);
+                console.log("Intentando cargar un nuevo anuncio ahora...");
+
+                // Si falla, intenta cargar y mostrar uno nuevo
+                try {
+                    // Crea una nueva instancia para asegurarse de que no esté en un estado de error
+                    const newAd = startio.createRewarded();
+                    
+                    // Configura los listeners para esta instancia
+                    newAd.on('adReward', grantPremiumAccess);
+
+                    newAd.on('adClose', () => {
+                        showLoadingIndicator(false);
+                        preloadRewardedAd(); // Precarga el siguiente para el futuro
                     });
-                });
-                
-                newAd.on('adError', (err) => {
-                    console.error('❌ Error cargando anuncio bajo demanda:', err);
-                    alert("No hay anuncios disponibles en este momento. Intenta más tarde.");
+                     
+                    newAd.on('adError', (err) => {
+                        console.error('❌ Error cargando anuncio bajo demanda:', err);
+                        alert("No hay anuncios disponibles en este momento. Intenta más tarde.");
+                        showLoadingIndicator(false);
+                        window.pendingAdAction = null;
+                    });
+                    
+                    // Listener especial para mostrarlo tan pronto como cargue
+                    newAd.on('adLoad', async () => {
+                        console.log('✅ Anuncio cargado bajo demanda, mostrando ahora.');
+                        try {
+                           await newAd.show();
+                           // El spinner se oculta en el evento 'adClose'
+                        } catch(e) {
+                           console.error('❌ No se pudo mostrar el anuncio recién cargado:', e);
+                           alert("No se pudo mostrar el anuncio. Intenta de nuevo.");
+                           showLoadingIndicator(false);
+                           window.pendingAdAction = null;
+                        }
+                    });
+
+                    // Inicia la carga
+                    await newAd.load();
+
+                } catch (loadError) {
+                    console.error("❌ Falla crítica al cargar el anuncio:", loadError);
+                    alert("Ocurrió un error con el servicio de anuncios. Intenta más tarde.");
                     showLoadingIndicator(false);
                     window.pendingAdAction = null;
-                });
-
-                newAd.on('adClose', () => {
-                    showLoadingIndicator(false);
-                    preloadRewardedAd(); // Precarga el siguiente anuncio
-                });
-
-                await newAd.load();
-            } catch (err) {
-                console.error('❌ Falla crítica al intentar cargar el anuncio:', err);
-                alert("Ocurrió un error con el servicio de anuncios. Intenta más tarde.");
-                showLoadingIndicator(false);
-                window.pendingAdAction = null;
+                }
             }
         }
 
@@ -2466,7 +2468,7 @@
         });
 
         // DESCARGAS (con lógica de anuncios)
-        async function handleDownload(song, album) {
+        window.handleDownload = async function(song, album) {
              if (hasPremiumAccess()) {
                 await downloadSong(song, album);
             } else {
@@ -2491,3 +2493,4 @@
     </script>
 </body>
 </html>
+
