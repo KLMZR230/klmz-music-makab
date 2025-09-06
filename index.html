@@ -225,7 +225,6 @@
         body.theme-oceanic .btn-primary { background: #17a2b8 !important; color: #fff !important; }
         body.theme-oceanic .bottom-nav-item.active { color: #17a2b8 !important; }
 
-        /* TEMA HACKER */
         body.theme-matrix-hacker { background: #0d0d0d url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="0" y="15" font-family="monospace" font-size="10" fill="rgba(0, 255, 0, 0.05)">0101010101</text><text x="0" y="35" font-family="monospace" font-size="10" fill="rgba(0, 255, 0, 0.05)">1010101010</text><text x="0" y="55" font-family="monospace" font-size="10" fill="rgba(0, 255, 0, 0.05)">0011001100</text><text x="0" y="75" font-family="monospace" font-size="10" fill="rgba(0, 255, 0, 0.05)">1100110011</text><text x="0" y="95" font-family="monospace" font-size="10" fill="rgba(0, 255, 0, 0.05)">1001100110</text></svg>') !important; color: #00ff41 !important; font-family: 'Source Code Pro', monospace !important; }
         body.theme-matrix-hacker header { background: #0a0a0a !important; border-bottom: 2px solid #00ff41; }
         body.theme-matrix-hacker .logo { color: #00ff41 !important; text-shadow: 0 0 8px #00ff41; }
@@ -250,6 +249,7 @@
         body.theme-floral-dream .lock-icon, body.theme-floral-dream .play-btn-inline { color: #5d4037 !important; }
         body.theme-floral-dream .modal-content, body.theme-floral-dream .admin-section, body.theme-floral-dream .user-dropdown { background: rgba(255, 250, 240, 0.95) !important; backdrop-filter: blur(5px); border: 1px solid #e9d8e5; }
         body.theme-floral-dream #search-input, body.theme-floral-dream .form-group input, body.theme-floral-dream .form-group select { background: #ffffff !important; border-color: #e9d8e5 !important; color: #5d4037 !important; }
+        body.theme-floral-dream .song-list li { border-bottom-color: #e9d8e5 !important; }
 
         @keyframes fire-glow { from { box-shadow: 0 0 10px #ff8c00, 0 0 20px #ff8c00, 0 0 30px #ff4500, 0 0 40px #ff0000; } to { box-shadow: 0 0 15px #ff8c00, 0 0 25px #ff8c00, 0 0 40px #ff4500, 0 0 55px #ff0000; } }
         @keyframes logo-flicker { 0%, 100% { text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000; opacity: 1; } 50% { text-shadow: 0 0 8px #ff4500, 0 0 15px #ff4500, 0 0 25px #ff8c00, 0 0 45px #ff0000; opacity: 0.95; } }
@@ -408,8 +408,8 @@
     <script>
         // ✅ VARIABLES GLOBALES
         let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0, isPlaying = false;
-        let allAlbums = [], allSongs = [], currentUser = null, songsWithAlbumInfo = [];
-        let supabase = null, fileQueue = [], isUploading = false;
+        let allAlbums = [], allSongs = [], currentUser = null;
+        let supabase = null, isUploading = false;
         
         // ✅ CONSTANTES
         const supabaseUrl = 'https://nqbldvpnqhngdtalvzov.supabase.co';
@@ -417,11 +417,10 @@
         const ADMIN_EMAIL = 'klmzr@gmail.com';
         const audio = document.getElementById('audio-player');
 
-        // ✅ INICIALIZACIÓN DE SUPABASE
+        // ✅ INICIALIZACIÓN DE SUPABASE Y DATOS
         async function loadSupabase() {
             showLoadingIndicator(true);
             try {
-                if (!window.supabase) throw new Error('Supabase SDK no cargado');
                 supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
                 supabase.auth.onAuthStateChange((_, session) => { currentUser = session?.user || null; updateAuthUI(); });
                 const { data: { session } } = await supabase.auth.getSession();
@@ -429,29 +428,24 @@
                 updateAuthUI();
                 await loadAllData();
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Error de Inicialización:', error);
                 document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2 style="color: #ff4757;">❌ Error de Conexión</h2><p>${error.message}</p></div>`;
             } finally {
                 showLoadingIndicator(false);
             }
         }
         
-        // ✅ CARGA DE DATOS (SIN REORDENAMIENTO DE ÁLBUMES)
         async function loadAllData() {
             try {
                 const albumsResult = await supabase.from('albums').select('*').order('created_at', { ascending: false });
-                const songsResult = await supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false });
-                
+                const songsResult = await supabase.from('songs').select('*').order('created_at', { ascending: false });
                 if (albumsResult.error) throw albumsResult.error;
-                if (songsResult.error) console.warn('Error songs:', songsResult.error);
-                
+                if (songsResult.error) throw songsResult.error;
                 allAlbums = albumsResult.data || [];
                 allSongs = songsResult.data || [];
-                songsWithAlbumInfo = songsResult.data || [];
-                
                 displayAlbums(allAlbums);
             } catch (error) {
-                console.error('Error loadAllData:', error);
+                console.error('Error Cargando Datos:', error);
                 document.getElementById('albums').innerHTML = `<div style="text-align: center; padding: 3rem;"><h2 style="color: #ff4757;">❌ Error cargando datos</h2><p>${error.message}</p></div>`;
             }
         }
@@ -459,19 +453,13 @@
         // ✅ FUNCIONES DE LA INTERFAZ (UI)
         function displayAlbums(albums) { 
             const container = document.getElementById('albums'); 
-            if (!albums || albums.length === 0) { 
-                container.innerHTML = `<div style="text-align: center; padding: 3rem;"><h2>📀 No hay álbumes</h2><p style="color: #b3b3b3;">Usa el panel de admin para crear uno.</p></div>`; 
-                return; 
-            } 
-            container.innerHTML = albums.map(album => 
-                `<div class="album-card" data-album-id="${album.id}"><img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`
-            ).join('');
-            document.querySelectorAll('.album-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const album = allAlbums.find(a => a.id == card.dataset.albumId);
-                    if (album) showAlbumDetail(album);
-                });
-            });
+            container.innerHTML = (!albums || albums.length === 0) ? 
+                `<div style="text-align: center; padding: 3rem;"><h2>📀 No hay álbumes</h2><p style="color: #b3b3b3;">Usa el panel de admin para crear uno.</p></div>` :
+                albums.map(album => `<div class="album-card" data-album-id="${album.id}"><img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`).join('');
+            document.querySelectorAll('.album-card').forEach(card => card.addEventListener('click', () => {
+                const album = allAlbums.find(a => a.id == card.dataset.albumId);
+                if (album) showAlbumDetail(album);
+            }));
         }
         
         async function showAlbumDetail(album) {
@@ -480,14 +468,12 @@
             const detailView = document.getElementById('album-detail'); 
             detailView.style.display = 'block'; 
             detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align: center; margin-bottom: 2rem;"><img src="${album.cover_url}" style="width: 200px; height: 200px; border-radius: 12px;" alt="${album.title}"><div style="font-size: 1.5rem; font-weight: bold; margin: 1rem 0;">${album.title}</div><div style="font-size: 1.1rem; color: #b3b3b3;">${album.artist}</div></div><div id="detail-song-list">🔄 Cargando...</div>`; 
-            
             try { 
                 const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at', { ascending: true }); 
                 if (error) throw error;
-                if (!songs || songs.length === 0) { document.getElementById('detail-song-list').innerHTML = '<p style="text-align:center; color:#888;">No hay canciones en este álbum.</p>'; return; } 
-                currentPlaylist = songs; 
+                currentPlaylist = songs;
                 const favorites = JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
-                document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.map((song, idx) => `
+                document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.length === 0 ? '<p style="text-align:center; color:#888;">No hay canciones.</p>' : songs.map((song, idx) => `
                     <li data-song-index="${idx}">
                         <div style="flex: 1;">${song.title}</div>
                         <div class="song-actions">
@@ -497,7 +483,7 @@
                     </li>`).join('')}</ul></div>`;
                 document.querySelectorAll('.song-list li').forEach(li => {
                     li.addEventListener('click', e => { if (!e.target.closest('.song-actions')) playSongFromPlaylist(li.dataset.songIndex); });
-                    li.querySelector('.play-icon').addEventListener('click', e => { e.stopPropagation(); playSongFromPlaylist(li.dataset.songIndex); });
+                    li.querySelector('.play-icon')?.addEventListener('click', e => { e.stopPropagation(); playSongFromPlaylist(li.dataset.songIndex); });
                 });
             } catch (error) { document.getElementById('detail-song-list').innerHTML = `<p>Error: ${error.message}</p>`; } 
         }
@@ -505,12 +491,11 @@
         // ++++++ FUNCIONES DE ADMIN ++++++
         async function renderAdminPanel() { 
             const adminContent = document.getElementById('admin-content'); 
-            await loadAllData();
+            await loadAllData(); // Recargamos para tener datos frescos
             adminContent.innerHTML = `
                 <div class="admin-stats"><div class="stat-card"><div class="stat-number">${allAlbums.length}</div><div class="stat-label">📀 Álbumes</div></div><div class="stat-card"><div class="stat-number">${allSongs.length}</div><div class="stat-label">🎵 Canciones</div></div></div>
                 <div class="admin-section"><h3>📀 Crear Álbum</h3><form id="album-form"><div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div><div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div><div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div><button type="submit" class="btn-primary">🔥 Crear Álbum</button></form></div>
-                <div class="admin-section"><h3>🎵 Subida Múltiple</h3><div class="multi-upload-section"><div class="form-group"><label>Álbum de destino:</label><select id="batch-album-select" required><option value="">Seleccionar álbum</option>${allAlbums.map(a => `<option value="${a.id}">${a.title} - ${a.artist}</option>`).join('')}</select></div><div class="form-group"><label>Archivos de audio:</label><input type="file" id="batch-audio-files" accept="audio/*" multiple></div><button type="button" id="start-batch-upload-btn" class="btn-primary">📤 Subir Archivos</button></div>
-                <div class="batch-upload-progress" id="batch-upload-progress" style="display: none; margin-top:1rem;"><div id="batch-progress-label" style="margin-bottom: 0.5rem; color: #b3b3b3;"></div><div class="batch-progress-bar"><div id="batch-progress-fill" class="batch-progress-fill"></div></div></div></div>
+                <div class="admin-section"><h3>🎵 Subida Múltiple</h3><div class="multi-upload-section"><div class="form-group"><label>Álbum de destino:</label><select id="batch-album-select" required><option value="">Seleccionar álbum</option>${allAlbums.map(a => `<option value="${a.id}">${a.title} - ${a.artist}</option>`).join('')}</select></div><div class="form-group"><label>Archivos de audio:</label><input type="file" id="batch-audio-files" accept="audio/*" multiple></div><button type="button" id="start-batch-upload-btn" class="btn-primary">📤 Subir Archivos</button></div><div class="batch-upload-progress" id="batch-upload-progress" style="display: none; margin-top:1rem;"><div id="batch-progress-label" style="margin-bottom: 0.5rem; color: #b3b3b3;"></div><div class="batch-progress-bar"><div id="batch-progress-fill" class="batch-progress-fill"></div></div></div></div>
                 <div class="admin-section"><h3>📋 Gestionar Contenido</h3><div id="admin-album-list">${allAlbums.map(album => {
                     const songsInAlbum = allSongs.filter(song => song.album_id === album.id);
                     return `<div class="admin-album-container"><div class="admin-album-header"><h4>${album.title} <small>(${album.artist})</small></h4><button class="btn-danger" onclick="deleteAlbum('${album.id}', '${album.title.replace(/'/g, "\\'")}')">Eliminar Álbum</button></div><div class="admin-song-list">${songsInAlbum.length > 0 ? songsInAlbum.map(song => `<div class="admin-song-item"><span>${song.title}</span><div class="admin-song-actions"><button class="btn-edit" title="Editar" onclick="editSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">✏️</button><button class="btn-delete" title="Eliminar" onclick="deleteSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">🗑️</button></div></div>`).join('') : '<p style="text-align:center; color:#888; padding:1rem 0;">No hay canciones.</p>'}</div></div>`
@@ -531,8 +516,7 @@
                 } catch (err) { alert('❌ Error: ' + err.message); } finally { showLoadingIndicator(false); }
             }); 
             document.getElementById('start-batch-upload-btn').addEventListener('click', () => {
-                const albumSelect = document.getElementById('batch-album-select');
-                const filesInput = document.getElementById('batch-audio-files');
+                const albumSelect = document.getElementById('batch-album-select'), filesInput = document.getElementById('batch-audio-files');
                 if (!albumSelect.value) return alert('❌ Selecciona un álbum');
                 if (!filesInput.files.length) return alert('❌ Selecciona archivos');
                 processBatchUpload(albumSelect.value, filesInput.files);
@@ -542,9 +526,7 @@
         async function processBatchUpload(albumId, files) {
             if (isUploading) return;
             isUploading = true;
-            const progressContainer = document.getElementById('batch-upload-progress');
-            const progressBar = document.getElementById('batch-progress-fill');
-            const progressLabel = document.getElementById('batch-progress-label');
+            const progressContainer = document.getElementById('batch-upload-progress'), progressBar = document.getElementById('batch-progress-fill'), progressLabel = document.getElementById('batch-progress-label');
             progressContainer.style.display = 'block';
             let successCount = 0, errorCount = 0;
 
@@ -581,7 +563,6 @@
             } catch (error) { console.error("💥 Error subiendo a R2:", error); throw error; }
         }
         
-        // FUNCIONES DE EDICIÓN
         function editSong(songId, currentTitle) {
             const modal = document.getElementById('edit-song-modal'), input = document.getElementById('edit-song-title'), form = document.getElementById('edit-song-form');
             input.value = currentTitle; modal.style.display = 'flex'; input.focus();
@@ -617,7 +598,7 @@
             } catch (error) { alert(`❌ Error: ${error.message}`); } finally { showLoadingIndicator(false); }
         }
 
-        // FUNCIONES DEL REPRODUCTOR Y UTILIDADES
+        // FUNCIONES DEL REPRODUCTOR, AUTENTICACIÓN Y OTRAS UTILIDADES
         const showLoadingIndicator = show => document.getElementById('loading-indicator').style.display = show ? 'block' : 'none';
         window.playSong = (song, album, playlist, index) => { currentSong = song; currentAlbum = album; currentPlaylist = playlist; currentIndex = index; updateAllPlayers(); if (audio && song.song_url) audio.src = song.song_url, audio.play().catch(console.error); };
         window.togglePlay = () => { if (currentSong) isPlaying ? audio.pause() : audio.play().catch(console.error); };
@@ -626,10 +607,8 @@
         const updateFullPlayer = () => { document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; document.getElementById('full-player-title').textContent = currentSong?.title || ''; document.getElementById('full-player-artist').textContent = currentAlbum?.artist || ''; };
         const updatePlayButtons = () => { const playText = isPlaying ? '⏸' : '▶'; document.getElementById('mini-play-btn').textContent = playText; document.getElementById('full-play-btn').textContent = playText; };
         const formatTime = seconds => { const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60).toString().padStart(2, '0'); return `${min}:${sec}`; };
-        window.nextSong = () => { if (currentPlaylist?.length) currentIndex = (currentIndex + 1) % currentPlaylist.length, playSongFromPlaylist(currentIndex); };
-        window.previousSong = () => { if (currentPlaylist?.length) currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length, playSongFromPlaylist(currentIndex); };
-        
-        // AUTENTICACIÓN
+        const nextSong = () => { if (currentPlaylist?.length) currentIndex = (currentIndex + 1) % currentPlaylist.length, playSongFromPlaylist(currentIndex); };
+        const previousSong = () => { if (currentPlaylist?.length) currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length, playSongFromPlaylist(currentIndex); };
         function updateAuthUI() { const userUI = { info: document.getElementById('user-info-section'), email: document.getElementById('user-email-display'), admin: document.getElementById('admin-menu-item'), login: document.getElementById('login-menu-item'), register: document.getElementById('register-menu-item'), logout: document.getElementById('logout-menu-item'), }; const loggedIn = !!currentUser; userUI.info.style.display = loggedIn ? 'block' : 'none'; userUI.login.style.display = loggedIn ? 'none' : 'flex'; userUI.register.style.display = loggedIn ? 'none' : 'flex'; userUI.logout.style.display = loggedIn ? 'flex' : 'none'; userUI.admin.style.display = (loggedIn && currentUser.email === ADMIN_EMAIL) ? 'flex' : 'none'; if(loggedIn) userUI.email.textContent = currentUser.email; }
         window.handleLogin = async (e) => { e.preventDefault(); const email = document.getElementById('login-email').value, password = document.getElementById('login-password').value; const { error } = await supabase.auth.signInWithPassword({ email, password }); if(error) alert(error.message); else { alert('Bienvenido!'); closeAuth(); }};
         window.handleRegister = async (e) => { e.preventDefault(); const email = document.getElementById('register-email').value, password = document.getElementById('register-password').value; if(password !== document.getElementById('register-confirm').value) return alert('Las contraseñas no coinciden'); const { error } = await supabase.auth.signUp({ email, password }); if(error) alert(error.message); else { alert('Registro exitoso!'); closeAuth(); }};
@@ -641,8 +620,9 @@
         function confirmLogout() { if(confirm('¿Cerrar sesión?')) logout(); }
         window.openFullPlayer = () => document.getElementById('full-player').classList.add('active');
         window.closeFullPlayer = () => document.getElementById('full-player').classList.remove('active');
+        const toggleFavorite = (songId, el) => { let favs = JSON.parse(localStorage.getItem('klmz_favorites') || '[]'); const isFav = favs.includes(songId); if (isFav) favs = favs.filter(id => id !== songId); else favs.push(songId); localStorage.setItem('klmz_favorites', JSON.stringify(favs)); if(el) { el.innerHTML = isFav ? '🤍' : '❤️'; el.style.color = isFav ? '#666' : '#1DB954'; } }
 
-        // INICIALIZACIÓN
+        // INICIALIZACIÓN DE LA APLICACIÓN
         document.addEventListener('DOMContentLoaded', () => {
             loadSavedTheme();
             audio.addEventListener('play', () => { isPlaying = true; updatePlayButtons(); });
@@ -654,6 +634,7 @@
                 document.getElementById('full-total-time').textContent = formatTime(audio.duration);
             }});
             document.getElementById('mini-player').addEventListener('click', (e) => { if (!e.target.closest('.player-controls-inline')) openFullPlayer(); });
+            // Carga de Supabase y datos
             loadSupabase();
         });
     </script>
