@@ -122,6 +122,17 @@
         #album-detail { padding-bottom: 120px; }
         .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
         .admin-section h3 { margin-top: 0; border-bottom: 2px solid #1DB954; padding-bottom: 0.8rem; margin-bottom: 1.5rem; color: #1DB954; display: flex; align-items: center; gap: 0.5rem; }
+        .admin-album-item { background: #2c2c2c; border-radius: 8px; margin-bottom: 1.5rem; border-left: 3px solid #1DB954; overflow: hidden; }
+        .admin-album-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #333; }
+        .admin-item-info { flex: 1; }
+        .admin-item-info strong { color: #1DB954; font-size: 1.1rem; }
+        .admin-item-info small { color: #b3b3b3; display: block; margin-top: 0.3rem; }
+        .admin-item-actions button { margin-left: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer; border: 1px solid #555; background: #444; color: #fff; border-radius: 4px; }
+        .admin-song-list { padding: 0.5rem 1rem 1rem; }
+        .admin-song-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid #404040; }
+        .admin-song-item:last-child { border-bottom: none; }
+        .admin-song-item button { margin-left: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem; cursor: pointer; border: 1px solid #555; background: #444; color: #fff; border-radius: 4px; }
+        .no-songs { color: #888; padding: 1rem; text-align: center; font-style: italic; }
         .offline-indicator { background: #ff4757; color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem; }
         body.offline-mode .section-title { color: #90ee90 !important; }
         body.offline-mode .download-item { background: #1a4d1a !important; border-left-color: #90ee90 !important; }
@@ -286,7 +297,7 @@
 
         // ✅ VARIABLES GLOBALES Y CONSTANTES
         const API_URL = 'https://klmzr-backend.klmzr.workers.dev';
-        const ADMIN_EMAIL = 'klmzr@gmail.com'; // El email de tu cuenta de admin
+        const ADMIN_EMAIL = 'klmzr@gmail.com';
         let currentSong = null;
         let currentAlbum = null;
         let currentPlaylist = [];
@@ -458,19 +469,200 @@
 
         function confirmLogout() { if (confirm('¿Cerrar sesión?')) logout(); }
         
-        function goToAdmin() {
+        // ✅ PANEL DE ADMINISTRACIÓN
+        async function goToAdmin() {
             showSection('admin');
-            renderAdminPanel();
+            await renderAdminPanel();
         }
         
-        function renderAdminPanel() {
+        async function renderAdminPanel() {
+            await loadAllData(); // Asegurarnos de tener los datos más recientes
             document.getElementById('admin-content').innerHTML = `
-                <div style="text-align: center; padding: 3rem;">
-                    <h2>Panel de Administración</h2>
-                    <p style="color: #b3b3b3;">Aquí construiremos los formularios para subir y administrar tu música.</p>
-                </div>`;
+                <div class="admin-section">
+                    <h3>📀 Crear Nuevo Álbum</h3>
+                    <form onsubmit="handleAlbumUpload(event)">
+                        <div class="form-group">
+                            <label for="admin-album-title">Título del Álbum:</label>
+                            <input type="text" id="admin-album-title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-album-artist">Artista:</label>
+                            <input type="text" id="admin-album-artist" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-album-cover">Carátula:</label>
+                            <input type="file" id="admin-album-cover" accept="image/*" required>
+                        </div>
+                        <button type="submit" class="btn-primary">🔥 Crear Álbum</button>
+                    </form>
+                </div>
+
+                <div class="admin-section">
+                    <h3>🎵 Subir Canciones a un Álbum</h3>
+                    <form onsubmit="handleSongsUpload(event)">
+                        <div class="form-group">
+                            <label for="admin-song-album-select">Seleccionar Álbum:</label>
+                            <select id="admin-song-album-select" required>
+                                <option value="">-- Elige un álbum --</option>
+                                ${allAlbums.map(album => `<option value="${album.id}">${album.title}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-song-files">Archivos de Audio (puedes seleccionar varios):</label>
+                            <input type="file" id="admin-song-files" accept="audio/*" multiple required>
+                        </div>
+                        <button type="submit" class="btn-primary">🎶 Subir Canciones</button>
+                    </form>
+                </div>
+
+                <div class="admin-section">
+                    <h3>📋 Gestionar Contenido</h3>
+                    ${allAlbums.map(album => `
+                        <div class="admin-album-item">
+                            <div class="admin-album-header">
+                                <div class="admin-item-info">
+                                    <strong>${album.title}</strong>
+                                    <small>${album.artist}</small>
+                                </div>
+                                <div class="admin-item-actions">
+                                    <button onclick="handleEditAlbum('${album.id}')">Editar</button>
+                                </div>
+                            </div>
+                            <div class="admin-song-list">
+                                ${allSongs.filter(s => s.album_id === album.id).map(song => `
+                                    <div class="admin-song-item">
+                                        <span>${song.title}</span>
+                                        <button onclick="handleEditSong('${song.id}')">Editar</button>
+                                    </div>
+                                `).join('') || '<div class="no-songs">No hay canciones.</div>'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
-        
+
+        async function handleAlbumUpload(event) {
+            event.preventDefault();
+            showLoadingIndicator(true);
+            const title = document.getElementById('admin-album-title').value;
+            const artist = document.getElementById('admin-album-artist').value;
+            const coverFile = document.getElementById('admin-album-cover').files[0];
+            const authToken = localStorage.getItem('authToken');
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('artist', artist);
+            formData.append('coverFile', coverFile);
+            try {
+                const response = await fetch(`${API_URL}/api/albums`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData,
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('¡Álbum creado exitosamente!');
+                    event.target.reset();
+                    showSection('home');
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('No se pudo conectar con el servidor.');
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
+
+        async function handleSongsUpload(event) {
+            event.preventDefault();
+            showLoadingIndicator(true);
+            const albumId = document.getElementById('admin-song-album-select').value;
+            const songFiles = document.getElementById('admin-song-files').files;
+            const authToken = localStorage.getItem('authToken');
+            const formData = new FormData();
+            formData.append('album_id', albumId);
+            for (const file of songFiles) {
+                formData.append('songFiles', file);
+            }
+            try {
+                const response = await fetch(`${API_URL}/api/songs`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData,
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(`¡${result.songs.length} canciones subidas exitosamente!`);
+                    event.target.reset();
+                    showSection('home');
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('No se pudo conectar con el servidor.');
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
+
+        async function handleEditAlbum(albumId) {
+            const album = allAlbums.find(a => a.id === albumId);
+            const newTitle = prompt('Nuevo título del álbum:', album.title);
+            const newArtist = prompt('Nuevo artista:', album.artist);
+            if (!newTitle || !newArtist) return;
+            showLoadingIndicator(true);
+            try {
+                const response = await fetch(`${API_URL}/api/albums/${albumId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ title: newTitle, artist: newArtist }),
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Álbum actualizado.');
+                    renderAdminPanel();
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('No se pudo conectar con el servidor.');
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
+
+        async function handleEditSong(songId) {
+            const song = allSongs.find(s => s.id === songId);
+            const newTitle = prompt('Nuevo título de la canción:', song.title);
+            if (!newTitle) return;
+            showLoadingIndicator(true);
+            try {
+                const response = await fetch(`${API_URL}/api/songs/${songId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ title: newTitle }),
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Canción actualizada.');
+                    renderAdminPanel();
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('No se pudo conectar con el servidor.');
+            } finally {
+                showLoadingIndicator(false);
+            }
+        }
+
         // ✅ LÓGICA DE LA INTERFAZ (UI)
         function displayAlbums(albums) { 
             const container = document.getElementById('albums');
@@ -491,7 +683,6 @@
             currentAlbum = album; 
             document.getElementById('albums').style.display = 'none';
             document.getElementById('album-detail').style.display = 'block'; 
-            
             document.getElementById('album-detail').innerHTML = `
                 <button class="back-btn" onclick="showAlbumsGrid()">← Volver</button>
                 <div style="text-align: center; margin-bottom: 2rem;">
@@ -500,20 +691,17 @@
                     <div style="font-size: 1.1rem; color: #b3b3b3;">${album.artist}</div>
                 </div>
                 <div id="detail-song-list">Cargando canciones...</div>`; 
-            
             const songsOfAlbum = allSongs.filter(song => song.album_id === album.id);
             if (songsOfAlbum.length === 0) { 
                 document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones en este álbum.</p>'; 
                 return; 
             } 
-            
             currentPlaylist = songsOfAlbum;
             const favorites = getLocalFavorites(); 
             const downloadStates = {};
             for (const song of songsOfAlbum) {
                 downloadStates[song.id] = await isSongDownloaded(song.id);
             }
-            
             document.getElementById('detail-song-list').innerHTML = `
                 <div class="song-list">
                     <ul>
@@ -541,17 +729,15 @@
             document.querySelectorAll('.content-section.active').forEach(s => s.classList.remove('active'));
             const section = document.getElementById(`${sectionId}-section`);
             if(section) section.classList.add('active');
-            
             document.querySelectorAll('.bottom-nav-item.active').forEach(a => a.classList.remove('active'));
             const navItem = document.getElementById(`nav-${sectionId}`);
             if(navItem) navItem.classList.add('active');
-
             if (sectionId === 'downloads') loadDownloads();
             if (sectionId === 'favorites') loadFavorites();
         }
 
         function showAlbumsGrid() {
-            document.getElementById('album-detail').innerHTML = ''; // Limpiar detalle
+            document.getElementById('album-detail').innerHTML = '';
             document.getElementById('album-detail').style.display = 'none';
             document.getElementById('albums').style.display = 'grid';
         }
@@ -613,7 +799,7 @@
         function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
         function updateMiniPlayer() { const miniPlayer=document.getElementById("mini-player");if(miniPlayer&&currentSong){miniPlayer.style.display="flex";document.getElementById("mini-player-img").src=currentAlbum?.cover_url||"";document.getElementById("mini-player-title").textContent=currentSong?.title||"";document.getElementById("mini-player-artist").textContent=currentAlbum?.artist||""} }
         function updateFullPlayer() { if (!currentSong) return; document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; document.getElementById('full-player-title').textContent = currentSong?.title || ''; document.getElementById('full-player-artist').textContent = currentAlbum?.artist || ''; }
-        function updatePlayButtons() { const playText = isPlaying ? '⏸️' : '▶️'; if(document.getElementById('mini-play-btn')) document.getElementById('mini-play-btn').textContent = playText; if(document.getElementById('full-play-btn')) document.getElementById('full-play-btn').textContent = playText; }
+        function updatePlayButtons() { const playText = isPlaying ? '⏸' : '▶'; if(document.getElementById('mini-play-btn')) document.getElementById('mini-play-btn').textContent = playText; if(document.getElementById('full-play-btn')) document.getElementById('full-play-btn').textContent = playText; }
         function formatTime(seconds) { const min=Math.floor(seconds/60); const sec=Math.floor(seconds%60).toString().padStart(2,"0"); return`${min}:${sec}`; }
         function toggleRepeatMode() { /* Lógica futura */ }
         function toggleShuffleMode() { /* Lógica futura */ }
