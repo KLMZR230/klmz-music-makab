@@ -325,7 +325,18 @@
                 showLoadingIndicator(false);
             }
         }
+        
+        // ✅ VERIFICADOR DE ESTADO ONLINE/OFFLINE
+        function updateOnlineStatus() {
+            const indicator = document.getElementById('offline-indicator');
+            const isOnline = navigator.onLine;
+            if (indicator) {
+                indicator.style.display = isOnline ? 'none' : 'inline-block';
+            }
+            document.body.classList.toggle('offline-mode', !isOnline);
+        }
 
+        // ✅ CARGA DE DATOS (CON FETCH)
         async function loadAllData() {
             const albumsResponse = await fetch(`${API_URL}/api/albums`);
             if (!albumsResponse.ok) throw new Error('No se pudieron cargar los álbumes.');
@@ -522,13 +533,6 @@
                 </div>`;
         }
 
-        // ✅ LÓGICA DEL REPRODUCTOR Y OTRAS FUNCIONES
-        
-        function showLoadingIndicator(show) { 
-            const indicator = document.getElementById('loading-indicator'); 
-            if (indicator) indicator.style.display = show ? 'block' : 'none'; 
-        }
-
         function showSection(sectionId) {
             document.querySelectorAll('.content-section.active').forEach(s => s.classList.remove('active'));
             const section = document.getElementById(`${sectionId}-section`);
@@ -560,6 +564,7 @@
         function changeTheme(theme){ document.body.className = ''; if (theme && theme !== 'default') { document.body.classList.add('theme-' + theme); } localStorage.setItem('klmz_theme', theme || 'default'); }
         function loadSavedTheme(){ const savedTheme = localStorage.getItem('klmz_theme') || 'default'; const themeSelect = document.getElementById('theme-select'); if (themeSelect) { themeSelect.value = savedTheme; changeTheme(savedTheme); } }
         
+        // ✅ LÓGICA DEL REPRODUCTOR
         function openFullPlayer() { if (currentSong) document.getElementById('full-player').classList.add('active'); }
         window.closeFullPlayer = function() { document.getElementById('full-player').classList.remove('active'); }
         
@@ -612,23 +617,6 @@
         function setVolume(value) { audio.volume = value / 100; }
 
         // ✅ BÚSQUEDA, FAVORITOS, DESCARGAS
-        const getLocalFavorites=()=>JSON.parse(localStorage.getItem("klmz_favorites")||"[]");
-        const saveLocalFavorites=favs=>localStorage.setItem("klmz_favorites",JSON.stringify(favs));
-        function toggleFavorite(event,songId,el){event.stopPropagation();let favorites=getLocalFavorites();const isFavorite=favorites.includes(songId);if(isFavorite){favorites=favorites.filter(id=>id!==songId)}else{favorites.push(songId)}saveLocalFavorites(favorites);if(el){el.style.color=isFavorite?"#666":"#1DB954";el.innerHTML=isFavorite?"🤍":"❤️"}}
-        function searchMusic() { 
-            const query = document.getElementById('search-input').value.toLowerCase().trim(); 
-            const results = document.getElementById('search-results'); 
-            if (!query) { results.innerHTML = ''; return; }
-            const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.artist?.toLowerCase().includes(query));
-            results.innerHTML = foundSongs.length ? '<h3>🎵 Resultados</h3>' + foundSongs.map(song => `<div class="search-song-item" data-song-id="${song.id}"><div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.artist || 'Desconocido'}</div></div><div>▶</div></div>`).join('') : '<h3>❌ Sin resultados</h3>'; 
-        }
-        function loadFavorites() { 
-            const content = document.getElementById('favorites-content'); 
-            const favorites = getLocalFavorites(); 
-            if (favorites.length === 0) { content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>💔 No tienes favoritos</h2></div>'; return; } 
-            const favoriteSongs = allSongs.filter(song => favorites.includes(song.id));
-            content.innerHTML = `<div class="favorites-list">${favoriteSongs.map(song => `<div class="favorite-item" onclick="playSongFromPlaylist(${allSongs.indexOf(song)})"><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.artist || 'Desconocido'}</div></div></div>`).join('')}</div>`;
-        }
         let audioUrlCache = new Map();
         function blobToBase64(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); }); }
         async function initDownloadDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('KLMZDownloads', 2); request.onerror = (e) => reject('Error abriendo IndexedDB: ' + e.target.errorCode); request.onsuccess = () => { downloadDB = request.result; resolve(downloadDB); }; request.onupgradeneeded = (event) => { const db = event.target.result; if (!db.objectStoreNames.contains('songs')) { db.createObjectStore('songs', { keyPath: 'id' }); } }; }); }
@@ -663,6 +651,23 @@
                 showLoadingIndicator(false);
             }
         }
+        function searchMusic() { 
+            const query = document.getElementById('search-input').value.toLowerCase().trim(); 
+            const results = document.getElementById('search-results'); 
+            if (!query) { results.innerHTML = ''; return; }
+            const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.artist?.toLowerCase().includes(query));
+            results.innerHTML = foundSongs.length ? '<h3>🎵 Resultados</h3>' + foundSongs.map(song => `<div class="search-song-item" data-song-id="${song.id}"><div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.artist || 'Desconocido'}</div></div><div>▶</div></div>`).join('') : '<h3>❌ Sin resultados</h3>'; 
+        }
+        const getLocalFavorites=()=>JSON.parse(localStorage.getItem("klmz_favorites")||"[]");
+        const saveLocalFavorites=favs=>localStorage.setItem("klmz_favorites",JSON.stringify(favs));
+        function toggleFavorite(event,songId,el){event.stopPropagation();let favorites=getLocalFavorites();const isFavorite=favorites.includes(songId);if(isFavorite){favorites=favorites.filter(id=>id!==songId)}else{favorites.push(songId)}saveLocalFavorites(favorites);if(el){el.style.color=isFavorite?"#666":"#1DB954";el.innerHTML=isFavorite?"🤍":"❤️"}}
+        function loadFavorites() { 
+            const content = document.getElementById('favorites-content'); 
+            const favorites = getLocalFavorites(); 
+            if (favorites.length === 0) { content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>💔 No tienes favoritos</h2></div>'; return; } 
+            const favoriteSongs = allSongs.filter(song => favorites.includes(song.id));
+            content.innerHTML = `<div class="favorites-list">${favoriteSongs.map(song => `<div class="favorite-item" onclick="playSongFromPlaylist(${allSongs.indexOf(song)})"><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.artist || 'Desconocido'}</div></div></div>`).join('')}</div>`;
+        }
         
         // ✅ EVENT LISTENERS
         document.addEventListener('DOMContentLoaded', initializeApp);
@@ -694,7 +699,6 @@
                 const songToPlay = allSongs.find(s => s.id == songId);
                 if (songToPlay) {
                     const songIndex = allSongs.indexOf(songToPlay);
-                    // Esto puede no funcionar si allSongs no es la playlist actual. Mejor buscar en currentPlaylist
                     playSongFromPlaylist(songIndex);
                 }
                 return;
