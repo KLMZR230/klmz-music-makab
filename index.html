@@ -370,7 +370,7 @@
             displayAlbums(allAlbums);
         }
 
-        // ✅ AUTENTICACIÓN
+        // ✅ AUTENTICACIÓN Y PANEL DE ADMIN
         function checkLoginStatus() {
             const token = localStorage.getItem('authToken');
             const userEmail = localStorage.getItem('userEmail');
@@ -407,9 +407,7 @@
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
             const confirmPassword = document.getElementById('register-confirm').value;
-            if (password !== confirmPassword) {
-                return alert('Las contraseñas no coinciden.');
-            }
+            if (password !== confirmPassword) return alert('Las contraseñas no coinciden.');
             showLoadingIndicator(true);
             try {
                 const response = await fetch(`${API_URL}/api/register`, {
@@ -421,14 +419,9 @@
                 if (result.success) {
                     alert('¡Registro exitoso! Ahora puedes iniciar sesión.');
                     showAuth('login');
-                } else {
-                    alert(`Error: ${result.error}`);
-                }
-            } catch (error) {
-                alert('No se pudo conectar con el servidor.');
-            } finally {
-                showLoadingIndicator(false);
-            }
+                } else { alert(`Error: ${result.error}`); }
+            } catch (error) { alert('No se pudo conectar con el servidor.'); }
+            finally { showLoadingIndicator(false); }
         }
         
         async function handleLogin(event) {
@@ -449,14 +442,9 @@
                     checkLoginStatus();
                     closeAuth();
                     alert('¡Bienvenido!');
-                } else {
-                    alert(`Error: ${result.error}`);
-                }
-            } catch (error) {
-                alert('No se pudo conectar con el servidor.');
-            } finally {
-                showLoadingIndicator(false);
-            }
+                } else { alert(`Error: ${result.error}`); }
+            } catch (error) { alert('No se pudo conectar con el servidor.'); }
+            finally { showLoadingIndicator(false); }
         }
         
         function logout() {
@@ -469,63 +457,40 @@
 
         function confirmLogout() { if (confirm('¿Cerrar sesión?')) logout(); }
         
-        // ✅ PANEL DE ADMINISTRACIÓN
         async function goToAdmin() {
             showSection('admin');
             await renderAdminPanel();
         }
         
         async function renderAdminPanel() {
-            await loadAllData(); // Asegurarnos de tener los datos más recientes
+            await loadAllData();
             document.getElementById('admin-content').innerHTML = `
                 <div class="admin-section">
                     <h3>📀 Crear Nuevo Álbum</h3>
                     <form onsubmit="handleAlbumUpload(event)">
-                        <div class="form-group">
-                            <label for="admin-album-title">Título del Álbum:</label>
-                            <input type="text" id="admin-album-title" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="admin-album-artist">Artista:</label>
-                            <input type="text" id="admin-album-artist" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="admin-album-cover">Carátula:</label>
-                            <input type="file" id="admin-album-cover" accept="image/*" required>
-                        </div>
+                        <div class="form-group"><label for="admin-album-title">Título del Álbum:</label><input type="text" id="admin-album-title" required></div>
+                        <div class="form-group"><label for="admin-album-artist">Artista:</label><input type="text" id="admin-album-artist" required></div>
+                        <div class="form-group"><label for="admin-album-cover">Carátula:</label><input type="file" id="admin-album-cover" accept="image/*" required></div>
                         <button type="submit" class="btn-primary">🔥 Crear Álbum</button>
                     </form>
                 </div>
-
                 <div class="admin-section">
                     <h3>🎵 Subir Canciones a un Álbum</h3>
                     <form onsubmit="handleSongsUpload(event)">
-                        <div class="form-group">
-                            <label for="admin-song-album-select">Seleccionar Álbum:</label>
-                            <select id="admin-song-album-select" required>
-                                <option value="">-- Elige un álbum --</option>
-                                ${allAlbums.map(album => `<option value="${album.id}">${album.title}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="admin-song-files">Archivos de Audio (puedes seleccionar varios):</label>
-                            <input type="file" id="admin-song-files" accept="audio/*" multiple required>
-                        </div>
+                        <div class="form-group"><label for="admin-song-album-select">Seleccionar Álbum:</label><select id="admin-song-album-select" required><option value="">-- Elige un álbum --</option>${allAlbums.map(album => `<option value="${album.id}">${album.title}</option>`).join('')}</select></div>
+                        <div class="form-group"><label for="admin-song-files">Archivos de Audio (puedes seleccionar varios):</label><input type="file" id="admin-song-files" accept="audio/*" multiple required></div>
                         <button type="submit" class="btn-primary">🎶 Subir Canciones</button>
                     </form>
                 </div>
-
                 <div class="admin-section">
                     <h3>📋 Gestionar Contenido</h3>
                     ${allAlbums.map(album => `
                         <div class="admin-album-item">
                             <div class="admin-album-header">
-                                <div class="admin-item-info">
-                                    <strong>${album.title}</strong>
-                                    <small>${album.artist}</small>
-                                </div>
+                                <div class="admin-item-info"><strong>${album.title}</strong><small>${album.artist}</small></div>
                                 <div class="admin-item-actions">
                                     <button onclick="handleEditAlbum('${album.id}')">Editar</button>
+                                    <button class="btn-danger" onclick="handleDeleteAlbum('${album.id}')">Borrar</button>
                                 </div>
                             </div>
                             <div class="admin-song-list">
@@ -538,8 +503,7 @@
                             </div>
                         </div>
                     `).join('')}
-                </div>
-            `;
+                </div>`;
         }
 
         async function handleAlbumUpload(event) {
@@ -564,14 +528,9 @@
                     alert('¡Álbum creado exitosamente!');
                     event.target.reset();
                     showSection('home');
-                } else {
-                    alert(`Error: ${result.error}`);
-                }
-            } catch (error) {
-                alert('No se pudo conectar con el servidor.');
-            } finally {
-                showLoadingIndicator(false);
-            }
+                } else { alert(`Error: ${result.error}`); }
+            } catch (error) { alert('No se pudo conectar con el servidor.'); }
+            finally { showLoadingIndicator(false); }
         }
 
         async function handleSongsUpload(event) {
@@ -582,9 +541,7 @@
             const authToken = localStorage.getItem('authToken');
             const formData = new FormData();
             formData.append('album_id', albumId);
-            for (const file of songFiles) {
-                formData.append('songFiles', file);
-            }
+            for (const file of songFiles) { formData.append('songFiles', file); }
             try {
                 const response = await fetch(`${API_URL}/api/songs`, {
                     method: 'POST',
@@ -596,14 +553,9 @@
                     alert(`¡${result.songs.length} canciones subidas exitosamente!`);
                     event.target.reset();
                     showSection('home');
-                } else {
-                    alert(`Error: ${result.error}`);
-                }
-            } catch (error) {
-                alert('No se pudo conectar con el servidor.');
-            } finally {
-                showLoadingIndicator(false);
-            }
+                } else { alert(`Error: ${result.error}`); }
+            } catch (error) { alert('No se pudo conectar con el servidor.'); }
+            finally { showLoadingIndicator(false); }
         }
 
         async function handleEditAlbum(albumId) {
@@ -615,24 +567,14 @@
             try {
                 const response = await fetch(`${API_URL}/api/albums/${albumId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
                     body: JSON.stringify({ title: newTitle, artist: newArtist }),
                 });
                 const result = await response.json();
-                if (result.success) {
-                    alert('Álbum actualizado.');
-                    renderAdminPanel();
-                } else {
-                    alert(`Error: ${result.error}`);
-                }
-            } catch (error) {
-                alert('No se pudo conectar con el servidor.');
-            } finally {
-                showLoadingIndicator(false);
-            }
+                if (result.success) { alert('Álbum actualizado.'); renderAdminPanel(); }
+                else { alert(`Error: ${result.error}`); }
+            } catch (error) { alert('No se pudo conectar con el servidor.'); }
+            finally { showLoadingIndicator(false); }
         }
 
         async function handleEditSong(songId) {
@@ -643,15 +585,27 @@
             try {
                 const response = await fetch(`${API_URL}/api/songs/${songId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
                     body: JSON.stringify({ title: newTitle }),
                 });
                 const result = await response.json();
+                if (result.success) { alert('Canción actualizada.'); renderAdminPanel(); }
+                else { alert(`Error: ${result.error}`); }
+            } catch (error) { alert('No se pudo conectar con el servidor.'); }
+            finally { showLoadingIndicator(false); }
+        }
+        
+        async function handleDeleteAlbum(albumId) {
+            if (!confirm('¿Estás seguro de que quieres borrar este álbum? ¡Esta acción es irreversible!')) return;
+            showLoadingIndicator(true);
+            try {
+                const response = await fetch(`${API_URL}/api/albums/${albumId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
+                });
+                const result = await response.json();
                 if (result.success) {
-                    alert('Canción actualizada.');
+                    alert('Álbum eliminado.');
                     renderAdminPanel();
                 } else {
                     alert(`Error: ${result.error}`);
@@ -662,7 +616,7 @@
                 showLoadingIndicator(false);
             }
         }
-
+        
         // ✅ LÓGICA DE LA INTERFAZ (UI)
         function displayAlbums(albums) { 
             const container = document.getElementById('albums');
