@@ -279,9 +279,7 @@
     </div>
     
     <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
-    <audio id="audio-player" preload="auto"></audio>
-    
-    <script>
+    <audio id="audio-player" preload="auto"></audio><script>
         // =================================================================================
         // CÓDIGO FINAL - CONECTADO A CLOUDFLARE WORKER + NEONDB
         // =================================================================================
@@ -334,6 +332,14 @@
                 indicator.style.display = isOnline ? 'none' : 'inline-block';
             }
             document.body.classList.toggle('offline-mode', !isOnline);
+        }
+
+        // ✅ INDICADOR DE CARGA
+        function showLoadingIndicator(show) { 
+            const indicator = document.getElementById('loading-indicator'); 
+            if (indicator) {
+                indicator.style.display = show ? 'block' : 'none';
+            }
         }
 
         // ✅ CARGA DE DATOS (CON FETCH)
@@ -609,7 +615,7 @@
         function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
         function updateMiniPlayer() { const miniPlayer=document.getElementById("mini-player");if(miniPlayer&&currentSong){miniPlayer.style.display="flex";document.getElementById("mini-player-img").src=currentAlbum?.cover_url||"";document.getElementById("mini-player-title").textContent=currentSong?.title||"";document.getElementById("mini-player-artist").textContent=currentAlbum?.artist||""} }
         function updateFullPlayer() { if (!currentSong) return; document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; document.getElementById('full-player-title').textContent = currentSong?.title || ''; document.getElementById('full-player-artist').textContent = currentAlbum?.artist || ''; }
-        function updatePlayButtons() { const playText = isPlaying ? '⏸️' : '▶️'; if(document.getElementById('mini-play-btn')) document.getElementById('mini-play-btn').textContent = playText; if(document.getElementById('full-play-btn')) document.getElementById('full-play-btn').textContent = playText; }
+        function updatePlayButtons() { const playText = isPlaying ? '⏸' : '▶'; if(document.getElementById('mini-play-btn')) document.getElementById('mini-play-btn').textContent = playText; if(document.getElementById('full-play-btn')) document.getElementById('full-play-btn').textContent = playText; }
         function formatTime(seconds) { const min=Math.floor(seconds/60); const sec=Math.floor(seconds%60).toString().padStart(2,"0"); return`${min}:${sec}`; }
         function toggleRepeatMode() { /* Lógica futura */ }
         function toggleShuffleMode() { /* Lógica futura */ }
@@ -650,6 +656,20 @@
             } finally {
                 showLoadingIndicator(false);
             }
+        }
+        async function loadDownloads() {
+            if (!downloadDB) return;
+            const content = document.getElementById('downloads-content');
+            content.innerHTML = 'Cargando...';
+            const transaction = downloadDB.transaction(['songs'], 'readonly');
+            transaction.objectStore('songs').getAll().onsuccess = event => {
+                const songs = event.target.result;
+                if (songs.length > 0) {
+                    content.innerHTML = songs.map(s => `<div>${s.title}</div>`).join('');
+                } else {
+                    content.innerHTML = 'No hay descargas.';
+                }
+            };
         }
         function searchMusic() { 
             const query = document.getElementById('search-input').value.toLowerCase().trim(); 
