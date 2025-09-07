@@ -301,7 +301,7 @@
         const audio = document.getElementById('audio-player');
         let downloadDB = null;
 
-        // ✅ INICIALIZACIÓN DE LA APLICACIÓN
+        // ✅ INICIALIZACIÓN Y FUNCIONES BÁSICAS
         async function initializeApp() {
             console.log('🎵 Iniciando KLMZ MUSIC con API Backend...');
             showLoadingIndicator(true);
@@ -324,7 +324,13 @@
             }
         }
         
-        // ✅ VERIFICADOR DE ESTADO ONLINE/OFFLINE
+        function showLoadingIndicator(show) { 
+            const indicator = document.getElementById('loading-indicator'); 
+            if (indicator) {
+                indicator.style.display = show ? 'block' : 'none';
+            }
+        }
+
         function updateOnlineStatus() {
             const indicator = document.getElementById('offline-indicator');
             const isOnline = navigator.onLine;
@@ -333,15 +339,7 @@
             }
             document.body.classList.toggle('offline-mode', !isOnline);
         }
-
-        // ✅ INDICADOR DE CARGA
-        function showLoadingIndicator(show) { 
-            const indicator = document.getElementById('loading-indicator'); 
-            if (indicator) {
-                indicator.style.display = show ? 'block' : 'none';
-            }
-        }
-
+        
         // ✅ CARGA DE DATOS (CON FETCH)
         async function loadAllData() {
             const albumsResponse = await fetch(`${API_URL}/api/albums`);
@@ -615,7 +613,7 @@
         function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
         function updateMiniPlayer() { const miniPlayer=document.getElementById("mini-player");if(miniPlayer&&currentSong){miniPlayer.style.display="flex";document.getElementById("mini-player-img").src=currentAlbum?.cover_url||"";document.getElementById("mini-player-title").textContent=currentSong?.title||"";document.getElementById("mini-player-artist").textContent=currentAlbum?.artist||""} }
         function updateFullPlayer() { if (!currentSong) return; document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; document.getElementById('full-player-title').textContent = currentSong?.title || ''; document.getElementById('full-player-artist').textContent = currentAlbum?.artist || ''; }
-        function updatePlayButtons() { const playText = isPlaying ? '⏸' : '▶'; if(document.getElementById('mini-play-btn')) document.getElementById('mini-play-btn').textContent = playText; if(document.getElementById('full-play-btn')) document.getElementById('full-play-btn').textContent = playText; }
+        function updatePlayButtons() { const playText = isPlaying ? '⏸️' : '▶️'; if(document.getElementById('mini-play-btn')) document.getElementById('mini-play-btn').textContent = playText; if(document.getElementById('full-play-btn')) document.getElementById('full-play-btn').textContent = playText; }
         function formatTime(seconds) { const min=Math.floor(seconds/60); const sec=Math.floor(seconds%60).toString().padStart(2,"0"); return`${min}:${sec}`; }
         function toggleRepeatMode() { /* Lógica futura */ }
         function toggleShuffleMode() { /* Lógica futura */ }
@@ -664,7 +662,7 @@
             const transaction = downloadDB.transaction(['songs'], 'readonly');
             transaction.objectStore('songs').getAll().onsuccess = event => {
                 const songs = event.target.result;
-                if (songs.length > 0) {
+                if (songs && songs.length > 0) {
                     content.innerHTML = songs.map(s => `<div>${s.title}</div>`).join('');
                 } else {
                     content.innerHTML = 'No hay descargas.';
