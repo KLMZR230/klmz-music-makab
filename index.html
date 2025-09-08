@@ -102,7 +102,7 @@
         .bottom-nav-item small { font-size: 0.67rem;}
         .content-section { display: none; }
         .content-section.active { display: block; }
-        .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 99px; cursor: pointer; transition: all 0.3s ease; }
+        .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; }
         .back-btn:hover { background: #333; }
         .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
@@ -1032,13 +1032,13 @@
             return audioContext;
         }
 
-        // ✅ FUNCIÓN DE SUBIDA A R2 CON URL PRE-FIRMADA (CORREGIDA)
+        // ✅✅✅✅✅ FUNCIÓN DE SUBIDA FINAL Y CORREGIDA ✅✅✅✅✅
         async function uploadFileR2Only(file) {
-            console.log('🔥 Iniciando subida a Cloudflare R2 con URL pre-firmada:', file.name);
-
+            console.log('🔥 Iniciando subida a Cloudflare R2:', file.name);
+        
             try {
-                // PASO 1: Pedir la URL pre-firmada a nuestra Edge Function
-                console.log('1. Solicitando URL de subida...');
+                // PASO 1: Pedir los datos de la subida a nuestra Edge Function
+                console.log('1. Solicitando datos de subida...');
                 const functionResponse = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
                     method: 'POST',
                     headers: {
@@ -1051,29 +1051,27 @@
                         fileType: file.type 
                     })
                 });
-
+        
                 if (!functionResponse.ok) {
                     const errorText = await functionResponse.text();
                     throw new Error(`Error en Edge Function: ${functionResponse.status} - ${errorText}`);
                 }
-
-                const { success, presignedUrl, publicUrl, error: functionError } = await functionResponse.json();
-
+        
+                const { success, presignedUrl, publicUrl, headers, error: functionError } = await functionResponse.json();
+        
                 if (!success || functionError) {
-                    throw new Error(`La Edge Function falló: ${functionError || 'No se pudo obtener la URL de subida.'}`);
+                    throw new Error(`La Edge Function falló: ${functionError || 'No se pudieron obtener los datos de subida.'}`);
                 }
-
-                console.log('2. URL de subida recibida. Subiendo archivo...');
+        
+                console.log('2. Datos recibidos. Subiendo archivo a R2...');
                 
-                // PASO 2: Subir el archivo directamente a la URL pre-firmada de R2
+                // PASO 2: Subir el archivo directamente a la URL de R2 con los encabezados que nos dio la función
                 const uploadResponse = await fetch(presignedUrl, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': file.type,
-                    },
+                    headers: headers, // Usamos los encabezados que nos dio la función
                     body: file
                 });
-
+        
                 if (!uploadResponse.ok) {
                     throw new Error(`Error subiendo a R2: ${uploadResponse.status} ${uploadResponse.statusText}`);
                 }
@@ -1086,7 +1084,6 @@
                 throw error;
             }
         }
-
 
         // 🎵 FUNCIONES DE SUBIDA MÚLTIPLE
         function addFilesToQueue(files, albumId = null) {
