@@ -1032,54 +1032,61 @@
             return audioContext;
         }
 
-        // ✅ FUNCIÓN SOLO CLOUDFLARE R2
+        // ✅ FUNCIÓN DE SUBIDA A R2 CON URL PRE-FIRMADA (CORREGIDA)
         async function uploadFileR2Only(file) {
-            console.log('🔥 Subiendo SOLO a Cloudflare R2:', file.name);
-            
+            console.log('🔥 Iniciando subida a Cloudflare R2 con URL pre-firmada:', file.name);
+
             try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const response = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
+                // PASO 1: Pedir la URL pre-firmada a nuestra Edge Function
+                console.log('1. Solicitando URL de subida...');
+                const functionResponse = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${supabaseKey}`,
-                        'apikey': supabaseKey
+                        'apikey': supabaseKey,
+                        'Content-Type': 'application/json'
                     },
-                    body: formData
+                    body: JSON.stringify({ 
+                        fileName: file.name, 
+                        fileType: file.type 
+                    })
                 });
 
-                console.log('📊 Response status:', response.status);
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ R2 Response Error:', errorText);
-                    throw new Error(`R2 upload failed: ${response.status} - ${errorText}`);
+                if (!functionResponse.ok) {
+                    const errorText = await functionResponse.text();
+                    throw new Error(`Error en Edge Function: ${functionResponse.status} - ${errorText}`);
                 }
 
-                const data = await response.json();
-                console.log('📊 R2 Response data:', data);
+                const { success, presignedUrl, publicUrl, error: functionError } = await functionResponse.json();
+
+                if (!success || functionError) {
+                    throw new Error(`La Edge Function falló: ${functionError || 'No se pudo obtener la URL de subida.'}`);
+                }
+
+                console.log('2. URL de subida recibida. Subiendo archivo...');
                 
-                if (!data.success || data.error) {
-                    throw new Error(data.error || 'R2 upload failed - no success flag');
-                }
+                // PASO 2: Subir el archivo directamente a la URL pre-firmada de R2
+                const uploadResponse = await fetch(presignedUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': file.type,
+                    },
+                    body: file
+                });
 
-                if (!data.publicUrl) {
-                    throw new Error('R2 upload failed - no public URL returned');
+                if (!uploadResponse.ok) {
+                    throw new Error(`Error subiendo a R2: ${uploadResponse.status} ${uploadResponse.statusText}`);
                 }
-
-                if (!data.publicUrl.includes('r2.dev')) {
-                    throw new Error('❌ URL returned is not from R2: ' + data.publicUrl);
-                }
-
-                console.log('✅ Archivo subido exitosamente a R2:', data.publicUrl);
-                return data.publicUrl;
+                
+                console.log('3. ✅ Archivo subido exitosamente a R2.');
+                return publicUrl;
                 
             } catch (error) {
-                console.error("💥 Error subiendo a R2:", error);
+                console.error("💥 Error en el proceso de subida a R2:", error);
                 throw error;
             }
         }
+
 
         // 🎵 FUNCIONES DE SUBIDA MÚLTIPLE
         function addFilesToQueue(files, albumId = null) {
