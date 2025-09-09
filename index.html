@@ -404,7 +404,7 @@
 
         // ✅ FUNCIÓN PARA CONVERTIR BASE64 A BLOB
         function base64ToBlob(base64, mimeType) {
-            const byteCharacters = atob(base64.split(',')[20]);
+            const byteCharacters = atob(base64.split(',')[1]);
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) {
                 byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -702,7 +702,7 @@
                             if (songData.audioBlob) {
                                 audioUrl = URL.createObjectURL(songData.audioBlob);
                             } else if (songData.audioBase64) {
-                                const base64Data = songData.audioBase64.split(',')[20];
+                                const base64Data = songData.audioBase64.split(',')[1];
                                 const byteCharacters = atob(base64Data);
                                 const byteNumbers = new Array(byteCharacters.length);
                                 for (let i = 0; i < byteCharacters.length; i++) {
@@ -714,7 +714,7 @@
                             }
                             
                             if (songData.coverBase64) {
-                                const base64Data = songData.coverBase64.split(',')[20];
+                                const base64Data = songData.coverBase64.split(',')[1];
                                 const byteCharacters = atob(base64Data);
                                 const byteNumbers = new Array(byteCharacters.length);
                                 for (let i = 0; i < byteCharacters.length; i++) {
@@ -1032,56 +1032,40 @@
             return audioContext;
         }
 
-        // ✅✅✅✅✅ FUNCIÓN DE SUBIDA FINAL Y CORRECTA ✅✅✅✅✅
+        // ✅✅✅✅✅ FUNCIÓN DE SUBIDA FINAL (MÉTODO PROXY) ✅✅✅✅✅
         async function uploadFileR2Only(file) {
-            console.log('🔥 Iniciando subida con URL Pre-firmada:', file.name);
-        
+            console.log('🔥 Iniciando subida (método Proxy):', file.name);
+
             try {
-                // PASO 1: Pedir la URL pre-firmada a nuestra Edge Function
-                console.log('1. Solicitando URL pre-firmada...');
-                const functionResponse = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
+                // Creamos un objeto FormData para empaquetar el archivo.
+                const formData = new FormData();
+                formData.append('file', file, file.name); // La clave 'file' debe coincidir con la que espera el backend.
+
+                // Llamamos a la Edge Function, enviando el formulario completo.
+                const response = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${supabaseKey}`,
                         'apikey': supabaseKey,
-                        'Content-Type': 'application/json'
+                        // NO incluir 'Content-Type', el navegador lo pone automáticamente para FormData
                     },
-                    body: JSON.stringify({ 
-                        fileName: file.name, 
-                        fileType: file.type 
-                    })
+                    body: formData // Enviamos el FormData directamente
                 });
         
-                if (!functionResponse.ok) {
-                    const errorText = await functionResponse.text();
-                    throw new Error(`Error en Edge Function: ${functionResponse.status} - ${errorText}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Error en la respuesta de la Edge Function: ${response.status} - ${errorText}`);
                 }
         
-                const { success, presignedUrl, publicUrl, error: functionError } = await functionResponse.json();
+                const { success, publicUrl, error: functionError } = await response.json();
         
                 if (!success || functionError) {
-                    throw new Error(`La Edge Function falló: ${functionError || 'No se pudo obtener la URL pre-firmada.'}`);
+                    throw new Error(`La Edge Function falló: ${functionError || 'No se pudo obtener la URL pública.'}`);
                 }
         
-                console.log('2. URL recibida. Subiendo archivo a R2...');
-                
-                // PASO 2: Subir el archivo directamente a la URL pre-firmada de R2
-                const uploadResponse = await fetch(presignedUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': file.type
-                    },
-                    body: file
-                });
-        
-                if (!uploadResponse.ok) {
-                    const errorBody = await uploadResponse.text();
-                    throw new Error(`Error subiendo a R2: ${uploadResponse.status} ${uploadResponse.statusText}\n${errorBody}`);
-                }
-                
-                console.log('3. ✅ Archivo subido exitosamente a R2.');
+                console.log('✅ Archivo subido y procesado exitosamente. URL pública:', publicUrl);
                 return publicUrl;
-                
+        
             } catch (error) {
                 console.error("💥 Error en el proceso de subida:", error);
                 throw error;
@@ -1602,7 +1586,7 @@
                     
                     const title = document.getElementById('album-title').value; 
                     const artist = document.getElementById('album-artist').value; 
-                    const coverFile = document.getElementById('album-cover-file').files;
+                    const coverFile = document.getElementById('album-cover-file').files[0];
                     
                     if (!coverFile) return;
                     
@@ -1636,7 +1620,7 @@
                     
                     const albumId = document.getElementById('song-album-select').value; 
                     const title = document.getElementById('song-title').value;
-                    const audioFile = document.getElementById('song-audio-file').files;
+                    const audioFile = document.getElementById('song-audio-file').files[0];
                     
                     if (!albumId || !audioFile) return;
                     
