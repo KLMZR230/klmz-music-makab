@@ -418,7 +418,7 @@
         // ✅ CONSTANTES
         const supabaseUrl = 'https://sejxavhqqsqfporsopml.supabase.co';
         // ⚠️ ¡IMPORTANTE! Reemplaza la siguiente clave con tu clave "anon" (public) de Supabase
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxcXNxZnBvcnNvcG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyOTc5ODEsImV4cCI6MjA3Mjg3Mzk4MX0.ljIXELjbguWE4nxmVTF7GS-F_0E2wI6F5Zn0h9oKOh8';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxc3FmcG9yc29wbWwiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc1NzQyMTE5MywiZXhwIjoyMDczOTk3MTkzfQ.5y_I7nPlkGImUKS4qM2h-A6S2B72yFfPdnAZS43eY2c';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
 
         // ✅ VARIABLES GLOBALES
@@ -474,42 +474,34 @@
         async function deleteDownload(songId) { if (confirm('¿Eliminar descarga?')) { downloadDB.transaction('songs', 'readwrite').objectStore('songs').delete(songId).onsuccess = loadDownloads; } }
         function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
         
-        // --- PANEL DE ADMINISTRACIÓN (MÉTODO URL PRE-FIRMADA) ---
+        // --- PANEL DE ADMINISTRACIÓN ---
         async function uploadFileR2Only(file) {
-          console.log('🔥 Iniciando subida con URL pre-firmada para:', file.name);
-          try {
-            const getUrlResponse = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${supabaseKey}`,
-                'apikey': supabaseKey,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ 
-                fileName: file.name,
-                fileType: file.type 
-              })
-            });
-            if (!getUrlResponse.ok) {
-              const errorData = await getUrlResponse.json();
-              throw new Error(`Error pidiendo URL firmada: ${errorData.error}`);
+            console.log('🔥 Subiendo a R2 con el método original:', file.name);
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'apikey': supabaseKey
+                    },
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`La llamada a la función de Supabase falló: ${response.status} - ${errorText}`);
+                }
+                const data = await response.json();
+                if (!data.success || data.error) {
+                    throw new Error(data.error || 'La función de Supabase devolvió un error.');
+                }
+                console.log('✅ Archivo subido exitosamente a R2:', data.publicUrl);
+                return data.publicUrl;
+            } catch (error) {
+                console.error("💥 Error en el proceso de subida:", error);
+                throw error;
             }
-            const { signedUrl, publicUrl } = await getUrlResponse.json();
-            console.log('✅ URL firmada recibida.');
-            const uploadResponse = await fetch(signedUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': file.type, },
-              body: file
-            });
-            if (!uploadResponse.ok) {
-              throw new Error('La subida directa a R2 falló.');
-            }
-            console.log('✅ Archivo subido exitosamente a R2.');
-            return publicUrl;
-          } catch (error) {
-            console.error("💥 Error en el proceso de subida:", error);
-            throw error;
-          }
         }
         async function renderAdminPanel() { const adminContent = document.getElementById('admin-content'); adminContent.innerHTML = `<div class="admin-stats"><div class="stat-card"><div class="stat-number">${allAlbums.length}</div><div class="stat-label">📀 Álbumes</div></div><div class="stat-card"><div class="stat-number">${allSongs.length}</div><div class="stat-label">🎵 Canciones</div></div></div><div class="admin-section"><h3>📀 Crear Álbum</h3><form id="album-form"><div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div><div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div><div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div><button type="submit" class="btn-primary">🔥 Crear Álbum</button></form></div><div class="admin-section"><h3>🎵 Subida Múltiple de Canciones</h3><div class="multi-upload-section"><h4>📁 Seleccionar Archivos</h4><div class="form-group"><label>Álbum de destino:</label><select id="batch-album-select" required><option value="">Seleccionar álbum</option>${allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('')}</select></div><div class="form-group"><input type="file" id="batch-audio-files" accept="audio/*" multiple></div><button type="button" onclick="startBatchUpload()" class="btn-primary">📤 Agregar a la Cola</button></div><div class="file-queue"><h4>📋 Cola de Archivos</h4><div id="file-queue-container"><p style="color: #666;">No hay archivos en cola</p></div><button type="button" onclick="processBatchUpload()" class="btn-primary" style="margin-top: 1rem;">🚀 Subir Todos</button></div><div id="batch-upload-progress" class="batch-upload-progress" style="display: none;"><div id="batch-progress-label"></div><div class="batch-progress-bar"><div id="batch-progress-fill"></div></div></div></div><div class="admin-section"><h3>📋 Contenido y Gestión</h3>${allAlbums.map(album => `<div class="admin-album-item"><div class="admin-album-header"><div class="admin-item-info"><strong>${album.title}</strong><small>${album.artist}</small></div><div class="admin-item-actions"><button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar Álbum</button></div></div><div class="admin-song-list">${allSongs.filter(s => s.album_id === album.id).map(song => `<div class="admin-song-item"><span>🎵 ${song.title}</span><div class="admin-song-actions"><button class="btn-secondary" onclick="editSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">Eliminar</button></div></div>`).join('') || '<div class="no-songs">No hay canciones en este álbum.</div>'}</div></div>`).join('')}</div>`; setupAdminForms(); }
         function setupAdminForms() { document.getElementById('album-form').addEventListener('submit', async (e) => { e.preventDefault(); const title = document.getElementById('album-title').value; const artist = document.getElementById('album-artist').value; const coverFile = document.getElementById('album-cover-file').files[0]; if (!coverFile) return; showLoadingIndicator(true); try { const coverUrl = await uploadFileR2Only(coverFile); await supabase.from('albums').insert([{ title, artist, cover_url: coverUrl }]); alert('✅ Álbum creado!'); e.target.reset(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { showLoadingIndicator(false); } }); }
@@ -587,5 +579,3 @@
     </script>
 </body>
 </html>
-
-
