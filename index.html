@@ -420,15 +420,16 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // ✅ CONSTANTES
+        const supabaseUrl = 'https://sejxavhqqsqfporsopml.supabase.co';
+        // ⚠️ ¡IMPORTANTE! Reemplaza la siguiente clave con tu clave "anon" (public) de Supabase
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxc3FmcG9yc29wbWwiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc1NzQyMTE5MywiZXhwIjoyMDczOTk3MTkzfQ.5y_I7nPlkGImUKS4qM2h-A6S2B72yFfPdnAZS43eY2c';
+        const ADMIN_EMAIL = 'klmzr@gmail.com';
+
         // ✅ VARIABLES GLOBALES
         let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0, isPlaying = false, allAlbums = [], allSongs = [], currentUser = null, songsWithAlbumInfo = [], repeatMode = 'off', shuffleMode = false, db = null, supabase = null, downloadDB = null, currentSongIdToAdd = null;
         let audioUrlCache = new Map(), audioContext = null, audioPreloadQueue = [];
         let fileQueue = [], isUploading = false;
-        
-        // ✅ CONSTANTES
-        const supabaseUrl = 'https://sejxavhqqsqfporsopml.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxcXNxZnBvcnNvcG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyOTc5ODEsImV4cCI6MjA3Mjg3Mzk4MX0.ljIXELjbguWE4nxmVTF7GS-F_0E2wI6F5Zn0h9oKOh8';
-        const ADMIN_EMAIL = 'klmzr@gmail.com';
         const audio = document.getElementById('audio-player');
         
         // --- NAVEGACIÓN Y VISTAS ---
@@ -478,14 +479,16 @@
         async function deleteDownload(songId) { if (confirm('¿Eliminar descarga?')) { downloadDB.transaction('songs', 'readwrite').objectStore('songs').delete(songId).onsuccess = loadDownloads; } }
         function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
         
-        // --- PANEL DE ADMINISTRACIÓN ---
+        // --- PANEL DE ADMINISTRACIÓN (MÉTODO URL PRE-FIRMADA) ---
         async function uploadFileR2Only(file) {
           console.log('🔥 Iniciando subida con URL pre-firmada para:', file.name);
           try {
+            // Paso 1: Pedir la URL firmada a nuestra función de Supabase
             const getUrlResponse = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({ 
@@ -499,6 +502,7 @@
             }
             const { signedUrl, publicUrl } = await getUrlResponse.json();
             console.log('✅ URL firmada recibida.');
+            // Paso 2: Usar esa URL para subir el archivo DIRECTAMENTE a R2
             const uploadResponse = await fetch(signedUrl, {
               method: 'PUT',
               headers: { 'Content-Type': file.type, },
@@ -508,6 +512,7 @@
               throw new Error('La subida directa a R2 falló.');
             }
             console.log('✅ Archivo subido exitosamente a R2.');
+            // Paso 3: Devolver la URL pública final para guardarla en la base de datos
             return publicUrl;
           } catch (error) {
             console.error("💥 Error en el proceso de subida:", error);
@@ -590,4 +595,3 @@
     </script>
 </body>
 </html>
-
