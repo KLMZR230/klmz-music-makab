@@ -1032,55 +1032,43 @@
             return audioContext;
         }
 
-        // ✅✅✅✅✅ FUNCIÓN DE SUBIDA FINAL Y CORREGIDA ✅✅✅✅✅
+        // ✅✅✅ FUNCIÓN DE SUBIDA FINAL Y CORRECTA (Usando FormData) ✅✅✅
         async function uploadFileR2Only(file) {
-            console.log('🔥 Iniciando subida a Cloudflare R2:', file.name);
+            console.log('🔥 Iniciando subida directa a la Edge Function:', file.name);
         
             try {
-                // PASO 1: Pedir los datos de la subida a nuestra Edge Function
-                console.log('1. Solicitando datos de subida...');
+                // Creamos un objeto FormData para empaquetar el archivo.
+                const formData = new FormData();
+                formData.append('file', file, file.name); // La clave 'file' debe coincidir con la que espera el backend.
+        
+                // Llamamos a la Edge Function, enviando el formulario completo.
+                // El navegador establecerá el 'Content-Type' a 'multipart/form-data' automáticamente.
                 const functionResponse = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
                     method: 'POST',
                     headers: {
+                        // Ya no necesitamos 'Content-Type': 'application/json'
                         'Authorization': `Bearer ${supabaseKey}`,
                         'apikey': supabaseKey,
-                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ 
-                        fileName: file.name, 
-                        fileType: file.type 
-                    })
+                    body: formData // Enviamos el FormData directamente
                 });
         
                 if (!functionResponse.ok) {
                     const errorText = await functionResponse.text();
-                    throw new Error(`Error en Edge Function: ${functionResponse.status} - ${errorText}`);
+                    throw new Error(`Error en la respuesta de la Edge Function: ${functionResponse.status} - ${errorText}`);
                 }
         
-                const { success, presignedUrl, publicUrl, headers, error: functionError } = await functionResponse.json();
+                const { success, publicUrl, error: functionError } = await functionResponse.json();
         
                 if (!success || functionError) {
-                    throw new Error(`La Edge Function falló: ${functionError || 'No se pudieron obtener los datos de subida.'}`);
+                    throw new Error(`La Edge Function falló: ${functionError || 'No se pudo obtener la URL pública.'}`);
                 }
         
-                console.log('2. Datos recibidos. Subiendo archivo a R2...');
-                
-                // PASO 2: Subir el archivo directamente a la URL de R2 con los encabezados que nos dio la función
-                const uploadResponse = await fetch(presignedUrl, {
-                    method: 'PUT',
-                    headers: headers, // Usamos los encabezados que nos dio la función
-                    body: file
-                });
-        
-                if (!uploadResponse.ok) {
-                    throw new Error(`Error subiendo a R2: ${uploadResponse.status} ${uploadResponse.statusText}`);
-                }
-                
-                console.log('3. ✅ Archivo subido exitosamente a R2.');
+                console.log('✅ Archivo subido y procesado exitosamente. URL pública:', publicUrl);
                 return publicUrl;
-                
+        
             } catch (error) {
-                console.error("💥 Error en el proceso de subida a R2:", error);
+                console.error("💥 Error en el proceso de subida:", error);
                 throw error;
             }
         }
