@@ -8,7 +8,6 @@ const urlsToCache = [
   'https://cdn.jsdelivr.net/npm/appwrite@18.2.0',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 ];
-
 // ✅ INSTALACIÓN DEL SERVICE WORKER
 self.addEventListener('install', event => {
   console.log('🔧 Service Worker: Instalando KLMZ MUSIC...');
@@ -21,7 +20,6 @@ self.addEventListener('install', event => {
   );
   self.skipWaiting();
 });
-
 // ✅ ACTIVACIÓN DEL SERVICE WORKER
 self.addEventListener('activate', event => {
   console.log('✅ Service Worker: KLMZ MUSIC activado');
@@ -39,7 +37,6 @@ self.addEventListener('activate', event => {
   );
   self.clients.claim();
 });
-
 // ✅ INTERCEPTAR REQUESTS (CACHE FIRST STRATEGY)
 self.addEventListener('fetch', event => {
   event.respondWith(
@@ -72,7 +69,6 @@ self.addEventListener('fetch', event => {
       })
   );
 });
-
 // ✅ BACKGROUND SYNC para música
 self.addEventListener('sync', event => {
   if (event.tag === 'klmz-music-sync') {
@@ -80,7 +76,6 @@ self.addEventListener('sync', event => {
     // Aquí puedes implementar sincronización de favoritos, etc.
   }
 });
-
 // ✅ PUSH NOTIFICATIONS para actualizaciones
 self.addEventListener('push', event => {
   const options = {
@@ -105,20 +100,24 @@ self.addEventListener('push', event => {
       }
     ]
   };
-  
   event.waitUntil(
     self.registration.showNotification('KLMZ MUSIC', options)
   );
 });
-
 // ✅ NOTIFICATION CLICK
 self.addEventListener('notificationclick', event => {
   console.log('🔔 Notification click: ', event.notification.tag);
   event.notification.close();
-  
   if (event.action === 'explore') {
     event.waitUntil(
       clients.openWindow('/')
     );
   }
+});
+
+// ✅✅✅ PIEZA AÑADIDA PARA FORZAR LA ACTUALIZACIÓN ✅✅✅
+self.addEventListener('message', event => {
+    if (event.data && event.data.action === 'skipWaiting') {
+        self.skipWaiting();
+    }
 });
