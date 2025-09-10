@@ -416,7 +416,7 @@
     <script>
         // ✅ CONSTANTES
         const supabaseUrl = 'https://sejxavhqqsqfporsopml.supabase.co';
-        // ⚠️ ¡IMPORTANTE! Verifica que esta sea tu clave "anon" (public) correcta de Supabase.
+        // ⚠️ ¡IMPORTANTE! Reemplaza la siguiente clave con tu clave "anon" (public) correcta de Supabase.
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxcXNxZnBvcnNvcG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyOTc5ODEsImV4cCI6MjA3Mjg3Mzk4MX0.ljIXELjbguWE4nxmVTF7GS-F_0E2wI6F5Zn0h9oKOh8';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
 
@@ -475,28 +475,31 @@
         
         // --- PANEL DE ADMINISTRACIÓN ---
         async function uploadFileR2Only(file) {
-            console.log('🔥 Subiendo a R2 con el método original:', file.name);
-            const formData = new FormData();
-            formData.append('file', file);
+            console.log('🔥 Usando método de URL pre-firmada para:', file.name);
             try {
-                const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
+                const getUrlResponse = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${supabaseKey}`,
-                        'apikey': supabaseKey
+                        'apikey': supabaseKey,
+                        'Content-Type': 'application/json'
                     },
-                    body: formData
+                    body: JSON.stringify({ fileName: file.name, fileType: file.type })
                 });
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`La llamada a la función de Supabase falló: ${response.status} - ${errorText}`);
+                if (!getUrlResponse.ok) {
+                    const errorData = await getUrlResponse.json();
+                    throw new Error(`Error pidiendo URL firmada: ${errorData.error}`);
                 }
-                const data = await response.json();
-                if (!data.success || data.error) {
-                    throw new Error(data.error || 'La función de Supabase devolvió un error.');
-                }
-                console.log('✅ Archivo subido exitosamente a R2:', data.publicUrl);
-                return data.publicUrl;
+                const { signedUrl, publicUrl } = await getUrlResponse.json();
+                console.log('✅ URL de subida recibida.');
+                const uploadResponse = await fetch(signedUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': file.type },
+                    body: file
+                });
+                if (!uploadResponse.ok) { throw new Error('La subida directa a R2 falló.'); }
+                console.log('✅ Archivo subido exitosamente a R2.');
+                return publicUrl;
             } catch (error) {
                 console.error("💥 Error en el proceso de subida:", error);
                 throw error;
@@ -578,4 +581,3 @@
     </script>
 </body>
 </html>
-
