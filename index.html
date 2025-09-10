@@ -1,40 +1,579 @@
 <!DOCTYPE html>
-<html>
-<head><title>Prueba de Función</title></head>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>KLMZ MUSIC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1DB954">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Metal+Mania&display=swap');
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #181818; color: #fff; padding-bottom: 84px; transition: all 0.3s ease; }
+        header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
+        .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; }
+        .user-actions { display:flex; align-items: center; gap:.5rem; }
+        .lock-icon { cursor:pointer; font-size:1.4rem; color:#fff; user-select:none; transition: all 0.3s ease; }
+        .lock-icon:hover { opacity:.7;}
+        .theme-selector { display: flex; align-items: center; gap: 0.3rem; margin-right: 0.5rem; }
+        .theme-selector label { font-size: 0.7rem; color: #b3b3b3; }
+        .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease; }
+        .app-container { display: flex; min-height: calc(100vh - 60px);}
+        main { flex:1; padding:1rem; max-width:900px; margin:0 auto;}
+        #search-input { width: 100%; padding: 1rem; background: #242424; border: none; border-radius: 4px; color: #fff; margin-bottom: 2rem; transition: all 0.3s ease; }
+        .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
+        .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
+        .album-card { background:none; padding:1rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition: all 0.3s ease; border-radius: 12px; }
+        .album-card:hover { transform:scale(1.05); box-shadow: 0 0 15px rgba(29, 185, 84, 0.4); }
+        .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease; border: 3px solid #444; }
+        .album-title { font-size:.98rem; font-weight: bold; margin-bottom: 0.4rem; transition: all 0.3s ease; }
+        .album-artist { font-size: .9rem; color: #b3b3b3; transition: all 0.3s ease; }
+        .album-detail-img { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 0 auto 1.5rem; display: block; border: 4px solid #444; transition: all 0.3s ease; }
+        .song-list { width:100%; margin-top:1rem; padding-bottom: 120px; }
+        .song-list ul { list-style:none; padding:0; margin:0;}
+        .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease;}
+        .song-list li:hover { color:#fff; background: rgba(255,255,255,.05); transform: translateX(2px);}
+        .song-list li > div:first-child { flex: 1; padding-right: 1rem; font-weight: 500; transition: all 0.3s ease; }
+        .song-list li:hover > div:first-child { color: #1DB954; font-weight: 600; }
+        .song-actions { display: flex; gap: 0.8rem; align-items: center; }
+        .song-actions span { font-size: 1.2rem; cursor: pointer; color: #666; transition: all 0.3s ease; }
+        .song-actions span:hover { color: #fff; transform: scale(1.1); }
+        .play-icon { font-size: 1.1rem !important; }
+        .playlist-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; border-left: 3px solid #1DB954; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center;}
+        .playlist-item:hover { background: #333; border-left-color: #1ed760; }
+        .playlist-info strong { font-size: 1.1rem; }
+        .playlist-info small { font-size: 0.8rem; color: #b3b3b3; display: block; }
+        .playlist-actions .delete-playlist { font-size: 1.2rem; color: #555; }
+        .playlist-actions .delete-playlist:hover { color: #ff4757; }
+        #add-to-playlist-modal ul { list-style: none; padding: 0; max-height: 40vh; overflow-y: auto; }
+        #add-to-playlist-modal li { padding: 1rem; border-bottom: 1px solid #444; cursor: pointer; }
+        #add-to-playlist-modal li:hover { background: #404040; color: #1DB954; }
+        #add-to-playlist-modal li:last-child { border-bottom: none; }
+        .modal-header { font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #444; }
+        .player { position: fixed; bottom: 84px; left: 0; right: 0; background: #212121cc; border-top: 1px solid #282828; z-index: 300; display: flex; align-items: center; padding: 0.8rem 1.2rem; min-height: 56px; cursor: pointer; box-shadow: 0 -2px 10px #0002; transition: all 0.3s ease;}
+        .player-img-mini { width:44px; height:44px; border-radius:100%; object-fit:cover; margin-right:1rem;}
+        .player-info-mini { flex:1; overflow:hidden;}
+        .player-title-mini { font-weight:bold; font-size:1rem; line-height:1.2;}
+        .player-artist-mini { color:#b3b3b3; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+        .player-controls-inline { display:flex; align-items:center; gap:.5rem;}
+        .play-btn-inline { background: none; color:#fff; border:none; font-size:1.8rem; cursor:pointer; transition: all 0.3s ease; padding: 0; }
+        .play-btn-inline:hover { opacity: 0.7; }
+        .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
+        .full-player-backdrop.active { display: flex;}
+        .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
+        .full-player-title { font-size: 1.8rem; font-weight: bold; margin: 1rem 0 .5rem 0; text-align: center;}
+        .full-player-artist { color: #b3b3b3; font-size: 1.1rem; margin-bottom: 2rem; text-align: center;}
+        .full-player-controls { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%; }
+        .full-control-buttons { display: flex; gap: 3rem; align-items: center; }
+        .full-control-btn { background: none; border: none; color: #fff; font-size: 2.2rem; padding: 0; cursor: pointer; transition: all 0.3s ease; }
+        .full-control-btn:hover { color: #1DB954; }
+        .full-play-btn { font-size: 3.5rem; }
+        .full-play-btn:hover { transform: scale(1.1); color: #1DB954; }
+        .mode-controls { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; }
+        .mode-btn { background: none; border: 1px solid #444; color: #b3b3b3; padding: 0.5rem; border-radius: 50%; cursor: pointer; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .mode-btn:hover { color: #fff; border-color: #666; }
+        .mode-btn.active { color: #1DB954; border-color: #1DB954; background: rgba(29,185,84,0.1); }
+        .full-progress-bar { flex: 1; height: 8px; background: #4f4f4f; border-radius: 4px; cursor: pointer; position: relative;}
+        .full-progress-fill { height: 100%; background: #1DB954; border-radius: 4px; width: 0%; position: absolute; top: 0; left: 0; transition: all 0.3s ease;}
+        .full-progress-container { width: 90%; max-width: 400px; display: flex; align-items: center; gap: 1rem;}
+        .full-progress-time { font-size: 1rem; color: #b3b3b3; min-width: 50px;}
+        .full-player-volume { margin-top: 1rem;}
+        .full-volume-slider { width: 150px; }
+        .full-player-close { position: absolute; top: 30px; right: 40px; background: none; border: none; font-size: 2.5rem; color: #fff; cursor: pointer; transition: all 0.3s ease; }
+        .full-player-close:hover { color: #ff4757; }
+        .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
+        .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; max-height:90vh; overflow-y:auto; transition: all 0.3s ease; }
+        .modal-content p a { color: #1DB954; text-decoration: none; }
+        .modal-content p { text-align: center; margin-top: 1rem; }
+        .form-group { margin-bottom:1rem;}
+        .form-group label { display:block; margin-bottom:0.5rem;}
+        .form-group input, .form-group select { width:100%; padding:.7rem; background:#404040; border:1px solid #555; border-radius:4px; color:#fff; transition: all 0.3s ease;}
+        .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
+        .btn-primary:hover { background:#1ed760; }
+        .btn-danger { background:#e22134; color:#fff; border:none; padding:.5rem 1rem; border-radius:4px; cursor:pointer; transition: all 0.3s ease; }
+        .btn-danger:hover { background:#ff4757; }
+        .close-modal { position:absolute; top:1rem; right:1rem; background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;}
+        .user-menu { position: relative; display: inline-block; }
+        .user-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #282828; min-width: 200px; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 1000; border: 1px solid #404040; transition: all 0.3s ease; }
+        .user-dropdown.show { display: block; animation: dropdownFadeIn 0.2s ease; }
+        .user-dropdown-item { padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid #404040; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; transition: all 0.3s ease; }
+        .user-dropdown-item:last-child { border-bottom: none; }
+        .user-dropdown-item:hover { background: #404040; }
+        .user-dropdown-item.logout { color: #ff4757; border-top: 1px solid #404040; margin-top: 0.3rem; }
+        .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; }
+        .user-info strong { color: #fff; font-size: 0.9rem; }
+        .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
+        .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; font-size: 1.14rem; padding: 4px 0 0 0; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
+        .bottom-nav-item.active { color: #1DB954; background: rgba(29,185,84,.09);}
+        .bottom-nav-item:hover {background:rgba(255,255,255,0.05);}
+        .bottom-nav-item .icon { font-size: 1.12rem; }
+        .bottom-nav-item small { font-size: 0.67rem;}
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; }
+        .back-btn:hover { background: #333; }
+        .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
+        .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
+        .search-song-item { background: #242424; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
+        .search-song-item:hover { background: #333; }
+        .search-song-info { flex: 1; }
+        .search-song-title { font-weight: bold; margin-bottom: 0.2rem; }
+        .search-song-artist { font-size: 0.9rem; color: #b3b3b3; }
+        .search-song-img { width: 50px; height: 50px; border-radius: 8px; margin-right: 1rem; object-fit: cover; }
+        .favorites-list, .downloads-list { margin-top: 1rem; }
+        .favorite-item, .download-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; transition: all 0.3s ease; }
+        .favorite-item:hover, .download-item:hover { background: #333; }
+        .favorite-info, .download-info { flex: 1; }
+        .favorite-title, .download-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
+        .favorite-artist, .download-artist { font-size: 0.9rem; color: #b3b3b3; }
+        .download-item-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .delete-download { cursor: pointer; color: #ff4757; font-size: 1rem; transition: all 0.3s ease; }
+        .delete-download:hover { transform: scale(1.2); }
+        #album-detail, #playlist-detail { padding-bottom: 120px; }
+        .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
+        .admin-section h3 { margin-top: 0; border-bottom: 2px solid #1DB954; padding-bottom: 0.8rem; margin-bottom: 1.5rem; color: #1DB954; display: flex; align-items: center; gap: 0.5rem; }
+        .admin-form { margin-bottom: 2rem; }
+        .admin-form input[type="file"] { background: #333; border: 2px dashed #1DB954; padding: 1rem; border-radius: 8px; text-align: center; cursor: pointer; }
+        .admin-form input[type="file"]:hover { background: #404040; }
+        .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; margin-right: 0.5rem; }
+        .btn-secondary:hover { background: #666; }
+        .admin-album-item { background: #2c2c2c; border-radius: 8px; margin-bottom: 1.5rem; border-left: 3px solid #1DB954; overflow: hidden; }
+        .admin-album-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #333; }
+        .admin-item-info { flex: 1; }
+        .admin-item-info strong { color: #1DB954; font-size: 1.1rem; }
+        .admin-item-info small { color: #b3b3b3; display: block; margin-top: 0.3rem; }
+        .admin-item-actions button { margin-left: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .admin-song-list { padding: 0.5rem 1rem 1rem; }
+        .admin-song-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid #404040; }
+        .admin-song-item:last-child { border-bottom: none; }
+        .admin-song-actions button { margin-left: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+        .no-songs { color: #888; padding: 1rem; text-align: center; font-style: italic; }
+        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: #333; padding: 1.5rem; border-radius: 8px; text-align: center; border-left: 4px solid #1DB954; }
+        .stat-number { font-size: 2rem; font-weight: bold; color: #1DB954; }
+        .stat-label { color: #b3b3b3; margin-top: 0.5rem; }
+        .offline-indicator { background: #ff4757; color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem; }
+        .multi-upload-section { background: rgba(29,185,84,0.1); border: 2px dashed #1DB954; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; }
+        .multi-upload-section h4 { color: #1DB954; margin-top: 0; }
+        .file-queue { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
+        .file-queue-item { background: #333; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+        .file-queue-item.uploading { border-left: 3px solid #ff9800; }
+        .file-queue-item.success { border-left: 3px solid #4caf50; }
+        .file-queue-item.error { border-left: 3px solid #f44336; }
+        .file-remove { color: #ff4757; cursor: pointer; font-size: 1.2rem; }
+        .file-remove:hover { transform: scale(1.2); }
+        .batch-upload-progress { margin-top: 1rem; }
+        .batch-progress-bar { background: #444; height: 8px; border-radius: 4px; overflow: hidden; }
+        .batch-progress-fill { background: #1DB954; height: 100%; width: 0%; transition: width 0.3s ease; }
+        body.offline-mode { background: linear-gradient(135deg, #1a3d1a 0%, #0d2d0d 100%) !important; }
+        body.offline-mode .section-title { color: #90ee90 !important; }
+        body.offline-mode .download-item { background: #1a4d1a !important; border-left-color: #90ee90 !important; }
+        body.offline-mode .bottom-nav { background: #0d2d0d !important; }
+        body.offline-mode .offline-indicator { background: #ff9800 !important; animation: pulse 2s infinite; }
+
+        /* TEMAS COMPLETOS */
+        body.theme-default .album-img, body.theme-default .album-detail-img { border-color: #1DB954; }
+        body.theme-fire .album-img, body.theme-fire .album-detail-img { border-color: #ff4500; }
+        body.theme-fire { background: radial-gradient(ellipse at center, #3d0303 0%, #1a0000 70%) !important; color: #ffcc80 !important; }
+        body.theme-fire .logo { font-family: 'Metal Mania', cursive !important; font-size: 1.8rem !important; color: #ff4500 !important; text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000 !important; animation: logo-flicker 2s infinite linear alternate; }
+        body.theme-fire .section-title { font-family: 'Metal Mania', cursive !important; color: #ff8c00 !important; }
+        body.theme-fire header { background: rgba(10,0,0,0.8) !important; border-bottom: 2px solid #ff4500; }
+        body.theme-fire .album-card:hover { animation: fire-glow 1.5s ease-in-out infinite alternate; }
+        body.theme-fire .btn-primary { background: #ff4500 !important; color: #fff !important; }
+        body.theme-fire .song-list li { color: #ff8c00 !important; }
+        body.theme-fire .bottom-nav-item.active { color: #ff4500 !important; background: rgba(255, 69, 0, 0.2); }
+        body.theme-neon .album-img, body.theme-neon .album-detail-img { border-color: #00ff88; }
+        body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0f0f23 100%) !important; color: #00ff88 !important; }
+        body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
+        body.theme-neon header { background: #0f0f23 !important; border-bottom: 1px solid #00ff88; }
+        body.theme-neon .album-card:hover { box-shadow: 0 0 25px rgba(0,255,136,0.6) !important; }
+        body.theme-neon .btn-primary { background: #00ff88 !important; color: #000 !important; }
+        body.theme-neon .song-list li { color: #00ff88 !important; }
+        body.theme-neon .bottom-nav-item.active { color: #00ff88 !important; }
+        body.theme-minimal .album-img, body.theme-minimal .album-detail-img { border-color: #f5f5f5; }
+        body.theme-minimal { background: linear-gradient(135deg, #0f0f0f 0%, #1c1c1c 50%, #2a2a2a 70%, #1a1a1a 100%) !important; color: #f5f5f5 !important; }
+        body.theme-minimal header { background: #0f0f0f !important; border-bottom: 1px solid #333; }
+        body.theme-minimal .album-card:hover { box-shadow: 0 0 20px rgba(245,245,245,0.4) !important; }
+        body.theme-minimal .btn-primary { background: #f5f5f5 !important; color: #0f0f0f !important; }
+        body.theme-minimal .song-list li { color: #f5f5f5 !important; }
+        body.theme-minimal .bottom-nav-item.active { color: #f5f5f5 !important; }
+        body.theme-sunset .album-img, body.theme-sunset .album-detail-img { border-color: #ff7043; }
+        body.theme-sunset { background: linear-gradient(135deg, #2c1810 0%, #4a2c2a 30%, #6d4c41 60%, #1a1a1a 100%) !important; color: #ffab91 !important; }
+        body.theme-sunset .logo { color: #ff7043 !important; text-shadow: 0 0 10px #ff7043; }
+        body.theme-sunset .album-card:hover { box-shadow: 0 0 20px rgba(255, 112, 67, 0.6); }
+        body.theme-sunset .btn-primary { background: #ff7043 !important; color: #fff !important; }
+        body.theme-sunset .bottom-nav-item.active { color: #ff7043 !important; }
+        body.theme-pastel .album-img, body.theme-pastel .album-detail-img { border-color: #bb86fc; }
+        body.theme-pastel { background: linear-gradient(135deg, #1a1625 0%, #2d2438 50%, #3d2f47 70%, #4a3b5c 100%) !important; color: #d4c5f9 !important; }
+        body.theme-pastel .logo { color: #bb86fc !important; text-shadow: 0 0 10px #bb86fc; }
+        body.theme-pastel .album-card:hover { box-shadow: 0 0 20px rgba(187, 134, 252, 0.6); }
+        body.theme-pastel .btn-primary { background: #bb86fc !important; color: #1a1625 !important; }
+        body.theme-pastel .bottom-nav-item.active { color: #bb86fc !important; }
+        body.theme-luxury .album-img, body.theme-luxury .album-detail-img { border-color: #3498db; }
+        body.theme-luxury { background: linear-gradient(135deg, #0f1419 0%, #1a252f 50%, #2c3e50 70%, #34495e 100%) !important; color: #f0f8ff !important; }
+        body.theme-luxury .logo { color: #3498db !important; text-shadow: 0 0 10px #3498db; }
+        body.theme-luxury .album-card:hover { box-shadow: 0 0 20px rgba(52, 152, 219, 0.6); }
+        body.theme-luxury .btn-primary { background: linear-gradient(45deg, #3498db, #2980b9) !important; color: #fff !important; }
+        body.theme-luxury .bottom-nav-item.active { color: #3498db !important; }
+        body.theme-oceanic .album-img, body.theme-oceanic .album-detail-img { border-color: #17a2b8; }
+        body.theme-oceanic { background: linear-gradient(135deg, #0a192f 0%, #173a5e 50%, #3b6978 70%, #84a9ac 100%) !important; color: #e0e0e0 !important; }
+        body.theme-oceanic .logo { color: #17a2b8 !important; text-shadow: 0 0 10px #17a2b8; }
+        body.theme-oceanic .album-card:hover { box-shadow: 0 0 20px rgba(23, 162, 184, 0.6); }
+        body.theme-oceanic .btn-primary { background: #17a2b8 !important; color: #fff !important; }
+        body.theme-oceanic .bottom-nav-item.active { color: #17a2b8 !important; }
+        body.theme-hacker .album-img, body.theme-hacker .album-detail-img { border-color: #39ff14; }
+        body.theme-hacker { background: #000 !important; color: #39ff14 !important; font-family: 'Courier New', Courier, monospace !important; }
+        body.theme-hacker .logo, body.theme-hacker .section-title { color: #39ff14 !important; text-shadow: 0 0 5px #39ff14, 0 0 10px #39ff14; }
+        body.theme-hacker header { background: #050505 !important; border-bottom: 1px solid #39ff14; }
+        body.theme-hacker .album-card:hover { box-shadow: 0 0 20px rgba(57, 255, 20, 0.7) !important; }
+        body.theme-hacker .btn-primary { background: #39ff14 !important; color: #000 !important; font-weight: bold; }
+        body.theme-hacker .song-list li { color: #39ff14 !important; }
+        body.theme-hacker .bottom-nav-item.active { color: #39ff14 !important; background: rgba(57, 255, 20, 0.1); }
+        body.theme-cyber .album-img, body.theme-cyber .album-detail-img { border-color: #ff00ff; }
+        body.theme-cyber { background: linear-gradient(135deg, #0b0213 0%, #1d0f2b 100%) !important; color: #e0e0e0 !important; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important; }
+        body.theme-cyber .logo { color: #ff00ff !important; text-shadow: 0 0 8px #ff00ff; }
+        body.theme-cyber header { background: rgba(11, 2, 19, 0.8) !important; backdrop-filter: blur(5px); border-bottom: 1px solid #ff00ff; }
+        body.theme-cyber .album-card:hover { box-shadow: 0 0 18px rgba(255, 0, 255, 0.6) !important; }
+        body.theme-cyber .btn-primary { background: #ff00ff !important; color: #fff !important; }
+        body.theme-cyber .song-list li { color: #ff00ff !important; }
+        body.theme-cyber .bottom-nav-item.active { color: #ff00ff !important; background: rgba(255, 0, 255, 0.1); }
+        body.theme-floral .album-img, body.theme-floral .album-detail-img { border-color: #ff85a2; }
+        body.theme-floral { background: linear-gradient(135deg, #3d1c2b 0%, #4a2c3a 100%) !important; color: #ffe0e9 !important; }
+        body.theme-floral .logo { color: #ff85a2 !important; text-shadow: 0 0 8px #ff85a2; }
+        body.theme-floral header { background: rgba(45, 20, 35, 0.8) !important; backdrop-filter: blur(5px); border-bottom: 1px solid #ff85a2; }
+        body.theme-floral .album-card:hover { box-shadow: 0 0 18px rgba(255, 133, 162, 0.6) !important; }
+        body.theme-floral .btn-primary { background: #ff85a2 !important; color: #3d1c2b !important; font-weight: bold; }
+        body.theme-floral .song-list li { color: #ff85a2 !important; }
+        body.theme-floral .bottom-nav-item.active { color: #ff85a2 !important; background: rgba(255, 133, 162, 0.1); }
+
+        @keyframes fire-glow { from { box-shadow: 0 0 10px #ff8c00, 0 0 20px #ff8c00, 0 0 30px #ff4500, 0 0 40px #ff0000; } to { box-shadow: 0 0 15px #ff8c00, 0 0 25px #ff8c00, 0 0 40px #ff4500, 0 0 55px #ff0000; } }
+        @keyframes logo-flicker { 0%, 100% { text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000; opacity: 1; } 50% { text-shadow: 0 0 8px #ff4500, 0 0 15px #ff4500, 0 0 25px #ff8c00, 0 0 45px #ff0000; opacity: 0.95; } }
+        @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
+        @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
 <body>
-    <h1>Prueba de CORS a Supabase</h1>
-    <button id="testButton">Llamar a la función 'hello-world'</button>
-    <h3>Respuesta:</h3>
-    <pre id="response" style="background: #222; padding: 1rem; border-radius: 8px;"></pre>
+    <div class="loading-indicator" id="loading-indicator" style="display:none;">🎵 Cargando...</div>
+    <header>
+        <span class="logo">KLMZ MUSIC</span>
+        <div class="user-actions">
+            <div class="theme-selector">
+                <label for="theme-select">Tema:</label>
+                <select id="theme-select" onchange="changeTheme(this.value)">
+                    <option value="default">🎵 Default</option>
+                    <option value="neon">⚡ Neon Cyberpunk</option>
+                    <option value="minimal">✨ Elegancia Minimal</option>
+                    <option value="sunset">🌅 Sunset Vibes</option>
+                    <option value="pastel">🌸 Pastel Dreams</option>
+                    <option value="luxury">💎 Luxury Jewels</option>
+                    <option value="oceanic">🌊 Oceanic Serenity</option>
+                    <option value="fire">🔥 Fuego Infernal</option>
+                    <option value="hacker">💻 Hacker Matrix</option>
+                    <option value="cyber">🔮 Cyber Minimal</option>
+                    <option value="floral">🌸 Jardín Floral</option>
+                </select>
+            </div>
+            <div class="user-menu">
+                <div class="lock-icon" id="header-lock-icon" onclick="toggleUserMenu()">👤</div>
+                <div class="user-dropdown" id="user-dropdown">
+                    <div class="user-info" id="user-info-section" style="display: none;">
+                        <div><strong id="user-email-display"></strong></div>
+                        <div id="user-role-display">Usuario</div>
+                    </div>
+                    <div class="user-dropdown-item" id="admin-menu-item" onclick="goToAdmin()" style="display: none;"><span>⚙️</span><span>Panel Admin</span></div>
+                    <div class="user-dropdown-item" onclick="showAuth('register')" id="register-menu-item"><span>📝</span><span>Registrarse</span></div>
+                    <div class="user-dropdown-item" onclick="showAuth('login')" id="login-menu-item"><span>🔐</span><span>Iniciar Sesión</span></div>
+                    <div class="user-dropdown-item logout" onclick="confirmLogout()" id="logout-menu-item" style="display: none;"><span>🚪</span><span>Cerrar Sesión</span></div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="app-container">
+        <main>
+            <section class="content-section active" id="home-section">
+                <div class="section-title">Albums</div>
+                <div class="album-grid" id="albums"><div style="text-align: center; padding: 2rem;">🔄 Cargando álbumes...</div></div>
+                <div id="album-detail" style="display:none;"></div>
+            </section>
+            <section class="content-section" id="search-section">
+                <div class="section-title">Buscar música</div>
+                <input type="text" placeholder="¿Qué quieres escuchar?" id="search-input" onkeyup="searchMusic()">
+                <div id="search-results"></div>
+            </section>
+            <section class="content-section" id="playlists-section">
+                <div id="playlists-content"></div>
+            </section>
+            <section class="content-section" id="favorites-section">
+                <div class="section-title">❤️ Mis Favoritos</div>
+                <div id="favorites-content"><div style="text-align: center; padding: 2rem;">No tienes favoritos</div></div>
+            </section>
+            <section class="content-section" id="downloads-section">
+                <div class="section-title">📱 Mis Descargas <span class="offline-indicator" id="offline-indicator" style="display:none;">Sin conexión</span></div>
+                <div id="downloads-content"><div style="text-align: center; padding: 2rem;">No tienes canciones descargadas</div></div>
+            </section>
+            <section class="content-section" id="admin-section">
+                <div class="section-title">⚙️ Panel de Administración</div>
+                <div id="admin-content"></div>
+            </section>
+        </main>
+    </div>
+    
+    <nav class="bottom-nav">
+        <div class="bottom-nav-item active" onclick="showSection('home')" id="nav-home"><span class="icon">⌂</span><small>Inicio</small></div>
+        <div class="bottom-nav-item" onclick="showSection('search')" id="nav-search"><span class="icon">⌕</span><small>Buscar</small></div>
+        <div class="bottom-nav-item" onclick="showSection('playlists')" id="nav-playlists"><span class="icon">🎶</span><small>Playlists</small></div>
+        <div class="bottom-nav-item" onclick="showSection('downloads')" id="nav-downloads"><span class="icon">↓</span><small>Descargas</small></div>
+        <div class="bottom-nav-item" onclick="showSection('favorites')" id="nav-favs"><span class="icon">♡</span><small>Favoritos</small></div>
+    </nav>
+    
+    <div class="player" id="mini-player" style="display:none;">
+        <img class="player-img-mini" id="mini-player-img" alt="cover">
+        <div class="player-info-mini">
+            <div class="player-title-mini" id="mini-player-title"></div>
+            <div class="player-artist-mini" id="mini-player-artist"></div>
+        </div>
+        <div class="player-controls-inline" onclick="event.stopPropagation()">
+            <button class="play-btn-inline" id="mini-play-btn" onclick="togglePlay()">▶</button>
+        </div>
+    </div>
+    
+    <div class="full-player-backdrop" id="full-player">
+        <button class="full-player-close" onclick="closeFullPlayer()">&times;</button>
+        <img id="full-player-cover" class="full-player-cover" src="" alt="full-cover">
+        <div class="full-player-title" id="full-player-title"></div>
+        <div class="full-player-artist" id="full-player-artist"></div>
+        <div class="full-player-controls">
+            <div class="full-control-buttons">
+                <button class="full-control-btn" onclick="previousSong()">⏮</button>
+                <button class="full-control-btn full-play-btn" id="full-play-btn" onclick="togglePlay()">▶</button>
+                <button class="full-control-btn" onclick="nextSong()">⏭</button>
+            </div>
+            <div class="mode-controls">
+                <button class="mode-btn" id="repeat-btn" onclick="toggleRepeatMode()">🔁</button>
+                <button class="mode-btn" id="shuffle-btn" onclick="toggleShuffleMode()">🔀</button>
+            </div>
+            <div class="full-progress-container">
+                <span class="full-progress-time" id="full-current-time">0:00</span>
+                <div class="full-progress-bar" onclick="seekToFull(event)"><div class="full-progress-fill" id="full-progress-fill"></div></div>
+                <span class="full-progress-time" id="full-total-time">0:00</span>
+            </div>
+            <div class="full-player-volume"><input type="range" class="full-volume-slider" min="0" max="100" value="70" oninput="setVolume(this.value)"></div>
+        </div>
+    </div>
+    
+    <div class="modal" id="auth-modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeAuth()">&times;</button>
+            <div id="login-form">
+                <h2>Iniciar sesión</h2>
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group"><label>Email:</label><input type="email" id="login-email" required></div>
+                    <div class="form-group"><label>Contraseña:</label><input type="password" id="login-password" required></div>
+                    <button type="submit" class="btn-primary">Iniciar sesión</button>
+                </form>
+                <p>¿No tienes cuenta? <a href="#" onclick="showAuth('register')">Regístrate</a></p>
+            </div>
+            <div id="register-form" style="display: none;">
+                <h2>Registrarse</h2>
+                <form onsubmit="handleRegister(event)">
+                    <div class="form-group"><label>Email:</label><input type="email" id="register-email" required></div>
+                    <div class="form-group"><label>Contraseña:</label><input type="password" id="register-password" required></div>
+                    <div class="form-group"><label>Confirmar contraseña:</label><input type="password" id="register-confirm" required></div>
+                    <button type="submit" class="btn-primary">Registrarse</button>
+                </form>
+                <p>¿Ya tienes cuenta? <a href="#" onclick="showAuth('login')">Inicia sesión</a></p>
+            </div>
+        </div>
+    </div>
 
+    <div class="modal" id="add-to-playlist-modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeAddToPlaylistModal()">&times;</button>
+            <div id="playlist-selection-view">
+                <div class="modal-header">Añadir a playlist</div>
+                <ul id="playlist-selection-list"></ul>
+                <button class="btn-secondary" onclick="showCreatePlaylistView()">+ Crear nueva playlist</button>
+            </div>
+            <div id="create-playlist-view" style="display: none;">
+                <div class="modal-header">Crear nueva playlist</div>
+                <form id="create-playlist-form-modal">
+                    <div class="form-group">
+                        <label>Nombre de la playlist:</label>
+                        <input type="text" id="new-playlist-name-modal" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Crear y Añadir Canción</button>
+                </form>
+                <button class="btn-secondary" onclick="hideCreatePlaylistView()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="copyright">© 2025 KLMZ MUSIC - Desarrollado por Freddy Granados</div>
+    <audio id="audio-player" preload="auto"></audio>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // ✅ CONSTANTES
         const supabaseUrl = 'https://sejxavhqqsqfporsopml.supabase.co';
-        // ⚠️ PEGA TU CLAVE ANON (PUBLIC) AQUÍ
+        // ⚠️ ¡IMPORTANTE! Verifica que esta sea tu clave "anon" (public) correcta de Supabase.
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxcXNxZnBvcnNvcG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyOTc5ODEsImV4cCI6MjA3Mjg3Mzk4MX0.ljIXELjbguWE4nxmVTF7GS-F_0E2wI6F5Zn0h9oKOh8';
+        const ADMIN_EMAIL = 'klmzr@gmail.com';
 
-        document.getElementById('testButton').addEventListener('click', async () => {
-            const responseEl = document.getElementById('response');
-            responseEl.textContent = 'Llamando a la función...';
+        // ✅ VARIABLES GLOBALES
+        let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0, isPlaying = false, allAlbums = [], allSongs = [], currentUser = null, songsWithAlbumInfo = [], repeatMode = 'off', shuffleMode = false, db = null, supabase = null, downloadDB = null, currentSongIdToAdd = null;
+        let audioUrlCache = new Map(), audioContext = null, audioPreloadQueue = [];
+        let fileQueue = [], isUploading = false;
+        const audio = document.getElementById('audio-player');
+        
+        // --- NAVEGACIÓN Y VISTAS ---
+        function showSection(sectionId) { document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active')); document.getElementById(`${sectionId}-section`).classList.add('active'); document.querySelectorAll('.bottom-nav-item').forEach(i=>i.classList.remove('active')); const navId = sectionId === 'favorites' ? 'favs' : sectionId; document.getElementById(`nav-${navId}`)?.classList.add('active'); if (sectionId==='playlists') renderPlaylistsList(); else if (sectionId==='favorites') loadFavorites(); else if (sectionId==='downloads') loadDownloads(); else if (sectionId==='admin') renderAdminPanel(); else if (sectionId==='home') showAlbumsGrid(); }
+        function showAlbumsGrid() { document.getElementById('album-detail').style.display = 'none'; document.getElementById('albums').style.display = 'grid'; }
+
+        // --- AUTENTICACIÓN ---
+        function updateAuthUI() { const u = currentUser; document.getElementById('user-info-section').style.display=u?'block':'none'; document.getElementById('user-email-display').textContent=u?u.email:''; document.getElementById('login-menu-item').style.display=u?'none':'flex'; document.getElementById('register-menu-item').style.display=u?'none':'flex'; document.getElementById('logout-menu-item').style.display=u?'flex':'none'; document.getElementById('admin-menu-item').style.display=u&&u.email===ADMIN_EMAIL?'flex':'none'; }
+        async function logout() { await supabase.auth.signOut(); currentUser = null; updateAuthUI(); alert('Sesión cerrada'); }
+        function confirmLogout() { if(confirm('¿Cerrar sesión?')) logout(); }
+        async function handleLogin(e){e.preventDefault();const email=document.getElementById('login-email').value,password=document.getElementById('login-password').value;try{const{error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;alert('Bienvenido!');closeAuth()}catch(error){alert('Error: '+error.message)}}
+        async function handleRegister(e){e.preventDefault();const email=document.getElementById('register-email').value,password=document.getElementById('register-password').value,confirm=document.getElementById('register-confirm').value;if(password!==confirm){alert('Las contraseñas no coinciden');return}try{const{error}=await supabase.auth.signUp({email,password});if(error)throw error;alert('Registro exitoso');closeAuth()}catch(error){alert('Error: '+error.message)}}
+        function showAuth(type){document.getElementById('user-dropdown').classList.remove('show');document.getElementById('login-form').style.display=type==='login'?'block':'none';document.getElementById('register-form').style.display=type==='register'?'block':'none';document.getElementById('auth-modal').style.display='flex'}
+        function closeAuth(){document.getElementById('auth-modal').style.display='none'}
+        function goToAdmin(){document.getElementById('user-dropdown').classList.remove('show');showSection('admin')}
+        function toggleUserMenu(){document.getElementById('user-dropdown').classList.toggle('show')}
+
+        // --- PLAYLISTS, FAVORITOS, BÚSQUEDA ---
+        const getPlaylists = () => JSON.parse(localStorage.getItem('klmz_playlists') || '[]');
+        const savePlaylists = (p) => localStorage.setItem('klmz_playlists', JSON.stringify(p));
+        function createPlaylist(name) { if (!name?.trim()) return null; const playlists = getPlaylists(); const newPlaylist = { id: 'playlist_' + Date.now(), name: name.trim(), songs: [] }; playlists.push(newPlaylist); savePlaylists(playlists); return newPlaylist; }
+        function addSongToPlaylist(playlistId, songId) { const playlists = getPlaylists(); const playlist = playlists.find(p => p.id === playlistId); if (playlist && !playlist.songs.includes(songId)) { playlist.songs.push(songId); savePlaylists(playlists); alert(`Canción añadida a "${playlist.name}"`); } }
+        function deletePlaylist(playlistId) { if (confirm('¿Eliminar playlist?')) { let p = getPlaylists().filter(pl => pl.id !== playlistId); savePlaylists(p); renderPlaylistsList(); } }
+        function renderPlaylistsList() { const playlists = getPlaylists(); const content = document.getElementById('playlists-content'); let html = `<div class="section-title">Mis Playlists</div>`; html += playlists.length === 0 ? `<div style="text-align:center;padding:3rem;"><h2>No tienes playlists</h2></div>` : playlists.map(p => `<div class="playlist-item" onclick="renderPlaylistDetail('${p.id}')"><div class="playlist-info"><strong>${p.name}</strong><small>${p.songs.length} canciones</small></div><div class="playlist-actions"><span class="delete-playlist" onclick="event.stopPropagation(); deletePlaylist('${p.id}')">🗑️</span></div></div>`).join(''); html += `<div style="margin-top:2rem;"><button class="btn-primary" onclick="handleCreatePlaylistFromPage()">+ Crear Playlist</button></div>`; content.innerHTML = html; }
+        async function renderPlaylistDetail(playlistId) { const playlist = getPlaylists().find(p => p.id === playlistId); if (!playlist) return; const content = document.getElementById('playlists-content'); content.innerHTML = `<button class="back-btn" onclick="showSection('playlists')">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><h2>${playlist.name}</h2><small>${playlist.songs.length} canciones</small></div><div id="playlist-detail-songs">Cargando...</div>`; if (playlist.songs.length === 0) { document.getElementById('playlist-detail-songs').innerHTML = '<p style="text-align:center;">Playlist vacía.</p>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', playlist.songs); if (error) throw error; const sortedSongs = playlist.songs.map(songId => songs.find(s => s.id === songId)).filter(Boolean); currentPlaylist = sortedSongs; const favorites = getLocalFavorites(); document.getElementById('playlist-detail-songs').innerHTML = `<div class="song-list"><ul>${sortedSongs.map((song, idx) => `<li data-song-index="${idx}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'}">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`; } catch(e) { content.innerHTML += `<p style="color:red">Error al cargar canciones.</p>`; } }
+        function handleCreatePlaylistFromPage() { const name = prompt("Nombre de la playlist:"); if (name) { createPlaylist(name); renderPlaylistsList(); } }
+        function openAddToPlaylistModal(songId) { currentSongIdToAdd = songId; const listEl = document.getElementById('playlist-selection-list'); listEl.innerHTML = getPlaylists().map(p => `<li onclick="addCurrentSongToPlaylist('${p.id}')">${p.name}</li>`).join(''); document.getElementById('add-to-playlist-modal').style.display = 'flex'; hideCreatePlaylistView(); }
+        function closeAddToPlaylistModal() { document.getElementById('add-to-playlist-modal').style.display = 'none'; currentSongIdToAdd = null; }
+        function addCurrentSongToPlaylist(playlistId) { if (currentSongIdToAdd) { addSongToPlaylist(playlistId, currentSongIdToAdd); closeAddToPlaylistModal(); } }
+        function showCreatePlaylistView() { document.getElementById('playlist-selection-view').style.display = 'none'; document.getElementById('create-playlist-view').style.display = 'block'; }
+        function hideCreatePlaylistView() { document.getElementById('playlist-selection-view').style.display = 'block'; document.getElementById('create-playlist-view').style.display = 'none'; }
+        const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
+        const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
+        window.toggleFavorite = function(songId, el) { let favorites = getLocalFavorites(); if (favorites.includes(songId)) { favorites = favorites.filter(id => id !== songId); } else { favorites.push(songId); } saveLocalFavorites(favorites); if (el) { el.innerHTML = favorites.includes(songId) ? '❤️' : '🤍'; el.style.color = favorites.includes(songId) ? '#1DB954' : '#666'; } }
+        async function loadFavorites() { const content = document.getElementById('favorites-content'); const favorites = getLocalFavorites(); if (favorites.length === 0) { content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>💔 No tienes favoritos</h2></div>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites); if (error) throw error; content.innerHTML = `<div class="favorites-list">${songs.map(song => `<div class="favorite-item" data-song='${JSON.stringify(song)}'><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.albums?.artist || ''}</div></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar favoritos'; } }
+        window.searchMusic = function() { const query = document.getElementById('search-input').value.toLowerCase().trim(); const results = document.getElementById('search-results'); if (!query) { results.innerHTML = ''; return; } const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.albums?.artist?.toLowerCase().includes(query)); results.innerHTML = foundSongs.length ? `<h3>Resultados</h3>` + foundSongs.map(song => `<div class="search-song-item" data-song-id="${song.id}"><div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums?.artist||''}</div></div><div>▶</div></div>`).join('') : `<h3>Sin resultados</h3>`; }
+
+        // --- OFFLINE Y DESCARGAS ---
+        function blobToBase64(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); }); }
+        async function initDownloadDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('KLMZDownloads', 2); request.onerror = e => reject(e.target.error); request.onsuccess = e => { downloadDB = e.target.result; resolve(downloadDB); }; request.onupgradeneeded = e => { const db = e.target.result; if (!db.objectStoreNames.contains('songs')) db.createObjectStore('songs', { keyPath: 'id' }); }; }); }
+        async function downloadSong(song, album) { const downloadBtn = document.querySelector(`[data-song-id="${song.id}"] .download-icon`); if(downloadBtn) downloadBtn.textContent = '⏳'; try { const response = await fetch(song.song_url); const audioBlob = await response.blob(); let coverBase64 = null; if (album?.cover_url) { try { const coverRes = await fetch(album.cover_url); const coverBlob = await coverRes.blob(); coverBase64 = await blobToBase64(coverBlob); } catch (e) {} } const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBase64, downloadedAt: new Date().toISOString() }; await downloadDB.transaction('songs', 'readwrite').objectStore('songs').put(downloadData); if(downloadBtn) downloadBtn.textContent = '✅'; } catch (e) { if(downloadBtn) downloadBtn.textContent = '↓'; alert('Error en la descarga.'); } }
+        async function isSongDownloaded(songId) { if (!downloadDB) return false; return new Promise(resolve => { const request = downloadDB.transaction('songs').objectStore('songs').get(songId); request.onsuccess = () => resolve(!!request.result); request.onerror = () => resolve(false); }); }
+        async function loadDownloads() { const content = document.getElementById('downloads-content'); content.innerHTML = `<h2>Cargando...</h2>`; try { const songs = await getAllOfflineSongs(); if (songs.length === 0) { content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; return; } content.innerHTML = `<div class="downloads-list">${songs.map(song => `<div class="download-item" onclick="playOfflineSong('${song.id}')"><div><div class="download-title">${song.title}</div><div class="download-artist">${song.artist}</div></div><div class="download-item-actions"><span class="delete-download" onclick="event.stopPropagation();deleteDownload('${song.id}')">🗑️</span></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar descargas.'; } }
+        async function getAllOfflineSongs() { return new Promise((resolve, reject) => { if (!downloadDB) return reject(new Error('IDB no disponible')); const request = downloadDB.transaction(['songs'], 'readonly').objectStore('songs').getAll(); request.onsuccess = () => { const songs = request.result || []; songs.sort((a, b) => new Date(b.downloadedAt) - new Date(a.downloadedAt)); resolve(songs); }; request.onerror = (e) => reject(e.target.error); }); }
+        async function playOfflineSong(songId) { const tx = downloadDB.transaction('songs'); const store = tx.objectStore('songs'); const request = store.get(songId); request.onsuccess = () => { const songData = request.result; const audioUrl = URL.createObjectURL(songData.audioBlob); playSong({ ...songData, song_url: audioUrl }, { artist: songData.artist, title: songData.albumTitle, cover_url: songData.coverBase64 ? URL.createObjectURL(base64ToBlob(songData.coverBase64)) : '' }); }; }
+        function base64ToBlob(base64, mimeType) { const byteCharacters = atob(base64.split(',')[1]); const byteNumbers = new Array(byteCharacters.length); for (let i = 0; i < byteCharacters.length; i++) { byteNumbers[i] = byteCharacters.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); return new Blob([byteArray], { type: mimeType }); }
+        async function deleteDownload(songId) { if (confirm('¿Eliminar descarga?')) { downloadDB.transaction('songs', 'readwrite').objectStore('songs').delete(songId).onsuccess = loadDownloads; } }
+        function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
+        
+        // --- PANEL DE ADMINISTRACIÓN (MÉTODO ORIGINAL RESTAURADO) ---
+        async function uploadFileR2Only(file) {
+            console.log('🔥 Subiendo a R2 con el método original:', file.name);
+            const formData = new FormData();
+            formData.append('file', file);
             try {
-                const response = await fetch(`${supabaseUrl}/functions/v1/hello-world`, {
+                const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${supabaseKey}`,
-                        'apikey': supabaseKey,
-                    }
+                        'apikey': supabaseKey
+                    },
+                    body: formData
                 });
-
                 if (!response.ok) {
-                    throw new Error(`Error de Red: ${response.status} ${response.statusText}`);
+                    const errorText = await response.text();
+                    throw new Error(`La llamada a la función de Supabase falló: ${response.status} - ${errorText}`);
                 }
-                
                 const data = await response.json();
-                responseEl.textContent = JSON.stringify(data, null, 2);
-
+                if (!data.success || data.error) {
+                    throw new Error(data.error || 'La función de Supabase devolvió un error.');
+                }
+                console.log('✅ Archivo subido exitosamente a R2:', data.publicUrl);
+                return data.publicUrl;
             } catch (error) {
-                responseEl.textContent = `FALLÓ LA LLAMADA:\n${error.message}`;
-                console.error(error);
+                console.error("💥 Error en el proceso de subida:", error);
+                throw error;
             }
+        }
+        async function renderAdminPanel() { const adminContent = document.getElementById('admin-content'); adminContent.innerHTML = `<div class="admin-stats"><div class="stat-card"><div class="stat-number">${allAlbums.length}</div><div class="stat-label">📀 Álbumes</div></div><div class="stat-card"><div class="stat-number">${allSongs.length}</div><div class="stat-label">🎵 Canciones</div></div></div><div class="admin-section"><h3>📀 Crear Álbum</h3><form id="album-form"><div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div><div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div><div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div><button type="submit" class="btn-primary">🔥 Crear Álbum</button></form></div><div class="admin-section"><h3>🎵 Subida Múltiple de Canciones</h3><div class="multi-upload-section"><h4>📁 Seleccionar Archivos</h4><div class="form-group"><label>Álbum de destino:</label><select id="batch-album-select" required><option value="">Seleccionar álbum</option>${allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('')}</select></div><div class="form-group"><input type="file" id="batch-audio-files" accept="audio/*" multiple></div><button type="button" onclick="startBatchUpload()" class="btn-primary">📤 Agregar a la Cola</button></div><div class="file-queue"><h4>📋 Cola de Archivos</h4><div id="file-queue-container"><p style="color: #666;">No hay archivos en cola</p></div><button type="button" onclick="processBatchUpload()" class="btn-primary" style="margin-top: 1rem;">🚀 Subir Todos</button></div><div id="batch-upload-progress" class="batch-upload-progress" style="display: none;"><div id="batch-progress-label"></div><div class="batch-progress-bar"><div id="batch-progress-fill"></div></div></div></div><div class="admin-section"><h3>📋 Contenido y Gestión</h3>${allAlbums.map(album => `<div class="admin-album-item"><div class="admin-album-header"><div class="admin-item-info"><strong>${album.title}</strong><small>${album.artist}</small></div><div class="admin-item-actions"><button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar Álbum</button></div></div><div class="admin-song-list">${allSongs.filter(s => s.album_id === album.id).map(song => `<div class="admin-song-item"><span>🎵 ${song.title}</span><div class="admin-song-actions"><button class="btn-secondary" onclick="editSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">Eliminar</button></div></div>`).join('') || '<div class="no-songs">No hay canciones en este álbum.</div>'}</div></div>`).join('')}</div>`; setupAdminForms(); }
+        function setupAdminForms() { document.getElementById('album-form').addEventListener('submit', async (e) => { e.preventDefault(); const title = document.getElementById('album-title').value; const artist = document.getElementById('album-artist').value; const coverFile = document.getElementById('album-cover-file').files[0]; if (!coverFile) return; showLoadingIndicator(true); try { const coverUrl = await uploadFileR2Only(coverFile); await supabase.from('albums').insert([{ title, artist, cover_url: coverUrl }]); alert('✅ Álbum creado!'); e.target.reset(); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { showLoadingIndicator(false); } }); }
+        function addFilesToQueue(files, albumId) { for (let i = 0; i < files.length; i++) fileQueue.push({ id: Date.now() + i, file: files[i], name: files[i].name, albumId: albumId, status: 'pending' }); updateFileQueueUI(); }
+        function removeFromQueue(itemId) { fileQueue = fileQueue.filter(item => item.id !== itemId); updateFileQueueUI(); }
+        function updateFileQueueUI() { const container = document.getElementById('file-queue-container'); if (!container) return; container.innerHTML = fileQueue.length === 0 ? '<p style="color:#666;text-align:center;">No hay archivos en cola</p>' : fileQueue.map(item => `<div class="file-queue-item ${item.status}"><div><strong>${item.name}</strong></div>${item.status==='pending'?`<span class="file-remove" onclick="removeFromQueue(${item.id})">🗑️</span>`:''}</div>`).join(''); }
+        function startBatchUpload() { const albumSelect = document.getElementById('batch-album-select'); const filesInput = document.getElementById('batch-audio-files'); if (!albumSelect.value) { alert('❌ Selecciona un álbum'); return; } if (!filesInput.files.length) { alert('❌ Selecciona archivos'); return; } addFilesToQueue(filesInput.files, albumSelect.value); filesInput.value = ''; }
+        async function processBatchUpload() { const albumId = document.getElementById('batch-album-select').value; if (isUploading || fileQueue.length === 0 || !albumId) return; isUploading = true; const progressContainer = document.getElementById('batch-upload-progress'); const progressBar = document.getElementById('batch-progress-fill'); const progressLabel = document.getElementById('batch-progress-label'); progressContainer.style.display = 'block'; for (const [index, item] of fileQueue.entries()) { if (item.status !== 'pending') continue; try { progressLabel.textContent = `Subiendo: ${item.name}`; const fileUrl = await uploadFileR2Only(item.file); const title = item.name.replace(/\.[^/.]+$/, ""); await supabase.from('songs').insert([{ title, album_id: albumId, song_url: fileUrl }]); item.status = 'success'; } catch (error) { item.status = 'error'; } progressBar.style.width = `${((index + 1) / fileQueue.length) * 100}%`; updateFileQueueUI(); } progressLabel.textContent = 'Subida completada'; setTimeout(() => { progressContainer.style.display = 'none'; fileQueue = []; updateFileQueueUI(); }, 2000); isUploading = false; await loadAllData(); await renderAdminPanel(); }
+        window.deleteAlbum = async function(albumId) { if (!confirm('¿Eliminar álbum y todas sus canciones?')) return; showLoadingIndicator(true); try { await supabase.from('songs').delete().eq('album_id', albumId); await supabase.from('albums').delete().eq('id', albumId); alert('✅ Álbum eliminado'); await loadAllData(); await renderAdminPanel(); } catch (error) { alert('❌ Error: ' + error.message); } finally { showLoadingIndicator(false); } }
+        window.editSong = async function(songId, currentTitle) { const newTitle = prompt('Nuevo nombre:', currentTitle); if (newTitle && newTitle.trim() && newTitle !== currentTitle) { showLoadingIndicator(true); try { await supabase.from('songs').update({ title: newTitle.trim() }).eq('id', songId); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { showLoadingIndicator(false); } } }
+        window.deleteSong = async function(songId) { if (!confirm('¿Eliminar esta canción?')) return; showLoadingIndicator(true); try { await supabase.from('songs').delete().eq('id', songId); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { showLoadingIndicator(false); } }
+        
+        // --- INICIALIZACIÓN Y CARGA DE DATOS ---
+        async function loadSupabase() { showLoadingIndicator(true); try { supabase = window.supabase.createClient(supabaseUrl, supabaseKey); supabase.auth.onAuthStateChange((_, session) => { currentUser = session?.user || null; updateAuthUI(); }); const { data: { session } } = await supabase.auth.getSession(); currentUser = session?.user || null; updateAuthUI(); await initDownloadDB(); await loadAllData(); } catch (error) { document.getElementById('albums').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Conexión</h2><p>${error.message}</p></div>`; } finally { showLoadingIndicator(false); } }
+        async function loadAllData() { try { const [{ data: albumsData, error: albumsError }, { data: songsData, error: songsError }] = await Promise.all([supabase.from('albums').select('*').order('created_at', { ascending: false }), supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })]); if (albumsError) throw albumsError; if (songsError) console.warn(songsError); allAlbums = albumsData || []; allSongs = songsData || []; songsWithAlbumInfo = songsData || []; displayAlbums(allAlbums); } catch (error) { document.getElementById('albums').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Cargando Datos</h2><p>${error.message}</p></div>`; } }
+        function displayAlbums(albums) { const container = document.getElementById('albums'); if (!albums || albums.length === 0) { container.innerHTML = `<div style="text-align:center;padding:3rem;"><h2>No hay álbumes</h2></div>`; return; } container.innerHTML = albums.map((album, index) => `<div class="album-card" data-album-index="${index}"><img class="album-img" src="${album.cover_url}" alt="${album.title}" loading="lazy"><div class="album-title">${album.title}</div><div class="album-artist">${album.artist}</div></div>`).join(''); }
+        async function showAlbumDetail(album) { showSection('home'); currentAlbum = album; document.getElementById('albums').style.display = 'none'; const detailView = document.getElementById('album-detail'); detailView.style.display = 'block'; detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`; try { const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at'); if (error) throw error; if (!songs || songs.length === 0) { document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>'; return; } currentPlaylist = songs; const favorites = getLocalFavorites(); const downloadedStates = await Promise.all(songs.map(s => isSongDownloaded(s.id))); document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.map((song, idx) => `<li data-song-index="${idx}" data-song-id="${song.id}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="openAddToPlaylistModal('${song.id}')" title="Añadir a playlist">+</span><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'};">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="download-icon" onclick='downloadSong(${JSON.stringify(song)}, ${JSON.stringify(album)})'>${downloadedStates[idx] ? '✅' : '↓'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`; } catch (error) { detailView.innerHTML += `<p>Error: ${error.message}</p>`; } }
+        function changeTheme(theme) { document.body.className = ''; if (theme && theme !== 'default') document.body.classList.add('theme-' + theme); localStorage.setItem('klmz_theme', theme || 'default'); }
+        function loadSavedTheme() { const savedTheme = localStorage.getItem('klmz_theme') || 'default'; if(document.getElementById('theme-select')) { document.getElementById('theme-select').value = savedTheme; changeTheme(savedTheme); } }
+        function showLoadingIndicator(show) { document.getElementById('loading-indicator').style.display = show ? 'block' : 'none'; }
+        
+        // --- REPRODUCTOR ---
+        function openFullPlayer() { document.getElementById('full-player').classList.add('active'); }
+        window.closeFullPlayer = function() { document.getElementById('full-player').classList.remove('active'); }
+        window.toggleRepeatMode = function() { /* ... */ }
+        window.toggleShuffleMode = function() { /* ... */ }
+        window.setVolume = function(value) { audio.volume = value / 100; }
+        window.seekToFull = function(event) { const pBar = event.currentTarget; if (audio.duration) audio.currentTime = ((event.clientX - pBar.getBoundingClientRect().left) / pBar.offsetWidth) * audio.duration; }
+        window.nextSong = function() { if (!currentPlaylist.length) return; currentIndex = (currentIndex + 1) % currentPlaylist.length; playSongFromPlaylist(currentIndex); }
+        window.previousSong = function() { if (!currentPlaylist.length) return; currentIndex = (currentIndex > 0) ? currentIndex - 1 : currentPlaylist.length - 1; playSongFromPlaylist(currentIndex); }
+        function formatTime(seconds) { const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60).toString().padStart(2, '0'); return `${min}:${sec}`; }
+        window.playSongFromPlaylist = function(index) { if (!currentPlaylist || !currentPlaylist[index]) return; const song = currentPlaylist[index]; const album = song.albums || allAlbums.find(a => a.id === song.album_id) || currentAlbum; playSong(song, album, currentPlaylist, index); }
+        window.playSong = function(song, album, playlist, index) { currentSong = song; currentAlbum = album || {}; currentPlaylist = playlist || [song]; currentIndex = index || 0; updateAllPlayers(); if (audio && song.song_url) { audio.src = song.song_url; audio.play().catch(e => console.error(e)); } }
+        window.togglePlay = function() { if (!currentSong || !audio) return; if (isPlaying) audio.pause(); else audio.play(); }
+        function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
+        function updateMiniPlayer() { const miniPlayer = document.getElementById('mini-player'); if (miniPlayer && currentSong) { miniPlayer.style.display = 'flex'; document.getElementById('mini-player-img').src = currentAlbum?.cover_url || ''; document.getElementById('mini-player-title').textContent = currentSong.title; document.getElementById('mini-player-artist').textContent = currentAlbum.artist; } }
+        function updateFullPlayer() { document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; document.getElementById('full-player-title').textContent = currentSong.title; document.getElementById('full-player-artist').textContent = currentAlbum.artist; }
+        function updatePlayButtons() { const playText = isPlaying ? '⏸' : '▶'; document.getElementById('mini-play-btn').textContent = playText; document.getElementById('full-play-btn').textContent = playText; }
+        
+        // --- PUNTO DE ENTRADA Y EVENTOS GLOBALES ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSavedTheme();
+            updateOnlineStatus();
+            loadSupabase();
+            
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+
+            audio.addEventListener('play', () => { isPlaying = true; updatePlayButtons(); });
+            audio.addEventListener('pause', () => { isPlaying = false; updatePlayButtons(); });
+            audio.addEventListener('ended', () => { isPlaying = false; updatePlayButtons(); nextSong(); });
+            audio.addEventListener('timeupdate', () => { if (audio.duration) { document.getElementById('full-progress-fill').style.width = `${(audio.currentTime / audio.duration) * 100}%`; document.getElementById('full-current-time').textContent = formatTime(audio.currentTime); document.getElementById('full-total-time').textContent = formatTime(audio.duration); } });
+            
+            const createPlaylistForm = document.getElementById('create-playlist-form-modal');
+            if (createPlaylistForm) { createPlaylistForm.addEventListener('submit', (e) => { e.preventDefault(); const input = document.getElementById('new-playlist-name-modal'); const newPlaylist = createPlaylist(input.value); if (newPlaylist && currentSongIdToAdd) { addSongToPlaylist(newPlaylist.id, currentSongIdToAdd); closeAddToPlaylistModal(); } input.value = ''; }); }
+            
+            document.addEventListener('click', (e) => {
+                const albumCard = e.target.closest('.album-card');
+                if (albumCard) { const index = parseInt(albumCard.dataset.albumIndex); if (!isNaN(index)) showAlbumDetail(allAlbums[index]); return; }
+                
+                const songLi = e.target.closest('.song-list li');
+                if (songLi && !e.target.closest('.song-actions')) { const index = parseInt(songLi.dataset.songIndex); if (!isNaN(index)) playSongFromPlaylist(index); return; }
+                
+                if (e.target.matches('.play-icon')) { const index = parseInt(e.target.dataset.songIndex); if (!isNaN(index)) playSongFromPlaylist(index); return; }
+                
+                const searchItem = e.target.closest('.search-song-item');
+                if (searchItem) { const song = songsWithAlbumInfo.find(s => s.id === searchItem.dataset.songId); if (song) playSong(song, song.albums, [song], 0); return; }
+                
+                const favoriteItem = e.target.closest('.favorite-item');
+                if (favoriteItem) { const song = JSON.parse(favoriteItem.dataset.song); if(song) playSong(song, song.albums, [song], 0); return; }
+
+                if (e.target.closest('#mini-player') && !e.target.closest('.player-controls-inline')) { openFullPlayer(); }
+            });
         });
     </script>
 </body>
