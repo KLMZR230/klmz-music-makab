@@ -492,11 +492,14 @@
             document.querySelectorAll('.bottom-nav-item').forEach(i=>i.classList.remove('active')); 
             const navId = sectionId === 'favorites' ? 'favs' : sectionId; 
             document.getElementById(`nav-${navId}`)?.classList.add('active'); 
+            
             if (sectionId==='playlists') renderPlaylistsList(); 
             else if (sectionId==='favorites') loadFavorites(); 
             else if (sectionId==='downloads') loadDownloads(); 
             else if (sectionId==='admin') renderAdminPanel(); 
             else if (sectionId==='home') showAlbumsGrid();
+
+            window.scrollTo(0, 0);
         }
         function showAlbumsGrid() { 
             document.getElementById('album-detail').style.display = 'none'; 
@@ -522,7 +525,7 @@
         function addSongToPlaylist(playlistId, songId) { const playlists = getPlaylists(); const playlist = playlists.find(p => p.id === playlistId); if (playlist && !playlist.songs.includes(songId)) { playlist.songs.push(songId); savePlaylists(playlists); alert(`Canción añadida a "${playlist.name}"`); } }
         function deletePlaylist(playlistId) { if (confirm('¿Eliminar playlist?')) { let p = getPlaylists().filter(pl => pl.id !== playlistId); savePlaylists(p); renderPlaylistsList(); } }
         function renderPlaylistsList() { const playlists = getPlaylists(); const content = document.getElementById('playlists-content'); let html = `<div class="section-title">Mis Playlists</div>`; html += playlists.length === 0 ? `<div style="text-align:center;padding:3rem;"><h2>No tienes playlists</h2></div>` : playlists.map(p => `<div class="playlist-item" onclick="renderPlaylistDetail('${p.id}')"><div class="playlist-info"><strong>${p.name}</strong><small>${p.songs.length} canciones</small></div><div class="playlist-actions"><span class="delete-playlist" onclick="event.stopPropagation(); deletePlaylist('${p.id}')">🗑️</span></div></div>`).join(''); html += `<div style="margin-top:2rem;"><button class="btn-primary" onclick="handleCreatePlaylistFromPage()">+ Crear Playlist</button></div>`; content.innerHTML = html; }
-        async function renderPlaylistDetail(playlistId) { const playlist = getPlaylists().find(p => p.id === playlistId); if (!playlist) return; const content = document.getElementById('playlists-content'); content.innerHTML = `<button class="back-btn" onclick="showSection('playlists')">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><h2>${playlist.name}</h2><small>${playlist.songs.length} canciones</small></div><div id="playlist-detail-songs">Cargando...</div>`; if (playlist.songs.length === 0) { document.getElementById('playlist-detail-songs').innerHTML = '<p style="text-align:center;">Playlist vacía.</p>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', playlist.songs); if (error) throw error; const sortedSongs = playlist.songs.map(songId => songs.find(s => s.id === songId)).filter(Boolean); currentPlaylist = sortedSongs; const favorites = getLocalFavorites(); document.getElementById('playlist-detail-songs').innerHTML = `<div class="song-list"><ul>${sortedSongs.map((song, idx) => `<li data-song-index="${idx}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'}">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`; } catch(e) { content.innerHTML += `<p style="color:red">Error al cargar canciones.</p>`; } }
+        async function renderPlaylistDetail(playlistId) { const playlist = getPlaylists().find(p => p.id === playlistId); if (!playlist) return; const content = document.getElementById('playlists-content'); content.innerHTML = `<button class="back-btn" onclick="showSection('playlists')">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><h2>${playlist.name}</h2><small>${playlist.songs.length} canciones</small></div><div id="playlist-detail-songs">Cargando...</div>`; try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', playlist.songs); if (error) throw error; const sortedSongs = playlist.songs.map(songId => songs.find(s => s.id === songId)).filter(Boolean); currentPlaylist = sortedSongs; const favorites = getLocalFavorites(); document.getElementById('playlist-detail-songs').innerHTML = `<div class="song-list"><ul>${sortedSongs.map((song, idx) => `<li data-song-index="${idx}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'}">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`; } catch(e) { content.innerHTML += `<p style="color:red">Error al cargar canciones.</p>`; } }
         function handleCreatePlaylistFromPage() { const name = prompt("Nombre de la playlist:"); if (name) { createPlaylist(name); renderPlaylistsList(); } }
         function openAddToPlaylistModal(songId) { currentSongIdToAdd = songId; const listEl = document.getElementById('playlist-selection-list'); listEl.innerHTML = getPlaylists().map(p => `<li onclick="addCurrentSongToPlaylist('${p.id}')">${p.name}</li>`).join(''); document.getElementById('add-to-playlist-modal').style.display = 'flex'; hideCreatePlaylistView(); }
         function closeAddToPlaylistModal() { document.getElementById('add-to-playlist-modal').style.display = 'none'; currentSongIdToAdd = null; }
@@ -843,42 +846,39 @@
                 
                 displayAlbumsByGenre(allAlbums); 
             } catch (error) { 
-                document.getElementById('album-genres-container').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Conexión</h2><p>${error.message}</p></div>`; 
+                document.getElementById('album-genres-container').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Cargando Datos</h2><p>${error.message}</p></div>`; 
             } 
         }
 
-        async function showAlbumDetail(album) {
+        async function showAlbumDetail(album) { 
             // Ocultar la cuadrícula de álbumes y mostrar los detalles
-            document.getElementById('album-genres-container').style.display = 'none';
-            const detailView = document.getElementById('album-detail');
-            detailView.style.display = 'block';
-            
+            document.getElementById('album-genres-container').style.display = 'none'; 
+            const detailView = document.getElementById('album-detail'); 
+            detailView.style.display = 'block'; 
+            
             // Desplazarse a la parte superior de la página
             window.scrollTo(0, 0);
-
-            currentAlbum = album;
+            
+            currentAlbum = album; 
 
             // Mostrar el esqueleto de la vista de detalles
-            detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`;
-           
-            try {
+            detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`; 
+            
+            try { 
                 // Cargar las canciones del álbum y ordenarlas por fecha de creación (las últimas primero)
-                const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at', { ascending: false });
-                if (error) throw error;
-                
-                if (!songs || songs.length === 0) {
-                    document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>';
-                    return;
-                }
-
-                currentPlaylist = songs;
-                const favorites = getLocalFavorites();
-                const downloadedStates = await Promise.all(songs.map(s => isSongDownloaded(s.id)));
-
-                document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.map((song, idx) => `<li data-song-index="${idx}" data-song-id="${song.id}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="openAddToPlaylistModal('${song.id}')" title="Añadir a playlist">+</span><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'};">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="download-icon" onclick='downloadSong(${JSON.stringify(song)}, ${JSON.stringify(album)})'>${downloadedStates[idx] ? '✅' : '↓'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`;
-            } catch (error) {
-                detailView.innerHTML += `<p>Error: ${error.message}</p>`;
-            }
+                const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at', { ascending: false }); 
+                if (error) throw error; 
+                if (!songs || songs.length === 0) { 
+                    document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>'; 
+                    return; 
+                } 
+                currentPlaylist = songs; 
+                const favorites = getLocalFavorites(); 
+                const downloadedStates = await Promise.all(songs.map(s => isSongDownloaded(s.id))); 
+                document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.map((song, idx) => `<li data-song-index="${idx}" data-song-id="${song.id}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="openAddToPlaylistModal('${song.id}')" title="Añadir a playlist">+</span><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'};">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="download-icon" onclick='downloadSong(${JSON.stringify(song)}, ${JSON.stringify(album)})'>${downloadedStates[idx] ? '✅' : '↓'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`; 
+            } catch (error) { 
+                detailView.innerHTML += `<p>Error: ${error.message}</p>`; 
+            } 
         }
         function changeTheme(theme) { document.body.className = ''; if (theme && theme !== 'default') document.body.classList.add('theme-' + theme); localStorage.setItem('klmz_theme', theme || 'default'); }
         function loadSavedTheme() { const savedTheme = localStorage.getItem('klmz_theme') || 'default'; if(document.getElementById('theme-select')) { document.getElementById('theme-select').value = savedTheme; changeTheme(savedTheme); } }
