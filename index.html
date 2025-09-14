@@ -592,12 +592,76 @@
             }
         }
         
-        async function renderAdminPanel() { 
+        async function renderAdminPanel(showSuccessMessage = false) { 
             const adminContent = document.getElementById('admin-content'); 
-            adminContent.innerHTML = `<div class="admin-stats"><div class="stat-card"><div class="stat-number">${allAlbums.length}</div><div class="stat-label">📀 Álbumes</div></div><div class="stat-card"><div class="stat-number">${allSongs.length}</div><div class="stat-label">🎵 Canciones</div></div></div><div class="admin-section"><h3>📀 Crear Álbum</h3><form id="album-form"><div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div><div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div><div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div><button type="submit" class="btn-primary">🔥 Crear Álbum</button></form></div><div class="admin-section"><h3>🎵 Subida Múltiple de Canciones</h3><div class="multi-upload-section"><h4>📁 Seleccionar Archivos</h4><div class="form-group"><label>Álbum de destino:</label><select id="batch-album-select" required><option value="">Seleccionar álbum</option>${allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('')}</select></div><div class="form-group"><input type="file" id="batch-audio-files" accept="audio/*" multiple></div><button type="button" onclick="startBatchUpload()" class="btn-primary">📤 Agregar a la Cola</button></div><div class="file-queue"><h4>📋 Cola de Archivos</h4><div id="file-queue-container"><p style="color: #666;">No hay archivos en cola</p></div><button type="button" onclick="processBatchUpload()" class="btn-primary" style="margin-top: 1rem;">🚀 Subir Todos</button></div><div id="batch-upload-progress" class="batch-upload-progress" style="display: none;"><div id="batch-progress-label"></div><div class="batch-progress-bar"><div id="batch-progress-fill"></div></div></div></div><div class="admin-section"><h3>📋 Contenido y Gestión</h3>${allAlbums.map(album => `<div class="admin-album-item"><div class="admin-album-header"><div class="admin-item-info"><strong>${album.title}</strong><small>${album.artist}</small><small>Género: ${album.genre || 'Sin Género'}</small></div><div class="admin-item-actions"><button class="btn-secondary" onclick="openChangeGenreModal('${album.id}')">Cambiar Género</button><button class="btn-secondary" onclick="openEditAlbumModal('${album.id}')">Editar Álbum</button><button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar Álbum</button></div></div><div class="admin-song-list">${allSongs.filter(s => s.album_id === album.id).map(song => `<div class="admin-song-item"><span>🎵 ${song.title}</span><div class="admin-song-actions"><button class="btn-secondary" onclick="editSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">Eliminar</button></div></div>`).join('') || '<div class="no-songs">No hay canciones en este álbum.</div>'}</div></div>`).join('')}</div>`; 
+            adminContent.innerHTML = `
+                ${showSuccessMessage ? '<p style="color:#1DB954; font-weight:bold; text-align:center;">✅ Género cambiado y orden guardado!</p>' : ''}
+                <div class="admin-stats">
+                    <div class="stat-card"><div class="stat-number">${allAlbums.length}</div><div class="stat-label">📀 Álbumes</div></div>
+                    <div class="stat-card"><div class="stat-number">${allSongs.length}</div><div class="stat-label">🎵 Canciones</div></div>
+                </div>
+                <div class="admin-section">
+                    <h3>📀 Crear Álbum</h3>
+                    <form id="album-form">
+                        <div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div>
+                        <div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div>
+                        <div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div>
+                        <button type="submit" class="btn-primary">🔥 Crear Álbum</button>
+                    </form>
+                </div>
+                <div class="admin-section">
+                    <h3>🎵 Subida Múltiple de Canciones</h3>
+                    <div class="multi-upload-section">
+                        <h4>📁 Seleccionar Archivos</h4>
+                        <div class="form-group">
+                            <label>Álbum de destino:</label>
+                            <select id="batch-album-select" required>
+                                <option value="">Seleccionar álbum</option>
+                                ${allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group"><input type="file" id="batch-audio-files" accept="audio/*" multiple></div>
+                        <button type="button" onclick="startBatchUpload()" class="btn-primary">📤 Agregar a la Cola</button>
+                    </div>
+                    <div class="file-queue">
+                        <h4>📋 Cola de Archivos</h4>
+                        <div id="file-queue-container"><p style="color: #666;">No hay archivos en cola</p></div>
+                        <button type="button" onclick="processBatchUpload()" class="btn-primary" style="margin-top: 1rem;">🚀 Subir Todos</button>
+                    </div>
+                    <div id="batch-upload-progress" class="batch-upload-progress" style="display: none;">
+                        <div id="batch-progress-label"></div>
+                        <div class="batch-progress-bar"><div id="batch-progress-fill"></div></div>
+                    </div>
+                </div>
+                <div class="admin-section">
+                    <h3>📋 Contenido y Gestión</h3>
+                    ${allAlbums.map(album => `<div class="admin-album-item">
+                        <div class="admin-album-header">
+                            <div class="admin-item-info">
+                                <strong>${album.title}</strong>
+                                <small>${album.artist}</small>
+                                <small>Género: ${album.genre || 'Sin Género'}</small>
+                            </div>
+                            <div class="admin-item-actions">
+                                <button class="btn-secondary" onclick="openChangeGenreModal('${album.id}')">Cambiar Género</button>
+                                <button class="btn-secondary" onclick="openEditAlbumModal('${album.id}')">Editar Álbum</button>
+                                <button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar Álbum</button>
+                            </div>
+                        </div>
+                        <div class="admin-song-list">
+                            ${allSongs.filter(s => s.album_id === album.id).map(song => `<div class="admin-song-item"><span>🎵 ${song.title}</span><div class="admin-song-actions"><button class="btn-secondary" onclick="editSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">Eliminar</button></div></div>`).join('') || '<div class="no-songs">No hay canciones en este álbum.</div>'}
+                        </div>
+                    </div>`).join('')}
+                </div>
+            `; 
             setupAdminForms(); 
             setupChangeGenreForm();
         }
+        
+        function renderAdminPanelWithSuccess() {
+            renderAdminPanel(true);
+        }
+
         function setupAdminForms() { 
             document.getElementById('album-form').addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
@@ -667,7 +731,6 @@
             const albumIndex = allAlbums.findIndex(a => a.id === albumId);
             if (albumIndex !== -1) {
                 try {
-                    // Actualiza el género en Supabase
                     const { error } = await supabase
                         .from('albums')
                         .update({ genre: genre })
@@ -676,9 +739,9 @@
                     if (error) throw error;
 
                     allAlbums[albumIndex].genre = genre;
-                    alert('✅ Género cambiado y orden guardado!');
                     closeChangeGenreModal();
                     showSection('admin');
+                    renderAdminPanelWithSuccess(); // Llama a la nueva función para mostrar el mensaje de éxito una vez
                 } catch (err) {
                     alert('❌ Error al guardar el género en la base de datos: ' + err.message);
                 }
@@ -689,7 +752,6 @@
             const container = document.getElementById('album-genres-container');
             container.innerHTML = '';
             
-            // Agrupar álbumes por género
             const albumsByGenre = {};
             albumGenres.forEach(genre => albumsByGenre[genre] = []);
             albums.forEach(album => {
@@ -701,7 +763,6 @@
                 }
             });
 
-            // Renderizar los álbumes por género
             albumGenres.forEach(genre => {
                 const genreAlbums = albumsByGenre[genre];
                 if (genreAlbums.length > 0) {
@@ -747,7 +808,6 @@
         
         async function loadAllData() { 
             try { 
-                // Carga los datos de la base de datos, incluyendo el género
                 const [{ data: albumsData, error: albumsError }, { data: songsData, error: songsError }] = await Promise.all([
                     supabase.from('albums').select('*, genre').order('created_at', { ascending: false }), 
                     supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })
@@ -759,7 +819,6 @@
                 allSongs = songsData || []; 
                 songsWithAlbumInfo = songsData || []; 
                 
-                // Muestra los álbumes ordenados por género
                 displayAlbumsByGenre(allAlbums); 
             } catch (error) { 
                 document.getElementById('album-genres-container').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Cargando Datos</h2><p>${error.message}</p></div>`; 
