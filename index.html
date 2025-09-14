@@ -460,7 +460,6 @@
         let fileQueue = [], isUploading = false;
         const audio = document.getElementById('audio-player');
         
-        // **NUEVO: Generos y función de ordenamiento**
         const albumGenres = ['Sin Género', 'Reggaeton/Trap', 'Banda', 'NarcoRap', 'Rap Ingles'];
 
         // =======================================================
@@ -642,13 +641,12 @@
             });
         }
         
-        // **NUEVO: Lógica de géneros**
         function setupChangeGenreForm() {
-            document.getElementById('change-genre-form').addEventListener('submit', (e) => {
+            document.getElementById('change-genre-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const albumId = document.getElementById('change-genre-album-id').value;
                 const genre = document.getElementById('genre-select').value;
-                changeAlbumGenre(albumId, genre);
+                await changeAlbumGenre(albumId, genre);
             });
         }
 
@@ -665,19 +663,28 @@
             document.getElementById('change-genre-modal').style.display = 'none';
         }
 
-        function changeAlbumGenre(albumId, genre) {
+        async function changeAlbumGenre(albumId, genre) {
             const albumIndex = allAlbums.findIndex(a => a.id === albumId);
             if (albumIndex !== -1) {
-                allAlbums[albumIndex].genre = genre;
-                // Guardar la nueva organización en localStorage
-                localStorage.setItem('klmz_album_genres', JSON.stringify(allAlbums.map(a => ({id: a.id, genre: a.genre || 'Sin Género'}))));
-                alert('✅ Género cambiado y orden guardado!');
-                closeChangeGenreModal();
-                showSection('admin'); // Volver a renderizar el panel de admin
+                try {
+                    // Actualiza el género en Supabase
+                    const { error } = await supabase
+                        .from('albums')
+                        .update({ genre: genre })
+                        .eq('id', albumId);
+
+                    if (error) throw error;
+
+                    allAlbums[albumIndex].genre = genre;
+                    alert('✅ Género cambiado y orden guardado!');
+                    closeChangeGenreModal();
+                    showSection('admin');
+                } catch (err) {
+                    alert('❌ Error al guardar el género en la base de datos: ' + err.message);
+                }
             }
         }
         
-        // **MODIFICADO: displayAlbums para ordenar por géneros**
         function displayAlbumsByGenre(albums) {
             const container = document.getElementById('album-genres-container');
             container.innerHTML = '';
@@ -740,20 +747,19 @@
         
         async function loadAllData() { 
             try { 
-                const [{ data: albumsData, error: albumsError }, { data: songsData, error: songsError }] = await Promise.all([supabase.from('albums').select('*').order('created_at', { ascending: false }), supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })]); 
+                // Carga los datos de la base de datos, incluyendo el género
+                const [{ data: albumsData, error: albumsError }, { data: songsData, error: songsError }] = await Promise.all([
+                    supabase.from('albums').select('*, genre').order('created_at', { ascending: false }), 
+                    supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })
+                ]); 
                 if (albumsError) throw albumsError; 
                 if (songsError) console.warn(songsError); 
+                
                 allAlbums = albumsData || []; 
                 allSongs = songsData || []; 
                 songsWithAlbumInfo = songsData || []; 
                 
-                // Cargar géneros guardados de localStorage
-                const savedGenres = JSON.parse(localStorage.getItem('klmz_album_genres') || '[]');
-                const savedGenresMap = new Map(savedGenres.map(item => [item.id, item.genre]));
-                allAlbums.forEach(album => {
-                    album.genre = savedGenresMap.get(album.id) || 'Sin Género';
-                });
-
+                // Muestra los álbumes ordenados por género
                 displayAlbumsByGenre(allAlbums); 
             } catch (error) { 
                 document.getElementById('album-genres-container').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Cargando Datos</h2><p>${error.message}</p></div>`; 
@@ -821,15 +827,15 @@
             
             document.addEventListener('click', (e) => {
                 const albumCard = e.target.closest('.album-card');
-                if (albumCard) { const index = parseInt(albumCard.dataset.albumIndex); if (!isNaN(index)) showAlbumDetail(allAlbums[index]); return; }
+                if (albumCard) { const index = parseInt(albumCard.dataset.album-index); if (!isNaN(index)) showAlbumDetail(allAlbums[index]); return; }
                 
                 const songLi = e.target.closest('.song-list li');
-                if (songLi && !e.target.closest('.song-actions')) { const index = parseInt(songLi.dataset.songIndex); if (!isNaN(index)) playSongFromPlaylist(index); return; }
+                if (songLi && !e.target.closest('.song-actions')) { const index = parseInt(songLi.dataset.song-index); if (!isNaN(index)) playSongFromPlaylist(index); return; }
                 
-                if (e.target.matches('.play-icon')) { const index = parseInt(e.target.dataset.songIndex); if (!isNaN(index)) playSongFromPlaylist(index); return; }
+                if (e.target.matches('.play-icon')) { const index = parseInt(e.target.dataset.song-index); if (!isNaN(index)) playSongFromPlaylist(index); return; }
                 
                 const searchItem = e.target.closest('.search-song-item');
-                if (searchItem) { const song = songsWithAlbumInfo.find(s => s.id === searchItem.dataset.songId); if (song) playSong(song, song.albums, [song], 0); return; }
+                if (searchItem) { const song = songsWithAlbumInfo.find(s => s.id === searchItem.dataset.song-id); if (song) playSong(song, song.albums, [song], 0); return; }
                 
                 const favoriteItem = e.target.closest('.favorite-item');
                 if (favoriteItem) { const song = JSON.parse(favoriteItem.dataset.song); if(song) playSong(song, song.albums, [song], 0); return; }
