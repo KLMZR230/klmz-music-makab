@@ -120,7 +120,7 @@
         .search-song-info, .search-album-info { flex: 1; }
         .search-song-title, .search-album-title { font-weight: bold; margin-bottom: 0.2rem; }
         .search-song-artist, .search-album-artist { font-size: 0.9rem; color: #b3b3b3; }
-        .search-album-img { width: 50px; height: 50px; border-radius: 8px; margin-right: 1rem; object-fit: cover; }
+        .search-album-img { width: 50px; height: 50px; border-radius: 8px; margin-right: 1rem; object-fit: cover; background: #333; }
         #search-results h3 { margin-top: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem; }
         
         .favorites-list, .downloads-list { margin-top: 1rem; }
@@ -617,21 +617,28 @@
                 const response = await fetch(song.song_url); 
                 const audioBlob = await response.blob(); 
                 let coverBase64 = null; 
-                if (album?.cover_url) { 
+                
+                // <--- CORRECCIÓN: Manejar correctamente si no hay URL de portada
+                if (album && album.cover_url) { 
                     try { 
                         const coverRes = await fetch(album.cover_url); 
                         const coverBlob = await coverRes.blob(); 
                         coverBase64 = await blobToBase64(coverBlob); 
                     } catch (e) {
-                        console.error('Error al descargar la portada:', e);
+                        console.error('Error al descargar la portada (se continuará sin ella):', e);
                     } 
                 } 
+
                 const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBase64, downloadedAt: new Date().toISOString() }; 
-                await downloadDB.transaction('songs', 'readwrite').objectStore('songs').put(downloadData); 
                 
+                const tx = downloadDB.transaction('songs', 'readwrite');
+                const store = tx.objectStore('songs');
+                store.put(downloadData);
+
+                await new Promise(resolve => tx.oncomplete = resolve);
+
                 if (downloadBtn) downloadBtn.textContent = '✅'; 
                 
-                // <--- CORRECCIÓN: Actualizar la lista visible de descargas
                 loadDownloads();
                 
             } catch (e) { 
@@ -642,9 +649,20 @@
         }
         
         async function isSongDownloaded(songId) { if (!downloadDB) return false; return new Promise(resolve => { const request = downloadDB.transaction('songs').objectStore('songs').get(songId); request.onsuccess = () => resolve(!!request.result); request.onerror = () => resolve(false); }); }
-        async function loadDownloads() { const content = document.getElementById('downloads-content'); content.innerHTML = `<h2>Cargando...</h2>`; try { const songs = await getAllOfflineSongs(); if (songs.length === 0) { content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; return; } content.innerHTML = `<div class="downloads-list">${songs.map(song => `<div class="download-item" onclick="playOfflineSong('${song.id}')"><div><div class="download-title">${song.title}</div><div class="download-artist">${song.artist}</div></div><div class="download-item-actions"><span class="delete-download" onclick="event.stopPropagation();deleteDownload('${song.id}')">🗑️</span></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar descargas.'; } }
+        async function loadDownloads() { const content = document.getElementById('downloads-content'); try { const songs = await getAllOfflineSongs(); if (songs.length === 0) { content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; return; } content.innerHTML = `<div class="downloads-list">${songs.map(song => `<div class="download-item" onclick="playOfflineSong('${song.id}')"><div><div class="download-title">${song.title}</div><div class="download-artist">${song.artist || ''}</div></div><div class="download-item-actions"><span class="delete-download" onclick="event.stopPropagation();deleteDownload('${song.id}')">🗑️</span></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar descargas.'; } }
         async function getAllOfflineSongs() { return new Promise((resolve, reject) => { if (!downloadDB) return reject(new Error('IDB no disponible')); const request = downloadDB.transaction(['songs'], 'readonly').objectStore('songs').getAll(); request.onsuccess = () => { const songs = request.result || []; songs.sort((a, b) => new Date(b.downloadAt) - new Date(a.downloadAt)); resolve(songs); }; request.onerror = (e) => reject(e.target.error); }); }
-        async function playOfflineSong(songId) { const tx = downloadDB.transaction('songs'); const store = tx.objectStore('songs'); const request = store.get(songId); request.onsuccess = () => { const songData = request.result; const audioUrl = URL.createObjectURL(songData.audioBlob); playSong({ ...songData, song_url: audioUrl }, { artist: songData.artist, title: songData.albumTitle, cover_url: songData.coverBase64 ? URL.createObjectURL(base64ToBlob(songData.coverBase64)) : '' }); }; }
+        
+        async function playOfflineSong(songId) {
+            const tx = downloadDB.transaction('songs');
+            const store = tx.objectStore('songs');
+            const request = store.get(songId);
+            request.onsuccess = () => {
+                const songData = request.result;
+                const audioUrl = URL.createObjectURL(songData.audioBlob);
+                playSong({ ...songData, song_url: audioUrl }, { artist: songData.artist, title: songData.albumTitle, cover_url: songData.coverBase64 ? URL.createObjectURL(base64ToBlob(songData.coverBase64)) : '' });
+            };
+        }
+
         function base64ToBlob(base64, mimeType) { const byteCharacters = atob(base64.split(',')[1]); const byteNumbers = new Array(byteCharacters.length); for (let i = 0; i < byteCharacters.length; i++) { byteNumbers[i] = byteCharacters.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); return new Blob([byteArray], { type: mimeType }); }
         async function deleteDownload(songId) { if (confirm('¿Eliminar descarga?')) { downloadDB.transaction('songs', 'readwrite').objectStore('songs').delete(songId).onsuccess = loadDownloads; } }
         function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
@@ -929,7 +947,7 @@
             detailView.style.display = 'block'; 
             detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`; 
             try { 
-                const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at'); 
+                const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at', { ascending: false }); 
                 if (error) throw error; 
                 if (!songs || songs.length === 0) { document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>'; return; } 
                 currentPlaylist = songs; 
