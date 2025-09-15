@@ -458,9 +458,11 @@
         let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0, isPlaying = false, allAlbums = [], allSongs = [], currentUser = null, songsWithAlbumInfo = [], repeatMode = 'off', shuffleMode = false, db = null, supabase = null, downloadDB = null, currentSongIdToAdd = null;
         let audioUrlCache = new Map(), audioContext = null, audioPreloadQueue = [];
         let fileQueue = [], isUploading = false;
+        let lastScrollPosition = 0; // <--- CAMBIO 1: Variable para guardar la posición del scroll
         const audio = document.getElementById('audio-player');
         
-        const albumGenres = ['Sin Género', 'Reggaeton/Trap', 'Banda', 'NarcoRap', 'Rap Ingles'];
+        // <--- CAMBIO 2: Añadir nuevos géneros
+        const albumGenres = ['Sin Género', 'Reggaeton/Trap', 'Banda', 'NarcoRap', 'Rap Ingles', 'Pop and R&B', 'Bachata'];
 
         // =======================================================
         // ✅ LÓGICA DE ANUNCIOS - INICIO
@@ -486,8 +488,33 @@
         // =======================================================
         
         // --- NAVEGACIÓN Y VISTAS ---
-        function showSection(sectionId) { document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active')); document.getElementById(`${sectionId}-section`).classList.add('active'); document.querySelectorAll('.bottom-nav-item').forEach(i=>i.classList.remove('active')); const navId = sectionId === 'favorites' ? 'favs' : sectionId; document.getElementById(`nav-${navId}`)?.classList.add('active'); if (sectionId==='playlists') renderPlaylistsList(); else if (sectionId==='favorites') loadFavorites(); else if (sectionId==='downloads') loadDownloads(); else if (sectionId==='admin') renderAdminPanel(); else if (sectionId==='home') displayAlbumsByGenre(allAlbums); }
-        function showAlbumsGrid() { document.getElementById('album-detail').style.display = 'none'; document.getElementById('album-genres-container').style.display = 'block'; }
+        function showSection(sectionId) { 
+            document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active')); 
+            document.getElementById(`${sectionId}-section`).classList.add('active'); 
+            document.querySelectorAll('.bottom-nav-item').forEach(i=>i.classList.remove('active')); 
+            const navId = sectionId === 'favorites' ? 'favs' : sectionId; 
+            document.getElementById(`nav-${navId}`)?.classList.add('active'); 
+            
+            // <--- CAMBIO 3: Asegurar que el botón de inicio siempre muestre la lista de álbumes
+            if (sectionId === 'home') {
+                showAlbumsGrid(); 
+            } else if (sectionId==='playlists') {
+                renderPlaylistsList(); 
+            } else if (sectionId==='favorites') {
+                loadFavorites(); 
+            } else if (sectionId==='downloads') {
+                loadDownloads(); 
+            } else if (sectionId==='admin') {
+                renderAdminPanel();
+            }
+        }
+
+        function showAlbumsGrid() { 
+            document.getElementById('album-detail').style.display = 'none'; 
+            document.getElementById('album-genres-container').style.display = 'block'; 
+            // <--- CAMBIO 4: Restaurar la posición del scroll al volver a la lista
+            setTimeout(() => window.scrollTo({ top: lastScrollPosition, behavior: 'auto' }), 0);
+        }
 
         // --- AUTENTICACIÓN ---
         function updateAuthUI() { const u = currentUser; document.getElementById('user-info-section').style.display=u?'block':'none'; document.getElementById('user-email-display').textContent=u?u.email:''; document.getElementById('login-menu-item').style.display=u?'none':'flex'; document.getElementById('register-menu-item').style.display=u?'none':'flex'; document.getElementById('logout-menu-item').style.display=u?'flex':'none'; document.getElementById('admin-menu-item').style.display=u&&u.email===ADMIN_EMAIL?'flex':'none'; }
@@ -825,7 +852,29 @@
             } 
         }
 
-        async function showAlbumDetail(album) { showSection('home'); currentAlbum = album; document.getElementById('album-genres-container').style.display = 'none'; const detailView = document.getElementById('album-detail'); detailView.style.display = 'block'; detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`; try { const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at'); if (error) throw error; if (!songs || songs.length === 0) { document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>'; return; } currentPlaylist = songs; const favorites = getLocalFavorites(); const downloadedStates = await Promise.all(songs.map(s => isSongDownloaded(s.id))); document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.map((song, idx) => `<li data-song-index="${idx}" data-song-id="${song.id}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="openAddToPlaylistModal('${song.id}')" title="Añadir a playlist">+</span><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'};">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="download-icon" onclick='downloadSong(${JSON.stringify(song)}, ${JSON.stringify(album)})'>${downloadedStates[idx] ? '✅' : '↓'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`; } catch (error) { detailView.innerHTML += `<p>Error: ${error.message}</p>`; } }
+        async function showAlbumDetail(album) { 
+            // <--- CAMBIO 5: Scroll al inicio de la página al abrir un álbum
+            window.scrollTo(0, 0); 
+            
+            showSection('home'); 
+            currentAlbum = album; 
+            document.getElementById('album-genres-container').style.display = 'none'; 
+            const detailView = document.getElementById('album-detail'); 
+            detailView.style.display = 'block'; 
+            detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`; 
+            try { 
+                const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at'); 
+                if (error) throw error; 
+                if (!songs || songs.length === 0) { document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>'; return; } 
+                currentPlaylist = songs; 
+                const favorites = getLocalFavorites(); 
+                const downloadedStates = await Promise.all(songs.map(s => isSongDownloaded(s.id))); 
+                document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.map((song, idx) => `<li data-song-index="${idx}" data-song-id="${song.id}"><div style="flex:1;">${song.title}</div><div class="song-actions"><span onclick="openAddToPlaylistModal('${song.id}')" title="Añadir a playlist">+</span><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'};">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="download-icon" onclick='downloadSong(${JSON.stringify(song)}, ${JSON.stringify(album)})'>${downloadedStates[idx] ? '✅' : '↓'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></li>`).join('')}</ul></div>`; 
+            } catch (error) { 
+                detailView.innerHTML += `<p>Error: ${error.message}</p>`; 
+            } 
+        }
+
         function changeTheme(theme) { document.body.className = ''; if (theme && theme !== 'default') document.body.classList.add('theme-' + theme); localStorage.setItem('klmz_theme', theme || 'default'); }
         function loadSavedTheme() { const savedTheme = localStorage.getItem('klmz_theme') || 'default'; if(document.getElementById('theme-select')) { document.getElementById('theme-select').value = savedTheme; changeTheme(savedTheme); } }
         function showLoadingIndicator(show) { document.getElementById('loading-indicator').style.display = show ? 'block' : 'none'; }
@@ -887,6 +936,8 @@
             document.addEventListener('click', (e) => {
                 const albumCard = e.target.closest('.album-card');
                 if (albumCard) {
+                    // <--- CAMBIO 6: Guardar la posición del scroll ANTES de abrir el álbum
+                    lastScrollPosition = window.scrollY;
                     const index = parseInt(albumCard.dataset.albumIndex);
                     if (!isNaN(index)) showAlbumDetail(allAlbums[index]);
                     return;
