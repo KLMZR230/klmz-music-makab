@@ -113,12 +113,16 @@
         .back-btn:hover { background: #333; }
         .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
-        .search-song-item { background: #242424; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
-        .search-song-item:hover { background: #333; }
-        .search-song-info { flex: 1; }
-        .search-song-title { font-weight: bold; margin-bottom: 0.2rem; }
-        .search-song-artist { font-size: 0.9rem; color: #b3b3b3; }
-        .search-song-img { width: 50px; height: 50px; border-radius: 8px; margin-right: 1rem; object-fit: cover; }
+        
+        /* --- ESTILOS DE BÚSQUEDA --- */
+        .search-song-item, .search-album-item { background: #242424; padding: 0.8rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s ease; }
+        .search-song-item:hover, .search-album-item:hover { background: #333; }
+        .search-song-info, .search-album-info { flex: 1; }
+        .search-song-title, .search-album-title { font-weight: bold; margin-bottom: 0.2rem; }
+        .search-song-artist, .search-album-artist { font-size: 0.9rem; color: #b3b3b3; }
+        .search-album-img { width: 50px; height: 50px; border-radius: 8px; margin-right: 1rem; object-fit: cover; }
+        #search-results h3 { margin-top: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem; }
+        
         .favorites-list, .downloads-list { margin-top: 1rem; }
         .favorite-item, .download-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; transition: all 0.3s ease; }
         .favorite-item:hover, .download-item:hover { background: #333; }
@@ -461,7 +465,6 @@
         let lastScrollPosition = 0;
         const audio = document.getElementById('audio-player');
         
-        // <--- CAMBIO 1: Añadir nuevo género "Corridos"
         const albumGenres = ['Sin Género', 'Reggaeton/Trap', 'Banda', 'NarcoRap', 'Rap Ingles', 'Pop and R&B', 'Bachata', 'Corridos'];
 
         // =======================================================
@@ -542,7 +545,60 @@
         const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
         window.toggleFavorite = function(songId, el) { let favorites = getLocalFavorites(); if (favorites.includes(songId)) { favorites = favorites.filter(id => id !== songId); } else { favorites.push(songId); } saveLocalFavorites(favorites); if (el) { el.innerHTML = favorites.includes(songId) ? '❤️' : '🤍'; el.style.color = favorites.includes(songId) ? '#1DB954' : '#666'; } }
         async function loadFavorites() { const content = document.getElementById('favorites-content'); const favorites = getLocalFavorites(); if (favorites.length === 0) { content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>💔 No tienes favoritos</h2></div>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites); if (error) throw error; content.innerHTML = `<div class="favorites-list">${songs.map(song => `<div class="favorite-item" data-song='${JSON.stringify(song)}'><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.albums?.artist || ''}</div></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar favoritos'; } }
-        window.searchMusic = function() { const query = document.getElementById('search-input').value.toLowerCase().trim(); const results = document.getElementById('search-results'); if (!query) { results.innerHTML = ''; return; } const foundSongs = songsWithAlbumInfo.filter(s => s.title.toLowerCase().includes(query) || s.albums?.artist?.toLowerCase().includes(query)); results.innerHTML = foundSongs.length ? `<h3>Resultados</h3>` + foundSongs.map(song => `<div class="search-song-item" data-song-id="${song.id}"><div class="search-song-info"><div class="search-song-title">${song.title}</div><div class="search-song-artist">${song.albums?.artist||''}</div></div><div>▶</div></div>`).join('') : `<h3>Sin resultados</h3>`; }
+        
+        // <--- CAMBIO: Función de búsqueda mejorada
+        window.searchMusic = function() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const resultsEl = document.getElementById('search-results');
+            if (!query) {
+                resultsEl.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Buscar Álbumes
+            const foundAlbums = allAlbums.filter(album =>
+                album.title.toLowerCase().includes(query) ||
+                album.artist.toLowerCase().includes(query)
+            );
+
+            if (foundAlbums.length > 0) {
+                html += `<h3>Álbumes</h3>`;
+                html += foundAlbums.map(album => {
+                    const albumIndex = allAlbums.findIndex(a => a.id === album.id);
+                    return `<div class="search-album-item" data-album-index="${albumIndex}">
+                        <img class="search-album-img" src="${album.cover_url}" alt="${album.title}">
+                        <div class="search-album-info">
+                            <div class="search-album-title">${album.title}</div>
+                            <div class="search-album-artist">${album.artist}</div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            // Buscar Canciones
+            const foundSongs = songsWithAlbumInfo.filter(s =>
+                s.title.toLowerCase().includes(query) ||
+                s.albums?.artist?.toLowerCase().includes(query)
+            );
+
+            if (foundSongs.length > 0) {
+                html += `<h3>Canciones</h3>`;
+                html += foundSongs.map(song =>
+                    `<div class="search-song-item" data-song-id="${song.id}">
+                        <img class="search-album-img" src="${song.albums?.cover_url || ''}" alt="cover">
+                        <div class="search-song-info">
+                            <div class="search-song-title">${song.title}</div>
+                            <div class="search-song-artist">${song.albums?.artist || ''}</div>
+                        </div>
+                        <div>▶</div>
+                    </div>`
+                ).join('');
+            }
+
+            resultsEl.innerHTML = html === '' ? '<h3>Sin resultados</h3>' : html;
+        }
 
         // --- OFFLINE Y DESCARGAS ---
         function blobToBase64(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); }); }
@@ -629,14 +685,12 @@
                     <form id="album-form">
                         <div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div>
                         <div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div>
-                        
                         <div class="form-group">
                             <label>Género:</label>
                             <select id="album-genre" required>
                                 ${albumGenres.map(g => `<option value="${g}">${g}</option>`).join('')}
                             </select>
                         </div>
-
                         <div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div>
                         <button type="submit" class="btn-primary">🔥 Crear Álbum</button>
                     </form>
@@ -699,13 +753,12 @@
                 e.preventDefault(); 
                 const title = document.getElementById('album-title').value; 
                 const artist = document.getElementById('album-artist').value; 
-                const genre = document.getElementById('album-genre').value; // <--- CAMBIO 3: Obtener el valor del género
+                const genre = document.getElementById('album-genre').value;
                 const coverFile = document.getElementById('album-cover-file').files[0]; 
                 if (!coverFile) return; 
                 showLoadingIndicator(true); 
                 try { 
                     const coverUrl = await uploadFileR2Only(coverFile); 
-                    // <--- CAMBIO 4: Incluir el género al insertar el álbum en la base de datos
                     await supabase.from('albums').insert([{ title, artist, cover_url: coverUrl, genre: genre }]); 
                     alert('✅ Álbum creado!'); 
                     e.target.reset(); 
@@ -947,6 +1000,18 @@
                     if (!isNaN(index)) showAlbumDetail(allAlbums[index]);
                     return;
                 }
+
+                // <--- CAMBIO: Evento de clic para los álbumes en los resultados de búsqueda
+                const searchAlbumItem = e.target.closest('.search-album-item');
+                if (searchAlbumItem) {
+                    const index = parseInt(searchAlbumItem.dataset.albumIndex);
+                    if (!isNaN(index) && allAlbums[index]) {
+                        document.getElementById('search-input').value = '';
+                        document.getElementById('search-results').innerHTML = '';
+                        showAlbumDetail(allAlbums[index]);
+                    }
+                    return;
+                }
                 
                 const songLi = e.target.closest('.song-list li');
                 if (songLi && !e.target.closest('.song-actions')) {
@@ -961,9 +1026,9 @@
                     return;
                 }
                 
-                const searchItem = e.target.closest('.search-song-item');
-                if (searchItem) {
-                    const song = songsWithAlbumInfo.find(s => s.id === searchItem.dataset.songId);
+                const searchSongItem = e.target.closest('.search-song-item');
+                if (searchSongItem) {
+                    const song = songsWithAlbumInfo.find(s => s.id === searchSongItem.dataset.songId);
                     if (song) playSong(song, song.albums, [song], 0);
                     return;
                 }
