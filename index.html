@@ -491,6 +491,8 @@
         
         // --- NAVEGACIÓN Y VISTAS ---
         function showSection(sectionId) { 
+            // <--- CORRECCIÓN: Scroll al inicio al cambiar de sección
+            window.scrollTo(0, 0);
             document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active')); 
             document.getElementById(`${sectionId}-section`).classList.add('active'); 
             document.querySelectorAll('.bottom-nav-item').forEach(i=>i.classList.remove('active')); 
@@ -513,6 +515,11 @@
         function showAlbumsGrid() { 
             document.getElementById('album-detail').style.display = 'none'; 
             document.getElementById('album-genres-container').style.display = 'block'; 
+        }
+
+        // <--- NUEVA FUNCIÓN: Para manejar el botón "Volver" y restaurar el scroll
+        function goBackToAlbumsGrid() {
+            showAlbumsGrid();
             setTimeout(() => window.scrollTo({ top: lastScrollPosition, behavior: 'auto' }), 0);
         }
 
@@ -556,7 +563,6 @@
 
             let html = '';
 
-            // Buscar Álbumes
             const foundAlbums = allAlbums.filter(album =>
                 album.title.toLowerCase().includes(query) ||
                 album.artist.toLowerCase().includes(query)
@@ -576,7 +582,6 @@
                 }).join('');
             }
 
-            // Buscar Canciones
             const foundSongs = songsWithAlbumInfo.filter(s =>
                 s.title.toLowerCase().includes(query) ||
                 s.albums?.artist?.toLowerCase().includes(query)
@@ -600,7 +605,6 @@
         }
 
         // --- OFFLINE Y DESCARGAS ---
-        function blobToBase64(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); }); }
         async function initDownloadDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('KLMZDownloads', 2); request.onerror = e => reject(e.target.error); request.onsuccess = e => { downloadDB = e.target.result; resolve(downloadDB); }; request.onupgradeneeded = e => { const db = e.target.result; if (!db.objectStoreNames.contains('songs')) db.createObjectStore('songs', { keyPath: 'id' }); }; }); }
         
         async function downloadSong(song, album) {
@@ -609,29 +613,26 @@
                 triggerAd();
                 songPlayCount = 0;
             }
-            console.log(`Canciones reproducidas desde el último anuncio: ${songPlayCount}`);
-
             const downloadBtn = document.querySelector(`#detail-song-list [data-song-id="${song.id}"] .download-icon`);
             if (downloadBtn) downloadBtn.textContent = '⏳'; 
             try { 
                 const response = await fetch(song.song_url);
                 if (!response.ok) throw new Error(`Error al descargar la canción: ${response.statusText}`);
                 const audioBlob = await response.blob(); 
-                let coverBase64 = null; 
+                let coverBlob = null; 
                 
                 if (album && album.cover_url) { 
                     try { 
                         const coverRes = await fetch(album.cover_url); 
                         if (coverRes.ok) {
-                            const coverBlob = await coverRes.blob(); 
-                            coverBase64 = await blobToBase64(coverBlob); 
+                            coverBlob = await coverRes.blob(); 
                         }
                     } catch (e) {
                         console.error('Error al descargar la portada (se continuará sin ella):', e);
                     } 
                 } 
 
-                const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBase64, downloadedAt: new Date().toISOString() }; 
+                const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBlob, downloadedAt: new Date().toISOString() }; 
                 
                 const tx = downloadDB.transaction('songs', 'readwrite');
                 const store = tx.objectStore('songs');
@@ -666,11 +667,11 @@
             request.onsuccess = () => {
                 const songData = request.result;
                 const audioUrl = URL.createObjectURL(songData.audioBlob);
-                playSong({ ...songData, song_url: audioUrl }, { artist: songData.artist, title: songData.albumTitle, cover_url: songData.coverBase64 ? URL.createObjectURL(base64ToBlob(songData.coverBase64)) : '' });
+                const coverUrl = songData.coverBlob ? URL.createObjectURL(songData.coverBlob) : '';
+                playSong({ ...songData, song_url: audioUrl }, { artist: songData.artist, title: songData.albumTitle, cover_url: coverUrl });
             };
         }
 
-        function base64ToBlob(base64, mimeType) { const byteCharacters = atob(base64.split(',')[1]); const byteNumbers = new Array(byteCharacters.length); for (let i = 0; i < byteCharacters.length; i++) { byteNumbers[i] = byteCharacters.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); return new Blob([byteArray], { type: mimeType }); }
         async function deleteDownload(songId) { if (confirm('¿Eliminar descarga?')) { downloadDB.transaction('songs', 'readwrite').objectStore('songs').delete(songId).onsuccess = loadDownloads; } }
         function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
         
@@ -951,7 +952,7 @@
             document.getElementById('album-genres-container').style.display = 'none';
             const detailView = document.getElementById('album-detail');
             detailView.style.display = 'block';
-            detailView.innerHTML = `<button class="back-btn" onclick="showAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url || ''}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`;
+            detailView.innerHTML = `<button class="back-btn" onclick="goBackToAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url || ''}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`;
             
             try {
                 const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at', { ascending: false });
@@ -975,7 +976,6 @@
                         </div>
                     </li>`).join('')}</ul></div>`;
 
-                // Asignar eventos de clic de forma segura
                 document.querySelectorAll('#detail-song-list .download-icon').forEach(icon => {
                     icon.addEventListener('click', (event) => {
                         event.stopPropagation();
@@ -1011,7 +1011,6 @@
             if (songPlayCount >= 3) {
                 triggerAd();
                 songPlayCount = 0;
-                console.log(`Canciones reproducidas desde el último anuncio: ${songPlayCount}`);
             }
 
             currentSong = song; 
