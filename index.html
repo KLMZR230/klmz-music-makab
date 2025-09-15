@@ -567,7 +567,7 @@
                 html += foundAlbums.map(album => {
                     const albumIndex = allAlbums.findIndex(a => a.id === album.id);
                     return `<div class="search-album-item" data-album-index="${albumIndex}">
-                        <img class="search-album-img" src="${album.cover_url}" alt="${album.title}">
+                        <img class="search-album-img" src="${album.cover_url || ''}" alt="${album.title}">
                         <div class="search-album-info">
                             <div class="search-album-title">${album.title}</div>
                             <div class="search-album-artist">${album.artist}</div>
@@ -614,16 +614,18 @@
             const downloadBtn = document.querySelector(`[data-song-id="${song.id}"] .download-icon`); 
             if (downloadBtn) downloadBtn.textContent = '⏳'; 
             try { 
-                const response = await fetch(song.song_url); 
+                const response = await fetch(song.song_url);
+                if (!response.ok) throw new Error(`Error al descargar la canción: ${response.statusText}`);
                 const audioBlob = await response.blob(); 
                 let coverBase64 = null; 
                 
-                // <--- CORRECCIÓN: Manejar correctamente si no hay URL de portada
                 if (album && album.cover_url) { 
                     try { 
                         const coverRes = await fetch(album.cover_url); 
-                        const coverBlob = await coverRes.blob(); 
-                        coverBase64 = await blobToBase64(coverBlob); 
+                        if (coverRes.ok) {
+                            const coverBlob = await coverRes.blob(); 
+                            coverBase64 = await blobToBase64(coverBlob); 
+                        }
                     } catch (e) {
                         console.error('Error al descargar la portada (se continuará sin ella):', e);
                     } 
@@ -635,11 +637,16 @@
                 const store = tx.objectStore('songs');
                 store.put(downloadData);
 
-                await new Promise(resolve => tx.oncomplete = resolve);
+                await new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = reject;
+                });
 
                 if (downloadBtn) downloadBtn.textContent = '✅'; 
                 
-                loadDownloads();
+                if (document.getElementById('downloads-section').classList.contains('active')) {
+                    loadDownloads();
+                }
                 
             } catch (e) { 
                 if (downloadBtn) downloadBtn.textContent = '↓'; 
@@ -652,7 +659,7 @@
         async function loadDownloads() { const content = document.getElementById('downloads-content'); try { const songs = await getAllOfflineSongs(); if (songs.length === 0) { content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; return; } content.innerHTML = `<div class="downloads-list">${songs.map(song => `<div class="download-item" onclick="playOfflineSong('${song.id}')"><div><div class="download-title">${song.title}</div><div class="download-artist">${song.artist || ''}</div></div><div class="download-item-actions"><span class="delete-download" onclick="event.stopPropagation();deleteDownload('${song.id}')">🗑️</span></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar descargas.'; } }
         async function getAllOfflineSongs() { return new Promise((resolve, reject) => { if (!downloadDB) return reject(new Error('IDB no disponible')); const request = downloadDB.transaction(['songs'], 'readonly').objectStore('songs').getAll(); request.onsuccess = () => { const songs = request.result || []; songs.sort((a, b) => new Date(b.downloadAt) - new Date(a.downloadAt)); resolve(songs); }; request.onerror = (e) => reject(e.target.error); }); }
         
-        async function playOfflineSong(songId) {
+        function playOfflineSong(songId) {
             const tx = downloadDB.transaction('songs');
             const store = tx.objectStore('songs');
             const request = store.get(songId);
