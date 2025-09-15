@@ -458,11 +458,11 @@
         let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0, isPlaying = false, allAlbums = [], allSongs = [], currentUser = null, songsWithAlbumInfo = [], repeatMode = 'off', shuffleMode = false, db = null, supabase = null, downloadDB = null, currentSongIdToAdd = null;
         let audioUrlCache = new Map(), audioContext = null, audioPreloadQueue = [];
         let fileQueue = [], isUploading = false;
-        let lastScrollPosition = 0; // <--- CAMBIO 1: Variable para guardar la posición del scroll
+        let lastScrollPosition = 0;
         const audio = document.getElementById('audio-player');
         
-        // <--- CAMBIO 2: Añadir nuevos géneros
-        const albumGenres = ['Sin Género', 'Reggaeton/Trap', 'Banda', 'NarcoRap', 'Rap Ingles', 'Pop and R&B', 'Bachata'];
+        // <--- CAMBIO 1: Añadir nuevo género "Corridos"
+        const albumGenres = ['Sin Género', 'Reggaeton/Trap', 'Banda', 'NarcoRap', 'Rap Ingles', 'Pop and R&B', 'Bachata', 'Corridos'];
 
         // =======================================================
         // ✅ LÓGICA DE ANUNCIOS - INICIO
@@ -472,7 +472,6 @@
 
         function triggerAd() {
             console.log("Activando lógica de anuncio...");
-            // Evita añadir el script de anuncio si ya existe en la página
             if (!document.querySelector(`script[src*="revenuecpmgate.com"]`)) {
                 console.log("Añadiendo script de anuncio por primera vez.");
                 const adScript = document.createElement('script');
@@ -495,7 +494,6 @@
             const navId = sectionId === 'favorites' ? 'favs' : sectionId; 
             document.getElementById(`nav-${navId}`)?.classList.add('active'); 
             
-            // <--- CAMBIO 3: Asegurar que el botón de inicio siempre muestre la lista de álbumes
             if (sectionId === 'home') {
                 showAlbumsGrid(); 
             } else if (sectionId==='playlists') {
@@ -512,7 +510,6 @@
         function showAlbumsGrid() { 
             document.getElementById('album-detail').style.display = 'none'; 
             document.getElementById('album-genres-container').style.display = 'block'; 
-            // <--- CAMBIO 4: Restaurar la posición del scroll al volver a la lista
             setTimeout(() => window.scrollTo({ top: lastScrollPosition, behavior: 'auto' }), 0);
         }
 
@@ -632,6 +629,14 @@
                     <form id="album-form">
                         <div class="form-group"><label>Título:</label><input type="text" id="album-title" required></div>
                         <div class="form-group"><label>Artista:</label><input type="text" id="album-artist" required></div>
+                        
+                        <div class="form-group">
+                            <label>Género:</label>
+                            <select id="album-genre" required>
+                                ${albumGenres.map(g => `<option value="${g}">${g}</option>`).join('')}
+                            </select>
+                        </div>
+
                         <div class="form-group"><label>Portada:</label><input type="file" id="album-cover-file" accept="image/*" required></div>
                         <button type="submit" class="btn-primary">🔥 Crear Álbum</button>
                     </form>
@@ -694,12 +699,14 @@
                 e.preventDefault(); 
                 const title = document.getElementById('album-title').value; 
                 const artist = document.getElementById('album-artist').value; 
+                const genre = document.getElementById('album-genre').value; // <--- CAMBIO 3: Obtener el valor del género
                 const coverFile = document.getElementById('album-cover-file').files[0]; 
                 if (!coverFile) return; 
                 showLoadingIndicator(true); 
                 try { 
                     const coverUrl = await uploadFileR2Only(coverFile); 
-                    await supabase.from('albums').insert([{ title, artist, cover_url: coverUrl }]); 
+                    // <--- CAMBIO 4: Incluir el género al insertar el álbum en la base de datos
+                    await supabase.from('albums').insert([{ title, artist, cover_url: coverUrl, genre: genre }]); 
                     alert('✅ Álbum creado!'); 
                     e.target.reset(); 
                     await loadAllData(); 
@@ -768,7 +775,7 @@
                     allAlbums[albumIndex].genre = genre;
                     closeChangeGenreModal();
                     await loadAllData();
-                    renderAdminPanelWithSuccess(); // Llama a la nueva función para mostrar el mensaje de éxito una vez
+                    renderAdminPanelWithSuccess(); 
                 } catch (err) {
                     alert('❌ Error al guardar el género en la base de datos: ' + err.message);
                 }
@@ -853,7 +860,6 @@
         }
 
         async function showAlbumDetail(album) { 
-            // <--- CAMBIO 5: Scroll al inicio de la página al abrir un álbum
             window.scrollTo(0, 0); 
             
             showSection('home'); 
@@ -936,7 +942,6 @@
             document.addEventListener('click', (e) => {
                 const albumCard = e.target.closest('.album-card');
                 if (albumCard) {
-                    // <--- CAMBIO 6: Guardar la posición del scroll ANTES de abrir el álbum
                     lastScrollPosition = window.scrollY;
                     const index = parseInt(albumCard.dataset.albumIndex);
                     if (!isNaN(index)) showAlbumDetail(allAlbums[index]);
