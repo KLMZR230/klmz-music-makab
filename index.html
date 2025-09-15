@@ -546,7 +546,6 @@
         window.toggleFavorite = function(songId, el) { let favorites = getLocalFavorites(); if (favorites.includes(songId)) { favorites = favorites.filter(id => id !== songId); } else { favorites.push(songId); } saveLocalFavorites(favorites); if (el) { el.innerHTML = favorites.includes(songId) ? '❤️' : '🤍'; el.style.color = favorites.includes(songId) ? '#1DB954' : '#666'; } }
         async function loadFavorites() { const content = document.getElementById('favorites-content'); const favorites = getLocalFavorites(); if (favorites.length === 0) { content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>💔 No tienes favoritos</h2></div>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites); if (error) throw error; content.innerHTML = `<div class="favorites-list">${songs.map(song => `<div class="favorite-item" data-song='${JSON.stringify(song)}'><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.albums?.artist || ''}</div></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar favoritos'; } }
         
-        // <--- CAMBIO: Función de búsqueda mejorada
         window.searchMusic = function() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             const resultsEl = document.getElementById('search-results');
@@ -613,7 +612,7 @@
             console.log(`Canciones reproducidas desde el último anuncio: ${songPlayCount}`);
 
             const downloadBtn = document.querySelector(`[data-song-id="${song.id}"] .download-icon`); 
-            if(downloadBtn) downloadBtn.textContent = '⏳'; 
+            if (downloadBtn) downloadBtn.textContent = '⏳'; 
             try { 
                 const response = await fetch(song.song_url); 
                 const audioBlob = await response.blob(); 
@@ -623,14 +622,22 @@
                         const coverRes = await fetch(album.cover_url); 
                         const coverBlob = await coverRes.blob(); 
                         coverBase64 = await blobToBase64(coverBlob); 
-                    } catch (e) {} 
+                    } catch (e) {
+                        console.error('Error al descargar la portada:', e);
+                    } 
                 } 
                 const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBase64, downloadedAt: new Date().toISOString() }; 
                 await downloadDB.transaction('songs', 'readwrite').objectStore('songs').put(downloadData); 
-                if(downloadBtn) downloadBtn.textContent = '✅'; 
+                
+                if (downloadBtn) downloadBtn.textContent = '✅'; 
+                
+                // <--- CORRECCIÓN: Actualizar la lista visible de descargas
+                loadDownloads();
+                
             } catch (e) { 
-                if(downloadBtn) downloadBtn.textContent = '↓'; 
+                if (downloadBtn) downloadBtn.textContent = '↓'; 
                 alert('Error en la descarga.'); 
+                console.error('Error en descarga:', e);
             } 
         }
         
@@ -1001,7 +1008,6 @@
                     return;
                 }
 
-                // <--- CAMBIO: Evento de clic para los álbumes en los resultados de búsqueda
                 const searchAlbumItem = e.target.closest('.search-album-item');
                 if (searchAlbumItem) {
                     const index = parseInt(searchAlbumItem.dataset.albumIndex);
