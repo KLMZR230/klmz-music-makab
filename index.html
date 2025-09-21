@@ -174,6 +174,7 @@
         .batch-upload-progress { margin-top: 1rem; }
         .batch-progress-bar { background: #444; height: 8px; border-radius: 4px; overflow: hidden; }
         .batch-progress-fill { background: #1DB954; height: 100%; width: 0%; transition: width 0.3s ease; }
+        .hidden-badge { background: #555; color: #ccc; font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; margin-left: 0.5rem; vertical-align: middle; font-weight: normal; }
         body.offline-mode { background: linear-gradient(135deg, #1a3d1a 0%, #0d2d0d 100%) !important; }
         body.offline-mode .section-title { color: #90ee90 !important; }
         body.offline-mode .download-item { background: #1a4d1a !important; border-left-color: #90ee90 !important; }
@@ -595,8 +596,7 @@
             let html = '';
 
             const foundAlbums = allAlbums.filter(album =>
-                album.title.toLowerCase().includes(query) ||
-                album.artist.toLowerCase().includes(query)
+                !album.is_hidden && (album.title.toLowerCase().includes(query) || album.artist.toLowerCase().includes(query))
             );
 
             if (foundAlbums.length > 0) {
@@ -710,7 +710,6 @@
         function uploadFileWithProgress(file, onProgress) {
             return new Promise(async (resolve, reject) => {
                 try {
-                    // Primero, obtenemos la URL de subida desde la Edge Function
                     const formData = new FormData();
                     formData.append('file', file);
 
@@ -733,10 +732,8 @@
                         throw new Error(data.error || 'La función de Supabase devolvió un error.');
                     }
                     
-                    // La función ya subió el archivo, así que simplemente resolvemos con la URL pública
                     resolve(data.publicUrl);
                     
-                    // Simulación de progreso ya que la función lo hace todo
                     let progress = 0;
                     const interval = setInterval(() => {
                         progress += 10;
@@ -746,7 +743,6 @@
                             clearInterval(interval);
                         }
                     }, 50);
-
 
                 } catch (error) {
                     console.error("💥 Error en el proceso de subida:", error);
@@ -807,7 +803,7 @@
                     ${allAlbums.map(album => `<div class="admin-album-item">
                         <div class="admin-album-header">
                             <div class="admin-item-info">
-                                <strong>${album.title}</strong>
+                                <strong>${album.title} ${album.is_hidden ? '<span class="hidden-badge">Oculto</span>' : ''}</strong>
                                 <small>${album.artist}</small>
                                 <small>Género: ${album.genre || 'Sin Género'}</small>
                             </div>
@@ -841,7 +837,7 @@
                 if (!coverFile) return; 
                 showLoadingIndicator(true); 
                 try { 
-                    const coverUrl = await uploadFileWithProgress(coverFile, () => {}); // No need for progress here
+                    const coverUrl = await uploadFileWithProgress(coverFile, () => {});
                     await supabase.from('albums').insert([{ title, artist, cover_url: coverUrl, genre: genre }]); 
                     alert('✅ Álbum creado!'); 
                     e.target.reset(); 
@@ -1003,7 +999,7 @@
                 try {
                     progressLabel.textContent = `Subiendo: ${item.name}`;
                     item.status = 'uploading';
-                    updateFileQueueUI(); // Actualiza la UI para mostrar la barra de progreso
+                    updateFileQueueUI();
                     
                     const progressBarFill = document.getElementById(`progress-fill-${item.id}`);
 
@@ -1043,7 +1039,7 @@
         async function loadAllData() { 
             try { 
                 const [{ data: albumsData, error: albumsError }, { data: songsData, error: songsError }] = await Promise.all([
-                    supabase.from('albums').select('*, genre').order('created_at', { ascending: false }), 
+                    supabase.from('albums').select('*, genre, is_hidden').order('created_at', { ascending: false }), 
                     supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })
                 ]); 
                 if (albumsError) throw albumsError; 
@@ -1053,7 +1049,9 @@
                 allSongs = songsData || []; 
                 songsWithAlbumInfo = songsData || []; 
                 
-                displayAlbumsByGenre(allAlbums); 
+                const visibleAlbums = allAlbums.filter(album => !album.is_hidden);
+                
+                displayAlbumsByGenre(visibleAlbums); 
             } catch (error) { 
                 document.getElementById('album-genres-container').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Cargando Datos</h2><p>${error.message}</p></div>`; 
             } 
