@@ -262,9 +262,7 @@
         @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        /* --- ADAPTACIONES MÓVILES (Optimización para max-width: 600px) --- 
-         Este bloque es la corrección que mejora la visualización en celulares.
-        */
+        /* --- ADAPTACIONES MÓVILES (Optimización para max-width: 600px) --- */
         @media (max-width: 600px) {
             /* Contenedor principal: usa todo el ancho disponible */
             main {
@@ -342,6 +340,312 @@
     </style>
     <script type='text/javascript' src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
     <script src="https://kit.fontawesome.com/6c6c21e6be.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <header>
+        <div class="logo">KLMZ MUSIC</div>
+        <div class="user-actions">
+            <div class="theme-selector">
+                <label for="theme-selector">Tema:</label>
+                <select id="theme-selector">
+                    <option value="theme-default">Default</option>
+                    <option value="theme-fire">Fuego</option>
+                    <option value="theme-neon">Neon</option>
+                    <option value="theme-minimal">Minimal</option>
+                    <option value="theme-sunset">Atardecer</option>
+                    <option value="theme-pastel">Pastel</option>
+                    <option value="theme-luxury">Luxury</option>
+                    <option value="theme-oceanic">Oceánico</option>
+                    <option value="theme-hacker">Hacker</option>
+                    <option value="theme-cyber">Cyber</option>
+                    <option value="theme-floral">Floral</option>
+                </select>
+            </div>
+            <i id="lock-icon" class="fa-solid fa-lock lock-icon" title="Modo Solo Descargas"></i>
+            <div id="auth-buttons" style="display: none;">
+                <button id="login-btn-header" class="btn-primary" style="padding: 0.5rem 1rem; width: auto; margin: 0;">Login</button>
+            </div>
+            <div id="user-menu-btn" class="user-menu" style="display: none;">
+                <i class="fa-solid fa-user" style="font-size: 1.4rem; cursor: pointer;"></i>
+                <div id="user-menu-dropdown" class="user-dropdown">
+                    <div class="user-info">
+                        <strong><span id="user-info-username"></span></strong><br>
+                        <small>Rol: <span id="user-info-role"></span></small>
+                    </div>
+                    <div id="admin-link-dropdown" class="user-dropdown-item" data-section="admin-section" style="display:none;"><i class="fa-solid fa-screwdriver-wrench"></i> Admin</div>
+                    <div id="login-btn-dropdown" class="user-dropdown-item"><i class="fa-solid fa-arrow-right-to-bracket"></i> Cambiar Cuenta</div>
+                    <div id="logout-link" class="user-dropdown-item logout"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <main id="main-content">
+            <section id="home-section" class="content-section active">
+                <h2 class="section-title">Explorar Música</h2>
+                <div id="album-grid" class="album-grid">
+                    </div>
+            </section>
+
+            <section id="search-section" class="content-section">
+                <h2 class="section-title">Buscar</h2>
+                <input type="text" id="search-input" placeholder="Busca canciones, artistas o álbumes...">
+                <div id="search-results">
+                    </div>
+            </section>
+
+            <section id="library-section" class="content-section">
+                <h2 class="section-title">Mi Biblioteca</h2>
+
+                <h3 style="display: flex; justify-content: space-between; align-items: center;">
+                    Playlists
+                    <button id="create-playlist-btn" class="btn-primary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.9rem;">Crear Playlist</button>
+                </h3>
+                <div id="playlist-list">
+                    </div>
+
+                <h3>Favoritos</h3>
+                <div id="favorites-list" class="favorites-list">
+                    </div>
+
+                <h3>Descargas</h3>
+                <div id="downloads-list" class="downloads-list">
+                    </div>
+            </section>
+
+            <section id="admin-section" class="content-section">
+                <h2 class="section-title"><i class="fa-solid fa-screwdriver-wrench"></i> Administración</h2>
+                
+                <div class="admin-stats">
+                    <div class="stat-card"><div id="stat-albums" class="stat-number">0</div><div class="stat-label">Álbumes</div></div>
+                    <div class="stat-card"><div id="stat-songs" class="stat-number">0</div><div class="stat-label">Canciones</div></div>
+                    <div class="stat-card"><div id="stat-playlists" class="stat-number">0</div><div class="stat-label">Playlists</div></div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Gestión de Álbumes <button id="create-album-btn-admin" class="btn-primary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.9rem;">+ Crear Álbum</button></h3>
+                    <div id="admin-album-list">
+                        </div>
+                </div>
+            </section>
+            
+            <section id="album-detail" class="content-section">
+                <button class="back-btn"><i class="fa-solid fa-arrow-left"></i> Volver</button>
+                <img id="album-detail-img" class="album-detail-img" src="" alt="Album Cover">
+                <h1 id="album-detail-title" style="text-align: center; margin-bottom: 0;">Título del Álbum</h1>
+                <h2 id="album-detail-artist" style="text-align: center; color: #b3b3b3; margin-top: 0.5rem;">Artista</h2>
+
+                <div class="song-list">
+                    <h3>Lista de Canciones</h3>
+                    <ul id="album-song-list-ul">
+                        </ul>
+                </div>
+            </section>
+
+            <section id="playlist-detail" class="content-section">
+                <button class="back-btn"><i class="fa-solid fa-arrow-left"></i> Volver</button>
+                <h1 id="playlist-detail-title">Nombre de Playlist</h1>
+                <p id="playlist-detail-count" style="color: #b3b3b3;"></p>
+
+                <div class="song-list">
+                    <h3>Canciones</h3>
+                    <ul id="playlist-song-list-ul">
+                        </ul>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="mini-player" class="player" style="display: none;">
+        <img id="player-img-mini" class="player-img-mini" src="placeholder-album.png" alt="Cover">
+        <div class="player-info-mini">
+            <div id="player-title-mini" class="player-title-mini">Título de Canción</div>
+            <div id="player-artist-mini" class="player-artist-mini">Artista</div>
+        </div>
+        <div class="player-controls-inline">
+            <button id="play-btn-inline" class="fa-solid fa-play play-btn-inline"></button>
+        </div>
+    </div>
+
+    <div id="full-player-backdrop" class="full-player-backdrop">
+        <button id="full-player-close" class="fa-solid fa-chevron-down full-player-close"></button>
+        
+        <img id="full-player-cover" class="full-player-cover" src="placeholder-album.png" alt="Cover">
+        <h1 id="full-player-title" class="full-player-title">Título de Canción</h1>
+        <h2 id="full-player-artist" class="full-player-artist">Artista</h2>
+
+        <div class="full-player-controls">
+            <div class="full-progress-container">
+                <span id="full-progress-time" class="full-progress-time">0:00</span>
+                <div id="full-progress-bar" class="full-progress-bar">
+                    <div id="full-progress-fill" class="full-progress-fill"></div>
+                </div>
+                <span id="full-progress-duration" class="full-progress-time">0:00</span>
+            </div>
+
+            <div class="full-control-buttons">
+                <button id="prev-btn" class="fa-solid fa-backward-step full-control-btn"></button>
+                <button id="full-play-btn" class="fa-solid fa-play full-play-btn"></button>
+                <button id="next-btn" class="fa-solid fa-forward-step full-control-btn"></button>
+            </div>
+
+            <div class="mode-controls">
+                <button id="shuffle-btn" class="mode-btn"><i class="fa-solid fa-shuffle"></i></button>
+                <button id="repeat-btn" class="mode-btn"><i class="fa-solid fa-repeat"></i></button>
+            </div>
+            
+            <div class="full-player-volume">
+                <i class="fa-solid fa-volume-low" style="margin-right: 0.5rem; color: #b3b3b3;"></i>
+                <input type="range" id="full-volume-slider" class="full-volume-slider" min="0" max="1" step="0.01" value="1">
+                <i class="fa-solid fa-volume-high" style="margin-left: 0.5rem; color: #b3b3b3;"></i>
+            </div>
+        </div>
+    </div>
+    
+    <nav class="bottom-nav">
+        <div class="copyright">
+            KLMZ Music © 2024
+        </div>
+        <div class="bottom-nav" style="bottom: 0; height: 64px; border-top: none;">
+            <div class="bottom-nav-item active" data-section="home-section">
+                <i class="fa-solid fa-house icon"></i>
+                <small>Inicio</small>
+            </div>
+            <div class="bottom-nav-item" data-section="search-section">
+                <i class="fa-solid fa-magnifying-glass icon"></i>
+                <small>Buscar</small>
+            </div>
+            <div class="bottom-nav-item" data-section="library-section" id="library-nav-item" style="display:none;">
+                <i class="fa-solid fa-book icon"></i>
+                <small>Biblioteca</small>
+            </div>
+            <div class="bottom-nav-item" data-section="admin-section" id="admin-nav-item" style="display:none;">
+                <i class="fa-solid fa-wrench icon"></i>
+                <small>Admin</small>
+            </div>
+        </div>
+    </nav>
+    
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <h2 class="modal-header">Iniciar Sesión</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">Usuario (admin o user):</label>
+                    <input type="text" id="login-username" required value="user">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña (Cualquiera):</label>
+                    <input type="password" id="login-password" required value="1234">
+                </div>
+                <button type="submit" class="btn-primary">Entrar</button>
+            </form>
+            <p>¿No tienes cuenta? <a href="#" id="register-btn-modal">Regístrate aquí</a></p>
+        </div>
+    </div>
+
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <h2 class="modal-header">Crear Cuenta</h2>
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="register-username">Usuario:</label>
+                    <input type="text" id="register-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email:</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Contraseña:</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <button type="submit" class="btn-primary">Registrarse</button>
+            </form>
+            <p><a href="#" id="login-btn-modal">Volver a Iniciar Sesión</a></p>
+        </div>
+    </div>
+    
+    <div id="create-playlist-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <h2 class="modal-header">Crear Nueva Playlist</h2>
+            <form id="create-playlist-form">
+                <div class="form-group">
+                    <label for="playlist-name-input">Nombre de la Playlist:</label>
+                    <input type="text" id="playlist-name-input" required>
+                </div>
+                <button type="submit" class="btn-primary">Crear</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-to-playlist-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <h2 class="modal-header">Añadir a Playlist</h2>
+            <input type="hidden" id="add-to-playlist-song-id">
+            <ul id="add-to-playlist-list">
+                </ul>
+        </div>
+    </div>
+
+    <div id="create-album-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <h2 class="modal-header">Crear Nuevo Álbum</h2>
+            <form id="create-album-form">
+                <div class="form-group">
+                    <label for="album-title-input">Título:</label>
+                    <input type="text" id="album-title-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="album-artist-input">Artista:</label>
+                    <input type="text" id="album-artist-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="album-year-input">Año:</label>
+                    <input type="number" id="album-year-input" value="2024">
+                </div>
+                <div class="form-group">
+                    <label for="album-cover-input">URL de la Portada:</label>
+                    <input type="url" id="album-cover-input">
+                </div>
+                <button type="submit" class="btn-primary">Crear Álbum</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="create-song-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <h2 id="add-song-modal-title" class="modal-header">Añadir Canción</h2>
+            <form id="create-song-form">
+                <input type="hidden" id="song-album-id-input">
+                <div class="form-group">
+                    <label for="song-title-input">Título de la Canción:</label>
+                    <input type="text" id="song-title-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="song-url-input">URL del Archivo MP3:</label>
+                    <input type="url" id="song-url-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="song-duration-input">Duración (ej: 3:45):</label>
+                    <input type="text" id="song-duration-input" required>
+                </div>
+                <button type="submit" class="btn-primary">Añadir Canción</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="loading-indicator" class="loading-indicator" style="display:none;">
+        Cargando datos...
+    </div>
+
     <script>
         // Declaración de variables globales
         let currentSong = null;
