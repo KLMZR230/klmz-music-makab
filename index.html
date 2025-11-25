@@ -35,7 +35,16 @@
             width: 100%; /* Añadido para asegurar que ocupe todo el ancho disponible */
             min-width: 0; /* Asegura que el contenido pueda encogerse en contenedores flexibles */
         }
-        #search-input { width: 100%; padding: 1rem; background: #242424; border: none; border-radius: 4px; color: #fff; margin-bottom: 2rem; transition: all 0.3s ease; }
+        #search-input, #admin-album-search, #modal-album-search { 
+            width: 100%; 
+            padding: 1rem; 
+            background: #242424; 
+            border: none; 
+            border-radius: 4px; 
+            color: #fff; 
+            margin-bottom: 2rem; 
+            transition: all 0.3s ease; 
+        }
         .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
         .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
         .album-card { background:none; padding:1rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition: all 0.3s ease; border-radius: 12px; }
@@ -163,7 +172,7 @@
         .user-dropdown-item.logout { color: #ff4757; border-top: 1px solid #404040; margin-top: 0.3rem; }
         .user-info { padding: 0.8rem 1rem; border-bottom: 2px solid #404040; font-size: 0.85rem; color: #b3b3b3; }
         .user-info strong { color: #fff; font-size: 0.9rem; }
-        .bottom-nav { position: fixed; left: 0; right: 0; bottom: 20px; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #181818; border-top: 1px solid #272727; display: flex; height: 64px; z-index: 5000; transition: all 0.3s ease; }
         .bottom-nav-item { color: #b3b3b3; text-align: center; flex: 1; font-size: 1.14rem; padding: 4px 0 0 0; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease;}
         .bottom-nav-item.active { color: #1DB954; background: rgba(29,185,84,.09);}
         .bottom-nav-item:hover {background:rgba(255,255,255,0.05);}
@@ -177,7 +186,16 @@
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
         
         /* --- ESTILOS DE BÚSQUEDA --- */
-        .search-song-item, .search-album-item { background: #242424; padding: 0.8rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s ease; }
+        .search-song-item, .search-album-item, .admin-album-item-list { 
+            background: #242424; 
+            padding: 0.8rem; 
+            margin-bottom: 0.8rem; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            transition: all 0.3s ease; 
+        }
         .search-song-item:hover, .search-album-item:hover { background: #333; }
         .search-song-info, .search-album-info { flex: 1; }
         .search-song-title, .search-album-title { font-weight: bold; margin-bottom: 0.2rem; }
@@ -202,7 +220,17 @@
         .admin-form input[type="file"]:hover { background: #404040; }
         .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; margin-right: 0.5rem; }
         .btn-secondary:hover { background: #666; }
-        .admin-album-item { background: #2c2c2c; border-radius: 8px; margin-bottom: 1.5rem; border-left: 3px solid #1DB954; overflow: hidden; }
+        /* Ajuste específico para la lista de administración */
+        .admin-album-item { 
+            background: #2c2c2c; 
+            border-radius: 8px; 
+            margin-bottom: 1.5rem; 
+            border-left: 3px solid #1DB954; 
+            overflow: hidden; 
+            display: block; /* Vuelve a block para la lista de administración */
+            padding: 0;
+            cursor: default;
+        }
         .admin-album-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #333; }
         .admin-item-info { flex: 1; }
         .admin-item-info strong { color: #1DB954; font-size: 1.1rem; }
@@ -339,11 +367,11 @@
         body.theme-blue-neon .bottom-nav-item.active { color: #00eaff !important; background: rgba(0, 234, 255, 0.15); }
         body.theme-blue-neon .song-actions span:hover { color: #00eaff; }
 
-        /* 2. Tema Navideño Animado (Nieve) */
+        /* 2. Tema Navideño Animado (Nieve) - CORREGIDO: QUITAR OVERFLOW HIDDEN DEL BODY */
         body.theme-christmas { 
             background: linear-gradient(180deg, #1f421f 0%, #001a00 100%) !important; 
             color: #ff4747 !important; 
-            overflow: hidden; /* Necesario para la animación de nieve */
+            /* overflow: hidden; <--- ESTO CAUSABA EL PROBLEMA, SE QUITA */
             position: relative;
         }
         body.theme-christmas::before {
@@ -507,19 +535,17 @@
         <div class="full-player-artist" id="full-player-artist"></div>
         <div class="full-player-controls">
             <div class="full-control-buttons">
-                <!-- Se agregó la funcionalidad de retroceder 10s -->
-                <button class="full-control-btn" onclick="seekBackward(10)">⏪</button>
+                <!-- Controles principales de navegación entre pistas -->
                 <button class="full-control-btn" onclick="previousSong()">⏮</button>
                 <button class="full-control-btn full-play-btn" id="full-play-btn" onclick="togglePlay()">▶</button>
                 <button class="full-control-btn" onclick="nextSong()">⏭</button>
-                <!-- Se agregó la funcionalidad de adelantar 10s -->
-                <button class="full-control-btn" onclick="seekForward(10)">⏩</button>
             </div>
             <div class="mode-controls">
                 <button class="mode-btn" id="repeat-btn" onclick="toggleRepeatMode()">🔁</button>
                 <button class="mode-btn" id="shuffle-btn" onclick="toggleShuffleMode()">🔀</button>
             </div>
             <div class="full-progress-container">
+                <!-- Se elimina ⏪ y ⏩ de la vista, dejando el tiempo y la barra -->
                 <span class="full-progress-time" id="full-current-time">0:00</span>
                 <div class="full-progress-bar" onclick="seekToFull(event)"><div class="full-progress-fill" id="full-progress-fill"></div></div>
                 <span class="full-progress-time" id="full-total-time">0:00</span>
@@ -606,6 +632,21 @@
                 </div>
                 <button type="submit" class="btn-primary">Cambiar Género</button>
             </form>
+        </div>
+    </div>
+
+    <!-- NUEVO MODAL DE SELECCIÓN DE ÁLBUM PARA SUBIDA MÚLTIPLE -->
+    <div class="modal" id="select-album-modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeAlbumSelectModal()">&times;</button>
+            <div class="modal-header">Seleccionar Álbum de Destino</div>
+            
+            <!-- Campo de búsqueda en el modal -->
+            <input type="text" id="modal-album-search" placeholder="Buscar álbum por nombre o artista..." onkeyup="filterModalAlbums()">
+
+            <div id="modal-album-list" style="max-height: 50vh; overflow-y: auto;">
+                <!-- Lista de álbumes se renderiza aquí -->
+            </div>
         </div>
     </div>
 
@@ -886,8 +927,124 @@
             });
         }
 
+        // --- FUNCIONES DE BÚSQUEDA Y FILTRADO DE ÁLBUMES ---
+        
+        let selectedBatchAlbumId = '';
+        let selectedBatchAlbumName = '';
+
+        function filterAdminAlbums() {
+            const query = document.getElementById('admin-album-search').value.toLowerCase().trim();
+            const listContainer = document.getElementById('admin-album-list-container');
+            if (!listContainer) return;
+            
+            const albumItems = listContainer.querySelectorAll('.admin-album-item');
+            
+            albumItems.forEach(item => {
+                const title = item.getAttribute('data-album-title').toLowerCase();
+                const artist = item.getAttribute('data-album-artist').toLowerCase();
+                
+                if (title.includes(query) || artist.includes(query)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function openAlbumSelectModal() {
+            document.getElementById('select-album-modal').style.display = 'flex';
+            renderModalAlbumList();
+            // Asegurarse de que el campo de búsqueda esté enfocado y vacío al abrir
+            const searchInput = document.getElementById('modal-album-search');
+            searchInput.value = '';
+            searchInput.focus();
+        }
+
+        function closeAlbumSelectModal() {
+            document.getElementById('select-album-modal').style.display = 'none';
+        }
+
+        function renderModalAlbumList(query = '') {
+            const listContainer = document.getElementById('modal-album-list');
+            const q = query.toLowerCase();
+
+            const filteredAlbums = allAlbums.filter(album => 
+                album.title.toLowerCase().includes(q) || album.artist.toLowerCase().includes(q)
+            );
+
+            if (filteredAlbums.length === 0) {
+                listContainer.innerHTML = `<p style="text-align:center; color:#b3b3b3;">No se encontraron álbumes.</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = filteredAlbums.map(album => `
+                <div class="search-album-item admin-album-item-list" 
+                     data-album-id="${album.id}" 
+                     data-album-title="${album.title}"
+                     data-album-artist="${album.artist}"
+                     onclick="selectBatchAlbum('${album.id}', '${album.title} - ${album.artist}')">
+                    <img class="search-album-img" src="${album.cover_url || 'https://placehold.co/50x50/333/fff?text=KLMZ'}" alt="${album.title}">
+                    <div class="search-album-info">
+                        <div class="search-album-title">${album.title}</div>
+                        <div class="search-album-artist">${album.artist}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterModalAlbums() {
+            const query = document.getElementById('modal-album-search').value.trim();
+            renderModalAlbumList(query);
+        }
+
+        window.selectBatchAlbum = function(albumId, albumName) {
+            selectedBatchAlbumId = albumId;
+            selectedBatchAlbumName = albumName;
+            document.getElementById('batch-album-display').value = albumName;
+            closeAlbumSelectModal();
+        }
+
+
         async function renderAdminPanel(showSuccessMessage = false) { 
             const adminContent = document.getElementById('admin-content'); 
+            
+            // Generar la lista de álbumes para la vista de gestión
+            const albumListHTML = allAlbums.map(album => {
+                // Obtener las canciones de este álbum
+                const albumSongs = allSongs.filter(s => s.album_id === album.id);
+                const songListItems = albumSongs.map(song => `
+                    <div class="admin-song-item">
+                        <span>🎵 ${song.title}</span>
+                        <div class="admin-song-actions">
+                            <button class="btn-secondary" onclick="editSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">Editar</button>
+                            <button class="btn-danger" onclick="deleteSong('${song.id}')">Eliminar</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="admin-album-item" data-album-id="${album.id}" data-album-title="${album.title}" data-album-artist="${album.artist}">
+                        <div class="admin-album-header">
+                            <div class="admin-item-info">
+                                <strong>${album.title} ${album.is_hidden ? '<span class="hidden-badge">Oculto</span>' : ''}</strong>
+                                <small>${album.artist}</small>
+                                <small>Género: ${album.genre || 'Sin Género'}</small>
+                            </div>
+                            <div class="admin-item-actions">
+                                <button class="btn-secondary" onclick="openChangeGenreModal('${album.id}')">Cambiar Género</button>
+                                <button class="btn-secondary" onclick="openEditAlbumModal('${album.id}')">Editar Álbum</button>
+                                <button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar Álbum</button>
+                            </div>
+                        </div>
+                        <div class="admin-song-list">
+                            ${songListItems || '<div class="no-songs">No hay canciones en este álbum.</div>'}
+                        </div>
+                    </div>`;
+            }).join('');
+            
+            // Si hay un álbum seleccionado, actualizar el display
+            const batchAlbumDisplayValue = selectedBatchAlbumName || 'Seleccionar álbum';
+
             adminContent.innerHTML = `
                 ${showSuccessMessage ? '<p style="color:#1DB954; font-weight:bold; text-align:center;">✅ Género cambiado y orden guardado!</p>' : ''}
                 <div class="admin-stats">
@@ -915,10 +1072,15 @@
                         <h4>📁 Seleccionar Archivos</h4>
                         <div class="form-group">
                             <label>Álbum de destino:</label>
-                            <select id="batch-album-select" required>
-                                <option value="">Seleccionar álbum</option>
-                                ${allAlbums.map(album => `<option value="${album.id}">${album.title} - ${album.artist}</option>`).join('')}
-                            </select>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <!-- Campo de visualización del álbum seleccionado -->
+                                <input type="text" id="batch-album-display" value="${batchAlbumDisplayValue}" readonly 
+                                       placeholder="Seleccionar álbum" 
+                                       style="flex-grow: 1; cursor: pointer;" 
+                                       onclick="openAlbumSelectModal()">
+                                <button type="button" class="btn-secondary" style="width: 50px; flex-shrink: 0;" 
+                                        onclick="openAlbumSelectModal()">🔎</button>
+                            </div>
                         </div>
                         <div class="form-group"><input type="file" id="batch-audio-files" accept="audio/*" multiple></div>
                         <button type="button" onclick="startBatchUpload()" class="btn-primary">📤 Agregar a la Cola</button>
@@ -935,23 +1097,10 @@
                 </div>
                 <div class="admin-section">
                     <h3>📋 Contenido y Gestión</h3>
-                    ${allAlbums.map(album => `<div class="admin-album-item">
-                        <div class="admin-album-header">
-                            <div class="admin-item-info">
-                                <strong>${album.title} ${album.is_hidden ? '<span class="hidden-badge">Oculto</span>' : ''}</strong>
-                                <small>${album.artist}</small>
-                                <small>Género: ${album.genre || 'Sin Género'}</small>
-                            </div>
-                            <div class="admin-item-actions">
-                                <button class="btn-secondary" onclick="openChangeGenreModal('${album.id}')">Cambiar Género</button>
-                                <button class="btn-secondary" onclick="openEditAlbumModal('${album.id}')">Editar Álbum</button>
-                                <button class="btn-danger" onclick="deleteAlbum('${album.id}')">Eliminar Álbum</button>
-                            </div>
-                        </div>
-                        <div class="admin-song-list">
-                            ${allSongs.filter(s => s.album_id === album.id).map(song => `<div class="admin-song-item"><span>🎵 ${song.title}</span><div class="admin-song-actions"><button class="btn-secondary" onclick="editSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">Editar</button><button class="btn-danger" onclick="deleteSong('${song.id}')">Eliminar</button></div></div>`).join('') || '<div class="no-songs">No hay canciones en este álbum.</div>'}
-                        </div>
-                    </div>`).join('')}
+                    <input type="text" id="admin-album-search" placeholder="Buscar álbum por título o artista..." onkeyup="filterAdminAlbums()">
+                    <div id="admin-album-list-container">
+                        ${albumListHTML}
+                    </div>
                 </div>
             `; 
             setupAdminForms(); 
@@ -1118,10 +1267,31 @@
                     </div>
                 `).join('');
         }
-        function startBatchUpload() { const albumSelect = document.getElementById('batch-album-select'); const filesInput = document.getElementById('batch-audio-files'); if (!albumSelect.value) { alert('❌ Selecciona un álbum'); return; } if (!filesInput.files.length) { alert('❌ Selecciona archivos'); return; } addFilesToQueue(filesInput.files, albumSelect.value); filesInput.value = ''; }
+        function startBatchUpload() { 
+            // Usamos la ID seleccionada del modal
+            const albumId = selectedBatchAlbumId; 
+            const filesInput = document.getElementById('batch-audio-files'); 
+            
+            if (!albumId) { 
+                alert('❌ Selecciona un álbum de destino.'); 
+                return; 
+            } 
+            if (!filesInput.files.length) { 
+                alert('❌ Selecciona archivos de audio.'); 
+                return; 
+            } 
+            
+            addFilesToQueue(filesInput.files, albumId); 
+            filesInput.value = ''; 
+        }
+        
         async function processBatchUpload() {
-            const albumId = document.getElementById('batch-album-select').value;
+            const albumId = selectedBatchAlbumId; // Usar la ID de la variable global
             if (isUploading || fileQueue.length === 0 || !albumId) return;
+
+            // Resto de la lógica de subida, usa `albumId` para la inserción en Supabase.
+            // ... (El código de processBatchUpload se mantiene igual, usando el albumId local)
+            
             isUploading = true;
             const progressContainer = document.getElementById('batch-upload-progress');
             const overallProgressBar = document.getElementById('batch-progress-fill');
@@ -1266,6 +1436,7 @@
         }
         
         // --- Funciones para Adelantar y Retroceder ---
+        // Se mantienen las funciones, aunque no se usan directamente en la interfaz, pueden ser usadas por MediaSession (notificaciones).
         window.seekForward = function(time = SKIP_TIME) {
             if (audio.duration) {
                 audio.currentTime = Math.min(audio.currentTime + time, audio.duration);
@@ -1305,7 +1476,7 @@
                 navigator.mediaSession.setActionHandler('previoustrack', () => previousSong());
                 navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
                 
-                // Se agregan los handlers para adelantar/retroceder
+                // Se agregan los handlers para adelantar/retroceder (para notificaciones)
                 navigator.mediaSession.setActionHandler('seekbackward', (details) => seekBackward(details.seekOffset || SKIP_TIME));
                 navigator.mediaSession.setActionHandler('seekforward', (details) => seekForward(details.seekOffset || SKIP_TIME));
             }
