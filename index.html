@@ -34,9 +34,17 @@
         .album-card { background:none; padding:1rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition: all 0.3s ease; border-radius: 12px; }
         .album-card:hover { transform:scale(1.05); box-shadow: 0 0 15px rgba(29, 185, 84, 0.4); }
         .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease; border: 3px solid #444; }
-        .album-title { font-size:.98rem; font-weight: bold; margin-bottom: 0.4rem; transition: all 0.3s ease; }
-        .album-artist { font-size: .9rem; color: #b3b3b3; transition: all 0.3s ease; }
-        .album-detail-img { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 0 auto 1.5rem; display: block; border: 4px solid #444; transition: all 0.3s ease; }
+        /* --- CORRECCIÓN IMAGEN NÍTIDA PARA MÓVILES --- */
+        .album-detail-img { 
+            width: 200px; 
+            height: 200px; 
+            border-radius: 50%; 
+            object-fit: cover; /* Asegura que la imagen no se distorsione */
+            margin: 0 auto 1.5rem; 
+            display: block; 
+            border: 4px solid #444; 
+            transition: all 0.3s ease; 
+        }
         .song-list { width:100%; margin-top:1rem; padding-bottom: 120px; }
         .song-list ul { list-style:none; padding:0; margin:0;}
         .song-list li { padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; transition: all 0.3s ease; gap: 1rem;}
@@ -72,7 +80,15 @@
         .play-btn-inline:hover { opacity: 0.7; }
         .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
         .full-player-backdrop.active { display: flex;}
-        .full-player-cover { width: 200px; height: 200px; border-radius: 12px; object-fit:cover; margin: 0 auto 2rem; display: block; transition: all 0.3s ease;}
+        .full-player-cover { 
+            width: 200px; 
+            height: 200px; 
+            border-radius: 12px; 
+            object-fit:cover; /* Asegura que la imagen no se distorsione */
+            margin: 0 auto 2rem; 
+            display: block; 
+            transition: all 0.3s ease;
+        }
         .full-player-title { font-size: 1.8rem; font-weight: bold; margin: 1rem 0 .5rem 0; text-align: center;}
         .full-player-artist { color: #b3b3b3; font-size: 1.1rem; margin-bottom: 2rem; text-align: center;}
         .full-player-controls { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%; }
@@ -385,9 +401,13 @@
         <div class="full-player-artist" id="full-player-artist"></div>
         <div class="full-player-controls">
             <div class="full-control-buttons">
+                <!-- Se agregó la funcionalidad de retroceder 10s -->
+                <button class="full-control-btn" onclick="seekBackward(10)">⏪</button>
                 <button class="full-control-btn" onclick="previousSong()">⏮</button>
                 <button class="full-control-btn full-play-btn" id="full-play-btn" onclick="togglePlay()">▶</button>
                 <button class="full-control-btn" onclick="nextSong()">⏭</button>
+                <!-- Se agregó la funcionalidad de adelantar 10s -->
+                <button class="full-control-btn" onclick="seekForward(10)">⏩</button>
             </div>
             <div class="mode-controls">
                 <button class="mode-btn" id="repeat-btn" onclick="toggleRepeatMode()">🔁</button>
@@ -492,6 +512,7 @@
         const supabaseUrl = 'https://sejxavhqqsqfporsopml.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxcXNxZnBvcnNvcG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyOTc5ODEsImV4cCI6MjA3Mjg3Mzk4MX0.ljIXELjbguWE4nxmVTF7GS-F_0E2wI6F5Zn0h9oKOh8';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
+        const SKIP_TIME = 10; // Tiempo en segundos para adelantar/retroceder
 
         // ✅ VARIABLES GLOBALES
         let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0, isPlaying = false, allAlbums = [], allSongs = [], currentUser = null, songsWithAlbumInfo = [], repeatMode = 'off', shuffleMode = false, db = null, supabase = null, downloadDB = null, currentSongIdToAdd = null;
@@ -672,16 +693,43 @@
         async function loadDownloads() { const content = document.getElementById('downloads-content'); try { const songs = await getAllOfflineSongs(); if (songs.length === 0) { content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; return; } content.innerHTML = `<div class="downloads-list">${songs.map(song => `<div class="download-item" onclick="playOfflineSong('${song.id}')"><div><div class="download-title">${song.title}</div><div class="download-artist">${song.artist || ''}</div></div><div class="download-item-actions"><span class="delete-download" onclick="event.stopPropagation();deleteDownload('${song.id}')">🗑️</span></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar descargas.'; } }
         async function getAllOfflineSongs() { return new Promise((resolve, reject) => { if (!downloadDB) return reject(new Error('IDB no disponible')); const request = downloadDB.transaction(['songs'], 'readonly').objectStore('songs').getAll(); request.onsuccess = () => { const songs = request.result || []; songs.sort((a, b) => new Date(b.downloadAt) - new Date(a.downloadAt)); resolve(songs); }; request.onerror = (e) => reject(e.target.error); }); }
         
-        function playOfflineSong(songId) {
+        // --- FUNCIÓN MEJORADA PARA REPRODUCIR CANCIÓN OFFLINE CON PORTADA ---
+        window.playOfflineSong = function(songId) {
             const tx = downloadDB.transaction('songs');
             const store = tx.objectStore('songs');
             const request = store.get(songId);
             request.onsuccess = () => {
                 const songData = request.result;
+                if (!songData) return;
+
                 const audioUrl = URL.createObjectURL(songData.audioBlob);
-                const coverUrl = songData.coverBlob ? URL.createObjectURL(songData.coverBlob) : '';
-                playSong({ ...songData, song_url: audioUrl }, { artist: songData.artist, title: songData.albumTitle, cover_url: coverUrl });
+                
+                // Generar URL para la portada si existe
+                let coverUrl = '';
+                if (songData.coverBlob) {
+                    coverUrl = URL.createObjectURL(songData.coverBlob);
+                } else {
+                    // Placeholder si no hay cover
+                    coverUrl = 'https://placehold.co/200x200/333/fff?text=No+Cover'; 
+                }
+                
+                // Preparar datos de la canción y del álbum
+                const song = { 
+                    id: songData.id, 
+                    title: songData.title, 
+                    song_url: audioUrl, 
+                    isOffline: true 
+                };
+                const album = { 
+                    artist: songData.artist, 
+                    title: songData.albumTitle, 
+                    cover_url: coverUrl 
+                };
+                
+                // Reproducir, configurando la playlist actual como solo esta canción
+                playSong(song, album, [song], 0);
             };
+            request.onerror = (e) => console.error('Error al obtener canción offline:', e);
         }
 
         async function deleteDownload(songId) { if (confirm('¿Eliminar descarga?')) { downloadDB.transaction('songs', 'readwrite').objectStore('songs').delete(songId).onsuccess = loadDownloads; } }
@@ -1045,7 +1093,11 @@
             document.getElementById('album-genres-container').style.display = 'none';
             const detailView = document.getElementById('album-detail');
             detailView.style.display = 'block';
-            detailView.innerHTML = `<button class="back-btn" onclick="goBackToAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${album.cover_url || ''}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`;
+            
+            // Usar la URL de la portada del álbum
+            const coverUrl = album.cover_url || 'https://placehold.co/200x200/333/fff?text=No+Cover'; 
+            
+            detailView.innerHTML = `<button class="back-btn" onclick="goBackToAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${coverUrl}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`;
             
             try {
                 const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at', { ascending: false });
@@ -1090,13 +1142,34 @@
         function loadSavedTheme() { const savedTheme = localStorage.getItem('klmz_theme') || 'default'; if(document.getElementById('theme-select')) { document.getElementById('theme-select').value = savedTheme; changeTheme(savedTheme); } }
         function showLoadingIndicator(show) { document.getElementById('loading-indicator').style.display = show ? 'block' : 'none'; }
         
-        // --- REPRODUCTOR ---
+        // --- REPRODUCTOR (Controles y Media Session) ---
         function openFullPlayer() { document.getElementById('full-player').classList.add('active'); }
         window.closeFullPlayer = function() { document.getElementById('full-player').classList.remove('active'); }
-        window.toggleRepeatMode = function() { /* ... */ }
-        window.toggleShuffleMode = function() { /* ... */ }
+        window.toggleRepeatMode = function() { /* Lógica de repetición */ }
+        window.toggleShuffleMode = function() { /* Lógica de aleatorio */ }
         window.setVolume = function(value) { audio.volume = value / 100; }
-        window.seekToFull = function(event) { const pBar = event.currentTarget; if (audio.duration) audio.currentTime = ((event.clientX - pBar.getBoundingClientRect().left) / pBar.offsetWidth) * audio.duration; }
+        
+        window.seekToFull = function(event) { 
+            const pBar = event.currentTarget; 
+            if (audio.duration) {
+                const clickX = event.clientX;
+                const rect = pBar.getBoundingClientRect();
+                const newTime = ((clickX - rect.left) / rect.width) * audio.duration;
+                audio.currentTime = newTime;
+            }
+        }
+        
+        // --- Funciones para Adelantar y Retroceder ---
+        window.seekForward = function(time = SKIP_TIME) {
+            if (audio.duration) {
+                audio.currentTime = Math.min(audio.currentTime + time, audio.duration);
+            }
+        }
+        
+        window.seekBackward = function(time = SKIP_TIME) {
+            audio.currentTime = Math.max(audio.currentTime - time, 0);
+        }
+
         window.nextSong = function() { if (!currentPlaylist.length) return; currentIndex = (currentIndex + 1) % currentPlaylist.length; playSongFromPlaylist(currentIndex); }
         window.previousSong = function() { if (!currentPlaylist.length) return; currentIndex = (currentIndex > 0) ? currentIndex - 1 : currentPlaylist.length - 1; playSongFromPlaylist(currentIndex); }
         function formatTime(seconds) { const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60).toString().padStart(2, '0'); return `${min}:${sec}`; }
@@ -1104,24 +1177,31 @@
         
         function updateMediaSession(song, album) {
             if ('mediaSession' in navigator) {
+                // Configuración de metadatos (necesario para la carátula)
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: song.title,
                     artist: album.artist || 'Artista Desconocido',
                     album: album.title || 'Álbum Desconocido',
                     artwork: [
-                        { src: album.cover_url || '', sizes: '96x96', type: 'image/png' },
-                        { src: album.cover_url || '', sizes: '128x128', type: 'image/png' },
-                        { src: album.cover_url || '', sizes: '192x192', type: 'image/png' },
-                        { src: album.cover_url || '', sizes: '256x256', type: 'image/png' },
-                        { src: album.cover_url || '', sizes: '384x384', type: 'image/png' },
-                        { src: album.cover_url || '', sizes: '512x512', type: 'image/png' },
+                        // Aseguramos que la carátula se muestre correctamente en las notificaciones
+                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '96x96', type: 'image/png' },
+                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '128x128', type: 'image/png' },
+                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '192x192', type: 'image/png' },
+                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '256x256', type: 'image/png' },
+                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '384x384', type: 'image/png' },
+                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '512x512', type: 'image/png' },
                     ]
                 });
 
+                // Controladores de acciones (necesarios para los botones de las notificaciones)
                 navigator.mediaSession.setActionHandler('play', () => togglePlay());
                 navigator.mediaSession.setActionHandler('pause', () => togglePlay());
                 navigator.mediaSession.setActionHandler('previoustrack', () => previousSong());
                 navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
+                
+                // Se agregan los handlers para adelantar/retroceder
+                navigator.mediaSession.setActionHandler('seekbackward', (details) => seekBackward(details.seekOffset || SKIP_TIME));
+                navigator.mediaSession.setActionHandler('seekforward', (details) => seekForward(details.seekOffset || SKIP_TIME));
             }
         }
 
@@ -1130,18 +1210,47 @@
             currentAlbum = album || {}; 
             currentPlaylist = playlist || [song]; 
             currentIndex = index || 0; 
+            
+            // Si la canción es offline y se generó un Blob URL, este se usará
+            const audioSource = song.isOffline ? song.song_url : song.song_url;
+            
             updateAllPlayers(); 
-            updateMediaSession(song, album);
-            if (audio && song.song_url) { 
-                audio.src = song.song_url; 
-                audio.play().catch(e => console.error(e)); 
+            updateMediaSession(song, currentAlbum); // Pasa currentAlbum que ahora tiene el cover_url
+            
+            if (audio && audioSource) { 
+                // Revocar el Blob URL anterior si existe para evitar fugas de memoria
+                if (audio.src.startsWith('blob:') && audio.src !== audioSource) {
+                    URL.revokeObjectURL(audio.src);
+                }
+                
+                audio.src = audioSource; 
+                audio.play().catch(e => console.error("Error al intentar reproducir:", e)); 
             } 
         }
 
         window.togglePlay = function() { if (!currentSong || !audio) return; if (isPlaying) audio.pause(); else audio.play(); }
         function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
-        function updateMiniPlayer() { const miniPlayer = document.getElementById('mini-player'); if (miniPlayer && currentSong) { miniPlayer.style.display = 'flex'; document.getElementById('mini-player-img').src = currentAlbum?.cover_url || ''; document.getElementById('mini-player-title').textContent = currentSong.title; document.getElementById('mini-player-artist').textContent = currentAlbum.artist; } }
-        function updateFullPlayer() { document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; document.getElementById('full-player-title').textContent = currentSong.title; document.getElementById('full-player-artist').textContent = currentAlbum.artist; }
+        
+        // Se asegura de usar la portada del currentAlbum
+        function updateMiniPlayer() { 
+            const miniPlayer = document.getElementById('mini-player'); 
+            if (miniPlayer && currentSong) { 
+                miniPlayer.style.display = 'flex'; 
+                // Usa la carátula de currentAlbum
+                document.getElementById('mini-player-img').src = currentAlbum?.cover_url || ''; 
+                document.getElementById('mini-player-title').textContent = currentSong.title; 
+                document.getElementById('mini-player-artist').textContent = currentAlbum.artist; 
+            } 
+        }
+        
+        // Se asegura de usar la portada del currentAlbum
+        function updateFullPlayer() { 
+            // Usa la carátula de currentAlbum
+            document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; 
+            document.getElementById('full-player-title').textContent = currentSong.title; 
+            document.getElementById('full-player-artist').textContent = currentAlbum.artist; 
+        }
+        
         function updatePlayButtons() { const playText = isPlaying ? '⏸' : '▶'; document.getElementById('mini-play-btn').textContent = playText; document.getElementById('full-play-btn').textContent = playText; }
         
         // --- PUNTO DE ENTRADA Y EVENTOS GLOBALES ---
