@@ -17,6 +17,11 @@
             transition: all 0.3s ease;
             width: 100%;
             overflow-x: hidden; /* Evita el scroll horizontal forzado por el body */
+            /* --- CONTROL DE COMPORTAMIENTO NATIVO --- */
+            user-select: none; /* Evita la copia de texto */
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            touch-action: manipulation; /* Bloquea el zoom de doble toque */
         }
         header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
         .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; }
@@ -44,6 +49,8 @@
             color: #fff; 
             margin-bottom: 2rem; 
             transition: all 0.3s ease; 
+            user-select: text; /* Permitir seleccionar texto en los inputs */
+            -webkit-user-select: text;
         }
         .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
         .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
@@ -79,6 +86,7 @@
             transition: all 0.3s ease; 
             gap: 1rem;
             min-width: 0; /* CRÍTICO: Permite que el elemento se comprima */
+            position: relative; /* Para el indicador de reproducción */
         }
         .song-list li:hover { color:#fff; background: rgba(255,255,255,.05); transform: translateX(2px);}
         /* --- ARREGLO PARA NOMBRES LARGOS --- */
@@ -129,6 +137,7 @@
             object-fit:cover; /* Asegura que la imagen no se distorsione */
             margin: 0 auto 2rem; 
             display: block; 
+            border: 4px solid #444; 
             transition: all 0.3s ease;
         }
         .full-player-title { font-size: 1.8rem; font-weight: bold; margin: 1rem 0 .5rem 0; text-align: center;}
@@ -139,7 +148,10 @@
         .full-control-btn:hover { color: #1DB954; }
         .full-play-btn { font-size: 3.5rem; }
         .full-play-btn:hover { transform: scale(1.1); color: #1DB954; }
-        .mode-controls { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; }
+        
+        /* ELIMINACIÓN DE BOTONES DE MODO */
+        .mode-controls { display: none !important; }
+        
         .mode-btn { background: none; border: 1px solid #444; color: #b3b3b3; padding: 0.5rem; border-radius: 50%; cursor: pointer; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
         .mode-btn:hover { color: #fff; border-color: #666; }
         .mode-btn.active { color: #1DB954; border-color: #1DB954; background: rgba(29,185,84,0.1); }
@@ -153,7 +165,7 @@
         .full-player-close:hover { color: #ff4757; }
         .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
         .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; max-height:90vh; overflow-y:auto; transition: all 0.3s ease; }
-        .modal-content p a { color: #1DB954; text-decoration: none; }
+        .modal-content p a { color: #1DB954; text-decoration: none; user-select: text; -webkit-user-select: text; }
         .modal-content p { text-align: center; margin-top: 1rem; }
         .form-group { margin-bottom:1rem;}
         .form-group label { display:block; margin-bottom:0.5rem;}
@@ -204,14 +216,48 @@
         #search-results h3 { margin-top: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem; }
         
         .favorites-list, .downloads-list { margin-top: 1rem; }
-        .favorite-item, .download-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; transition: all 0.3s ease; }
-        .favorite-item:hover, .download-item:hover { background: #333; }
-        .favorite-info, .download-info { flex: 1; }
-        .favorite-title, .download-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
-        .favorite-artist, .download-artist { font-size: 0.9rem; color: #b3b3b3; }
+        /* AÑADIDA CLASE PLAYING/PAUSED A DESCARGAS */
+        .download-item { 
+            background: #242424; 
+            padding: 1rem; 
+            margin-bottom: 0.8rem; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-left: 3px solid #1DB954; 
+            transition: all 0.3s ease; 
+            position: relative;
+        }
+        .download-item:hover { background: #333; }
+        .download-item.playing { 
+            color: #1DB954;
+            background: rgba(29, 185, 84, 0.1);
+            font-weight: bold;
+        }
+        .download-item.paused {
+            color: #90ee90;
+            background: rgba(29, 185, 84, 0.05);
+            font-weight: 500;
+        }
+        .download-info { flex: 1; display: flex; align-items: center;}
+        .download-text { margin-left: 8px; }
+        .download-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
+        .download-artist { font-size: 0.9rem; color: #b3b3b3; }
         .download-item-actions { display: flex; gap: 0.5rem; align-items: center; }
         .delete-download { cursor: pointer; color: #ff4757; font-size: 1rem; transition: all 0.3s ease; }
         .delete-download:hover { transform: scale(1.2); }
+        .download-cover-mini {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #333;
+            flex-shrink: 0;
+        }
+
+
         #album-detail, #playlist-detail { padding-bottom: 120px; }
         .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
         .admin-section h3 { margin-top: 0; border-bottom: 2px solid #1DB954; padding-bottom: 0.8rem; margin-bottom: 1.5rem; color: #1DB954; display: flex; align-items: center; gap: 0.5rem; }
@@ -267,6 +313,114 @@
         body.offline-mode .download-item { background: #1a4d1a !important; border-left-color: #90ee90 !important; }
         body.offline-mode .bottom-nav { background: #0d2d0d !important; }
         body.offline-mode .offline-indicator { background: #ff9800 !important; animation: pulse 2s infinite; }
+
+        /* --- Ecualizador Animado --- */
+        .equalizer {
+            display: flex;
+            align-items: flex-end;
+            width: 14px;
+            height: 14px;
+            margin-right: 8px;
+            justify-content: space-between;
+            overflow: hidden;
+            flex-shrink: 0;
+            opacity: 0; /* Oculto por defecto */
+            transition: opacity 0.3s;
+        }
+
+        .playing .equalizer {
+            opacity: 1; /* Visible cuando está reproduciendo */
+        }
+        
+        /* Ajuste para el ecualizador grande en el Full Player */
+        #full-player .equalizer {
+            width: 30px; 
+            height: 30px;
+            margin: 10px auto; /* Centrar debajo del título/artista */
+            opacity: 0; /* Lo gestionaremos con la clase playing */
+        }
+        #full-player.playing #full-player-equalizer, 
+        #full-player.paused #full-player-equalizer {
+            opacity: 1;
+        }
+
+        #full-player .equalizer .bar {
+            width: 6px;
+        }
+
+
+        .bar {
+            width: 3px;
+            background: #1DB954;
+            animation: equalize 0.8s ease-in-out infinite;
+            border-radius: 1px;
+            transform-origin: bottom;
+        }
+
+        .playing .bar {
+            height: 100%;
+        }
+        
+        /* Efecto de pausa: barras pequeñas y estáticas */
+        .paused .equalizer .bar {
+            height: 30%;
+            animation: none;
+            opacity: 0.7;
+        }
+
+        .bar:nth-child(1) { height: 70%; animation-delay: -0.2s; }
+        .bar:nth-child(2) { height: 30%; animation-delay: -0.5s; }
+        .bar:nth-child(3) { height: 90%; animation-delay: -0.7s; }
+
+        @keyframes equalize {
+            0% { height: 20%; }
+            40% { height: 100%; }
+            80% { height: 40%; }
+            100% { height: 20%; }
+        }
+        /* --- Fin Ecualizador Animado --- */
+        
+        /* Estilos específicos para la canción actualmente reproduciéndose */
+        .song-list li.playing, .download-item.playing {
+            color: #1DB954;
+            background: rgba(29, 185, 84, 0.1);
+            font-weight: bold;
+        }
+        .song-list li.paused, .download-item.paused {
+            color: #90ee90; /* Un color ligeramente diferente para pausado en la lista */
+            background: rgba(29, 185, 84, 0.05);
+            font-weight: 500;
+        }
+        
+        /* Ajuste de alineación para el mini player */
+        .player-info-mini {
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Asegura que los botones del mini reproductor se vean limpios */
+        .mini-controls-buttons {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .mini-controls-buttons button {
+            font-size: 1.2rem;
+            padding: 0;
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .mini-controls-buttons button:hover {
+            color: #1DB954;
+        }
+        /* Ajuste para el botón de play/pause en el mini player */
+        .mini-controls-buttons #mini-play-btn {
+            font-size: 1.8rem;
+        }
+
 
         /* TEMAS COMPLETOS */
         body.theme-default .album-img, body.theme-default .album-detail-img { border-color: #1DB954; }
@@ -397,7 +551,7 @@
             box-shadow: 0 0 20px rgba(255, 71, 71, 0.6) !important; 
         }
         body.theme-christmas .btn-primary { background: #ff4747 !important; color: #fff !important; font-weight: bold; }
-        body.theme-christmas .song-list li { color: #ff4747 !important; border-color: #00ff0033; }
+        body.theme-christmas .song-list li { color: #ff4747 !important; }
         body.theme-christmas .bottom-nav { background: #0d2d0d !important; }
         body.theme-christmas .bottom-nav-item.active { color: #00ff00 !important; background: rgba(0, 255, 0, 0.15); }
         body.theme-christmas .song-actions span:hover { color: #00ff00; }
@@ -438,6 +592,113 @@
             .full-player-artist { font-size: 1rem; }
             .full-control-btn { font-size: 2rem; }
             .full-play-btn { font-size: 3rem; }
+        }
+
+        /* --- Ecualizador Animado --- */
+        .equalizer {
+            display: flex;
+            align-items: flex-end;
+            width: 14px;
+            height: 14px;
+            margin-right: 8px;
+            justify-content: space-between;
+            overflow: hidden;
+            flex-shrink: 0;
+            opacity: 0; /* Oculto por defecto */
+            transition: opacity 0.3s;
+        }
+
+        .playing .equalizer {
+            opacity: 1; /* Visible cuando está reproduciendo */
+        }
+        
+        /* Ajuste para el ecualizador grande en el Full Player */
+        #full-player .equalizer {
+            width: 30px; 
+            height: 30px;
+            margin: 10px auto; /* Centrar debajo del título/artista */
+            opacity: 0; /* Lo gestionaremos con la clase playing */
+        }
+        #full-player.playing #full-player-equalizer, 
+        #full-player.paused #full-player-equalizer {
+            opacity: 1;
+        }
+
+        #full-player .equalizer .bar {
+            width: 6px;
+        }
+
+
+        .bar {
+            width: 3px;
+            background: #1DB954;
+            animation: equalize 0.8s ease-in-out infinite;
+            border-radius: 1px;
+            transform-origin: bottom;
+        }
+
+        .playing .bar {
+            height: 100%;
+        }
+        
+        /* Efecto de pausa: barras pequeñas y estáticas */
+        .paused .equalizer .bar {
+            height: 30%;
+            animation: none;
+            opacity: 0.7;
+        }
+
+        .bar:nth-child(1) { height: 70%; animation-delay: -0.2s; }
+        .bar:nth-child(2) { height: 30%; animation-delay: -0.5s; }
+        .bar:nth-child(3) { height: 90%; animation-delay: -0.7s; }
+
+        @keyframes equalize {
+            0% { height: 20%; }
+            40% { height: 100%; }
+            80% { height: 40%; }
+            100% { height: 20%; }
+        }
+        /* --- Fin Ecualizador Animado --- */
+        
+        /* Estilos específicos para la canción actualmente reproduciéndose */
+        .song-list li.playing, .download-item.playing {
+            color: #1DB954;
+            background: rgba(29, 185, 84, 0.1);
+            font-weight: bold;
+        }
+        .song-list li.paused, .download-item.paused {
+            color: #90ee90; /* Un color ligeramente diferente para pausado en la lista */
+            background: rgba(29, 185, 84, 0.05);
+            font-weight: 500;
+        }
+        
+        /* Ajuste de alineación para el mini player */
+        .player-info-mini {
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Asegura que los botones del mini reproductor se vean limpios */
+        .mini-controls-buttons {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .mini-controls-buttons button {
+            font-size: 1.2rem;
+            padding: 0;
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .mini-controls-buttons button:hover {
+            color: #1DB954;
+        }
+        /* Ajuste para el botón de play/pause en el mini player */
+        .mini-controls-buttons #mini-play-btn {
+            font-size: 1.8rem;
         }
     </style>
 </head>
@@ -520,11 +781,22 @@
     <div class="player" id="mini-player" style="display:none;">
         <img class="player-img-mini" id="mini-player-img" alt="cover">
         <div class="player-info-mini">
-            <div class="player-title-mini" id="mini-player-title"></div>
-            <div class="player-artist-mini" id="mini-player-artist"></div>
+            <!-- Ecualizador para el Mini Player -->
+            <div class="equalizer" id="mini-player-equalizer">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+            <div>
+                <div class="player-title-mini" id="mini-player-title"></div>
+                <div class="player-artist-mini" id="mini-player-artist"></div>
+            </div>
         </div>
-        <div class="player-controls-inline" onclick="event.stopPropagation()">
-            <button class="play-btn-inline" id="mini-play-btn" onclick="togglePlay()">▶</button>
+        <!-- CONTROLES COMPLETOS EN EL MINI PLAYER -->
+        <div class="mini-controls-buttons" onclick="event.stopPropagation()">
+            <button onclick="previousSong()">⏮</button>
+            <button id="mini-play-btn" onclick="togglePlay()">▶</button>
+            <button onclick="nextSong()">⏭</button>
         </div>
     </div>
     
@@ -534,16 +806,22 @@
         <div class="full-player-title" id="full-player-title"></div>
         <div class="full-player-artist" id="full-player-artist"></div>
         <div class="full-player-controls">
+            <!-- Ecualizador para el Full Player -->
+            <div class="equalizer" id="full-player-equalizer">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
             <div class="full-control-buttons">
                 <!-- Controles principales de navegación entre pistas -->
                 <button class="full-control-btn" onclick="previousSong()">⏮</button>
                 <button class="full-control-btn full-play-btn" id="full-play-btn" onclick="togglePlay()">▶</button>
                 <button class="full-control-btn" onclick="nextSong()">⏭</button>
             </div>
-            <div class="mode-controls">
-                <button class="mode-btn" id="repeat-btn" onclick="toggleRepeatMode()">🔁</button>
-                <button class="mode-btn" id="shuffle-btn" onclick="toggleShuffleMode()">🔀</button>
-            </div>
+            
+            
+            <!-- SE ELIMINA LA SECCIÓN DE MODO (REPEAT Y SHUFFLE) -->
+            
             <div class="full-progress-container">
                 <!-- Se elimina ⏪ y ⏩ de la vista, dejando el tiempo y la barra -->
                 <span class="full-progress-time" id="full-current-time">0:00</span>
@@ -837,7 +1115,48 @@
         }
         
         async function isSongDownloaded(songId) { if (!downloadDB) return false; return new Promise(resolve => { const request = downloadDB.transaction('songs').objectStore('songs').get(songId); request.onsuccess = () => resolve(!!request.result); request.onerror = () => resolve(false); }); }
-        async function loadDownloads() { const content = document.getElementById('downloads-content'); try { const songs = await getAllOfflineSongs(); if (songs.length === 0) { content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; return; } content.innerHTML = `<div class="downloads-list">${songs.map(song => `<div class="download-item" onclick="playOfflineSong('${song.id}')"><div><div class="download-title">${song.title}</div><div class="download-artist">${song.artist || ''}</div></div><div class="download-item-actions"><span class="delete-download" onclick="event.stopPropagation();deleteDownload('${song.id}')">🗑️</span></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar descargas.'; } }
+        
+        // --- FUNCIÓN loadDownloads ACTUALIZADA PARA INCLUIR CARÁTULA Y ECUALIZADOR ---
+        async function loadDownloads() { 
+            const content = document.getElementById('downloads-content'); 
+            try { 
+                const songs = await getAllOfflineSongs(); 
+                if (songs.length === 0) { 
+                    content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; 
+                    return; 
+                } 
+                
+                content.innerHTML = `<div class="downloads-list">${songs.map(song => {
+                    const coverUrl = song.coverBlob ? URL.createObjectURL(song.coverBlob) : 'https://placehold.co/40x40/333/fff?text=No+Cover';
+                    
+                    return `
+                    <div class="download-item" onclick="playOfflineSong('${song.id}')" data-song-id="${song.id}">
+                        <div class="download-info">
+                            <img class="download-cover-mini" src="${coverUrl}" alt="Cover">
+                            <!-- Ecualizador aquí -->
+                            <div class="equalizer song-eq" data-song-id="${song.id}" style="margin-left: 8px; margin-right: 0;">
+                                <div class="bar"></div>
+                                <div class="bar"></div>
+                                <div class="bar"></div>
+                            </div>
+                            <div class="download-text">
+                                <div class="download-title">${song.title}</div>
+                                <div class="download-artist">${song.artist || ''}</div>
+                            </div>
+                        </div>
+                        <div class="download-item-actions">
+                            <span class="delete-download" onclick="event.stopPropagation();deleteDownload('${song.id}')">🗑️</span>
+                        </div>
+                    </div>`;
+                }).join('')}</div>`; 
+                
+                // Aplicar indicadores después de la carga
+                updatePlaybackIndicators();
+
+            } catch (e) { 
+                content.innerHTML = 'Error al cargar descargas.'; 
+            } 
+        }
         async function getAllOfflineSongs() { return new Promise((resolve, reject) => { if (!downloadDB) return reject(new Error('IDB no disponible')); const request = downloadDB.transaction(['songs'], 'readonly').objectStore('songs').getAll(); request.onsuccess = () => { const songs = request.result || []; songs.sort((a, b) => new Date(b.downloadAt) - new Date(a.downloadAt)); resolve(songs); }; request.onerror = (e) => reject(e.target.error); }); }
         
         // --- FUNCIÓN MEJORADA PARA REPRODUCIR CANCIÓN OFFLINE CON PORTADA ---
@@ -1386,9 +1705,16 @@
                 const favorites = getLocalFavorites();
                 const downloadedStates = await Promise.all(songs.map(s => isSongDownloaded(s.id)));
                 
+                // Agregamos el ecualizador a cada elemento de la lista
                 document.getElementById('detail-song-list').innerHTML = `<div class="song-list"><ul>${songs.map((song, idx) => `
                     <li data-song-index="${idx}" data-song-id="${song.id}">
                         <div class="song-info">
+                            <!-- Ecualizador solo visible si está reproduciéndose -->
+                            <div class="equalizer song-eq" data-song-id="${song.id}">
+                                <div class="bar"></div>
+                                <div class="bar"></div>
+                                <div class="bar"></div>
+                            </div>
                            <span class="song-title">${song.title}</span>
                         </div>
                         <div class="song-meta">
@@ -1408,6 +1734,9 @@
                         downloadSong(songToDownload, album);
                     });
                 });
+                
+                // Al cargar el detalle, actualizamos el estado de reproducción
+                updatePlaybackIndicators();
 
             } catch (error) {
                 detailView.innerHTML += `<p>Error: ${error.message}</p>`;
@@ -1421,8 +1750,9 @@
         // --- REPRODUCTOR (Controles y Media Session) ---
         function openFullPlayer() { document.getElementById('full-player').classList.add('active'); }
         window.closeFullPlayer = function() { document.getElementById('full-player').classList.remove('active'); }
-        window.toggleRepeatMode = function() { /* Lógica de repetición */ }
-        window.toggleShuffleMode = function() { /* Lógica de aleatorio */ }
+        // Se eliminan toggleRepeatMode y toggleShuffleMode del JS ya que los botones fueron eliminados
+        /* window.toggleRepeatMode = function() { /* Lógica de repetición * / }
+        window.toggleShuffleMode = function() { /* Lógica de aleatorio * / } */
         window.setVolume = function(value) { audio.volume = value / 100; }
         
         window.seekToFull = function(event) { 
@@ -1436,7 +1766,6 @@
         }
         
         // --- Funciones para Adelantar y Retroceder ---
-        // Se mantienen las funciones, aunque no se usan directamente en la interfaz, pueden ser usadas por MediaSession (notificaciones).
         window.seekForward = function(time = SKIP_TIME) {
             if (audio.duration) {
                 audio.currentTime = Math.min(audio.currentTime + time, audio.duration);
@@ -1482,6 +1811,30 @@
             }
         }
 
+        function updatePlaybackIndicators() {
+            // 1. Limpiar todos los indicadores de "playing" y "paused"
+            document.querySelectorAll('.song-list li, .download-item, #mini-player, #full-player').forEach(el => {
+                el.classList.remove('playing', 'paused');
+            });
+            
+            // 2. Aplicar estado al reproductor mini y full
+            const playerClass = isPlaying ? 'playing' : (currentSong ? 'paused' : '');
+            document.getElementById('mini-player').classList.add(playerClass);
+            document.getElementById('full-player').classList.add(playerClass);
+
+            // 3. Aplicar estado a la canción actual en las listas (Álbumes y Descargas)
+            if (currentSong) {
+                const currentLi = document.querySelector(`.song-list li[data-song-id="${currentSong.id}"]`);
+                if (currentLi) {
+                    currentLi.classList.add(playerClass);
+                }
+                const currentDownloadItem = document.querySelector(`.download-item[data-song-id="${currentSong.id}"]`);
+                if (currentDownloadItem) {
+                    currentDownloadItem.classList.add(playerClass);
+                }
+            }
+        }
+
         window.playSong = function(song, album, playlist, index) {
             currentSong = song; 
             currentAlbum = album || {}; 
@@ -1505,8 +1858,17 @@
             } 
         }
 
-        window.togglePlay = function() { if (!currentSong || !audio) return; if (isPlaying) audio.pause(); else audio.play(); }
-        function updateAllPlayers() { updateMiniPlayer(); updateFullPlayer(); updatePlayButtons(); }
+        window.togglePlay = function() { 
+            if (!currentSong || !audio) return; 
+            if (isPlaying) audio.pause(); else audio.play(); 
+        }
+        
+        function updateAllPlayers() { 
+            updateMiniPlayer(); 
+            updateFullPlayer(); 
+            updatePlayButtons(); 
+            updatePlaybackIndicators(); // Actualiza el ecualizador y el color de la fila
+        }
         
         // Se asegura de usar la portada del currentAlbum
         function updateMiniPlayer() { 
@@ -1528,7 +1890,11 @@
             document.getElementById('full-player-artist').textContent = currentAlbum.artist; 
         }
         
-        function updatePlayButtons() { const playText = isPlaying ? '⏸' : '▶'; document.getElementById('mini-play-btn').textContent = playText; document.getElementById('full-play-btn').textContent = playText; }
+        function updatePlayButtons() { 
+            const playText = isPlaying ? '⏸' : '▶'; 
+            document.getElementById('mini-play-btn').textContent = playText; 
+            document.getElementById('full-play-btn').textContent = playText; 
+        }
         
         // --- PUNTO DE ENTRADA Y EVENTOS GLOBALES ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -1542,14 +1908,21 @@
             audio.addEventListener('play', () => { 
                 isPlaying = true; 
                 updatePlayButtons();
+                updatePlaybackIndicators(); // Actualizar al reproducir
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
             });
             audio.addEventListener('pause', () => { 
                 isPlaying = false; 
                 updatePlayButtons(); 
+                updatePlaybackIndicators(); // Actualizar al pausar
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
             });
-            audio.addEventListener('ended', () => { isPlaying = false; updatePlayButtons(); nextSong(); });
+            audio.addEventListener('ended', () => { 
+                isPlaying = false; 
+                updatePlayButtons(); 
+                updatePlaybackIndicators(); // Actualizar al finalizar
+                nextSong(); 
+            });
             audio.addEventListener('timeupdate', () => { 
                 if (audio.duration) { 
                     document.getElementById('full-progress-fill').style.width = `${(audio.currentTime / audio.duration) * 100}%`; 
@@ -1615,7 +1988,7 @@
                     return;
                 }
 
-                if (e.target.closest('#mini-player') && !e.target.closest('.player-controls-inline')) { openFullPlayer(); }
+                if (e.target.closest('#mini-player') && !e.target.closest('.mini-controls-buttons')) { openFullPlayer(); }
             });
         });
     </script>
