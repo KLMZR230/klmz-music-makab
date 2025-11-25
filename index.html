@@ -16,14 +16,25 @@
             padding-bottom: 84px;
             transition: all 0.3s ease;
             width: 100%;
-            overflow-x: hidden; /* Evita el scroll horizontal forzado por el body */
+            /* REMOVIDO: overflow-x: hidden; para evitar conflictos con el tema christmas */
+            overflow-x: hidden;
             /* --- CONTROL DE COMPORTAMIENTO NATIVO --- */
             user-select: none; /* Evita la copia de texto */
             -webkit-user-select: none;
             -ms-user-select: none;
             touch-action: manipulation; /* Bloquea el zoom de doble toque */
         }
-        header { background: #121212; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
+        header { 
+            background: #121212; 
+            padding: 1rem 1.5rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            transition: all 0.3s ease; 
+        }
         .logo { font-weight: bold; font-size: 1.4rem; letter-spacing: 1px; transition: all 0.3s ease; }
         .user-actions { display:flex; align-items: center; gap:.5rem; }
         .lock-icon { cursor:pointer; font-size:1.4rem; color:#fff; user-select:none; transition: all 0.3s ease; }
@@ -39,6 +50,8 @@
             margin:0 auto;
             width: 100%; /* Añadido para asegurar que ocupe todo el ancho disponible */
             min-width: 0; /* Asegura que el contenido pueda encogerse en contenedores flexibles */
+            position: relative; /* Asegura que los hijos de main (álbumes) estén bajo la nieve */
+            z-index: 20; /* Capa debajo de la nieve */
         }
         #search-input, #admin-album-search, #modal-album-search { 
             width: 100%; 
@@ -54,9 +67,32 @@
         }
         .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
         .album-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1.5rem;}
-        .album-card { background:none; padding:1rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition: all 0.3s ease; border-radius: 12px; }
+        .album-card { 
+            background:none; 
+            padding:1rem; 
+            cursor:pointer; 
+            display:flex; 
+            flex-direction:column; 
+            align-items:center; 
+            text-align:center; 
+            transition: all 0.3s ease; 
+            border-radius: 12px;
+            position: relative; /* Es importante que las tarjetas no tengan un z-index > nieve */
+            z-index: 25; 
+        }
         .album-card:hover { transform:scale(1.05); box-shadow: 0 0 15px rgba(29, 185, 84, 0.4); }
-        .album-img { border-radius:50%; width:100px; height:100px; object-fit:cover; margin-bottom:.7rem; background:#333; transition: all 0.3s ease; border: 3px solid #444; }
+        /* AJUSTE BORDES DE CARÁTULA */
+        .album-img { 
+            border-radius:50%; 
+            width:100px; 
+            height:100px; 
+            object-fit:cover; 
+            margin-bottom:.7rem; 
+            background:#333; 
+            transition: all 0.3s ease; 
+            border: 1px solid #444; 
+            position: relative;
+        }
         /* --- CORRECCIÓN IMAGEN NÍTIDA PARA MÓVILES --- */
         .album-detail-img { 
             width: 200px; 
@@ -65,7 +101,7 @@
             object-fit: cover; /* Asegura que la imagen no se distorsione */
             margin: 0 auto 1.5rem; 
             display: block; 
-            border: 4px solid #444; 
+            border: 1px solid #444; /* Borde más sutil */
             transition: all 0.3s ease; 
         }
         .song-list { 
@@ -135,8 +171,6 @@
             height: 200px; 
             border-radius: 12px; 
             object-fit:cover; /* Asegura que la imagen no se distorsione */
-            margin: 0 auto 2rem; 
-            display: block; 
             border: 4px solid #444; 
             transition: all 0.3s ease;
         }
@@ -163,6 +197,27 @@
         .full-volume-slider { width: 150px; }
         .full-player-close { position: absolute; top: 30px; right: 40px; background: none; border: none; font-size: 2.5rem; color: #fff; cursor: pointer; transition: all 0.3s ease; }
         .full-player-close:hover { color: #ff4757; }
+        
+        /* --- ESTILOS DE LETRAS (SE MANTIENE EN CSS PERO SE ELIMINA DEL HTML) --- */
+        .full-player-lyrics {
+            width: 90%;
+            max-width: 400px;
+            height: 150px; /* Altura fija para el contenedor de letras */
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            overflow-y: auto;
+            text-align: center;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #ccc;
+            white-space: pre-wrap; /* Mantiene saltos de línea del texto */
+            user-select: text; /* Permitir seleccionar texto en las letras */
+            -webkit-user-select: text;
+            display: none; /* Asegurar que no se muestre */
+        }
+
         .modal { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.80); display:none; align-items:center; justify-content:center; z-index:2000; transition: all 0.3s ease;}
         .modal-content { background:#282828; padding:2rem; border-radius:8px; width:95%; max-width:430px; max-height:90vh; overflow-y:auto; transition: all 0.3s ease; }
         .modal-content p a { color: #1DB954; text-decoration: none; user-select: text; -webkit-user-select: text; }
@@ -194,7 +249,7 @@
         .content-section.active { display: block; }
         .back-btn { margin-bottom: 1.2rem; background: #222; color: #fff; border: none; padding: 0.5rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; }
         .back-btn:hover { background: #333; }
-        .copyright { position: fixed; bottom: 0; left: 0; width: 100%; height: 20px; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
+        .copyright { position: fixed; bottom: 0; left: 0; right: 0; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
         
         /* --- ESTILOS DE BÚSQUEDA --- */
@@ -261,7 +316,6 @@
         #album-detail, #playlist-detail { padding-bottom: 120px; }
         .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
         .admin-section h3 { margin-top: 0; border-bottom: 2px solid #1DB954; padding-bottom: 0.8rem; margin-bottom: 1.5rem; color: #1DB954; display: flex; align-items: center; gap: 0.5rem; }
-        .admin-form { margin-bottom: 2rem; }
         .admin-form input[type="file"] { background: #333; border: 2px dashed #1DB954; padding: 1rem; border-radius: 8px; text-align: center; cursor: pointer; }
         .admin-form input[type="file"]:hover { background: #404040; }
         .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; margin-right: 0.5rem; }
@@ -292,7 +346,7 @@
         .stat-number { font-size: 2rem; font-weight: bold; color: #1DB954; }
         .stat-label { color: #b3b3b3; margin-top: 0.5rem; }
         .offline-indicator { background: #ff4757; color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem; }
-        .multi-upload-section { background: rgba(29,185,84,0.1); border: 2px dashed #1DB954; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; }
+        .multi-upload-section { background: rgba(29,185,84,0.1); border: 2px dashed #1DB954; padding: 1.5rem; border-radius: 8px; text-align: center; }
         .multi-upload-section h4 { color: #1DB954; margin-top: 0; }
         .file-queue { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
         .file-queue-item { background: #333; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
@@ -420,12 +474,110 @@
         .mini-controls-buttons #mini-play-btn {
             font-size: 1.8rem;
         }
+        
+        /* --- TEMAS COMPLETOS ACTUALIZADOS --- */
+        
+        /* ANIMACIÓN DE NIEVE (Movimiento vertical puro) */
+        @keyframes subtle-snowfall-vertical-slow {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 1000vh; } /* Vertical Puro */
+        }
 
+        /* Tema Navideño (Christmas) */
+        
+        body.theme-christmas {
+            /* ESTÁTICO: Fondo de imagen de paisaje */
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/christmas-forest-1920-x-1080-wnd8iqolk3rsltja.jpg') !important;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+            color: #fff !important;
+            overflow-y: scroll !important; /* Permitir scroll */
+        }
+        
+        /* 1. Encabezado más suave */
+        body.theme-christmas header { 
+            background: rgba(20, 90, 50, 0.8) !important; /* Verde más oscuro y sutil */
+            border-bottom: 2px solid #fde047; 
+            z-index: 101;
+        } 
 
-        /* TEMAS COMPLETOS */
-        body.theme-default .album-img, body.theme-default .album-detail-img { border-color: #1DB954; }
+        /* CAPA DE SUPERPOSICIÓN OSCURA para mejorar el contraste del texto sobre la imagen */
+        body.theme-christmas::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4); /* Capa de oscuridad sutil */
+            z-index: 10;
+        }
+
+        /* ------------------------------------- */
+        /* CAPAS DE NIEVE FLOTANTE (Solo para theme-christmas) */
+        /* ------------------------------------- */
+
+        /* 1. Capa Lenta y Grande (body::before) - Copos lejanos y más grandes */
+        body.theme-christmas::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 99; /* Asegura que flote sobre todo */
+            /* Patrón: Copos muy grandes y muy espaciados (simulando copos lejanos/grandes) */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="700" height="700"><defs><pattern id="xl-snow" width="700" height="700" patternUnits="userSpaceOnUse"><circle cx="40" cy="40" r="12" fill="rgba(255, 255, 255, 0.15)"/></pattern></defs><rect width="700" height="700" fill="url(%23xl-snow)"/></svg>') !important; 
+            background-repeat: repeat;
+            animation: subtle-snowfall-vertical-slow 720s linear infinite; /* 12 minutos */
+        }
+
+        /* 2. Capa Rápida (Seudoelemento extra en MAIN) - Capa pequeña y rápida */
+        body.theme-christmas main::after { 
+            content: '';
+            position: absolute; /* Relative a MAIN */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 21; /* Encima de los álbumes pero debajo de la capa principal de nieve (z-index 99) */
+            /* Patrón de nieve pequeña y densa */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><defs><pattern id="sm-snow" width="150" height="150" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="3" fill="rgba(255, 255, 255, 0.35)"/></pattern></defs><rect width="150" height="150" fill="url(%23sm-snow)"/></svg>') !important; 
+            background-repeat: repeat;
+            animation: subtle-snowfall-vertical-slow 360s linear infinite; /* 6 minutos */
+        }
+        
+        /* Eliminamos las capas de nieve para todos los demás temas */
+        body:not(.theme-christmas)::before, 
+        body:not(.theme-christmas)::after,
+        main::after {
+            content: none !important;
+            animation: none !important;
+        }
+
+        /* Ajuste de colores Navideños */
+        body.theme-christmas .logo, body.theme-christmas .section-title { color: #fde047 !important; text-shadow: 0 0 1px #fde047; z-index: 25; position: relative;}
+        body.theme-christmas .album-card { background: rgba(0,0,0,0.4); } /* Fondo transparente para tarjetas */
+        body.theme-christmas .album-card:hover { box-shadow: 0 0 15px rgba(253, 224, 71, 0.6); }
+        body.theme-christmas .btn-primary { background: #fde047 !important; color: #16a34a !important; font-weight: bold; }
+        body.theme-christmas .bottom-nav-item.active { color: #fde047 !important; background: rgba(253, 224, 71, 0.1); }
+        body.theme-christmas .bar { background: #fde047 !important; }
+
+        /* Tema Fuego Infernal (theme-fire) */
+        body.theme-fire { 
+            /* Nuevo fondo de imagen, adaptado a móviles */
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/infernal.jpg') !important; 
+            background-size: cover;
+            background-position: center center;
+            background-attachment: fixed;
+            background-color: #3d0303 !important; 
+            color: #ffcc80 !important; 
+        }
         body.theme-fire .album-img, body.theme-fire .album-detail-img { border-color: #ff4500; }
-        body.theme-fire { background: radial-gradient(ellipse at center, #3d0303 0%, #1a0000 70%) !important; color: #ffcc80 !important; }
         body.theme-fire .logo { font-family: 'Metal Mania', cursive !important; font-size: 1.8rem !important; color: #ff4500 !important; text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000 !important; animation: logo-flicker 2s infinite linear alternate; }
         body.theme-fire .section-title { font-family: 'Metal Mania', cursive !important; color: #ff8c00 !important; }
         body.theme-fire header { background: rgba(10,0,0,0.8) !important; border-bottom: 2px solid #ff4500; }
@@ -433,6 +585,78 @@
         body.theme-fire .btn-primary { background: #ff4500 !important; color: #fff !important; }
         body.theme-fire .song-list li { color: #ff8c00 !important; }
         body.theme-fire .bottom-nav-item.active { color: #ff4500 !important; background: rgba(255, 69, 0, 0.2); }
+
+        /* Nuevo Tema Fénix (theme-fenix) */
+        body.theme-fenix {
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix.jpg') !important;
+            background-size: cover;
+            background-position: center center;
+            background-attachment: fixed;
+            background-color: #1a0000 !important;
+            color: #ffaa00 !important; /* Dorado/Naranja brillante */
+        }
+        body.theme-fenix .album-img, body.theme-fenix .album-detail-img { border-color: #ff6600; }
+        body.theme-fenix .logo, body.theme-fenix .section-title { 
+            color: #ffaa00 !important; 
+            text-shadow: 0 0 5px #ff6600, 0 0 15px #ffaa00;
+        }
+        body.theme-fenix header { 
+            background: rgba(50, 20, 0, 0.9) !important; /* Naranja oscuro transparente */
+            border-bottom: 1px solid #ff6600; 
+        }
+        body.theme-fenix .album-card:hover { 
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.8) !important; 
+        }
+        body.theme-fenix .btn-primary { 
+            background: #ff6600 !important; 
+            color: #fff !important; 
+        }
+        body.theme-fenix .song-list li { 
+            color: #ffaa00 !important; 
+        }
+        body.theme-fenix .bottom-nav-item.active { 
+            color: #ffaa00 !important; 
+            background: rgba(255, 102, 0, 0.15); 
+        }
+        body.theme-fenix .bar { background: #ffaa00 !important; }
+
+
+        /* Tema Blue Neon */
+        body.theme-blue-neon { 
+            background-color: #0d0d1a !important; 
+            color: #00e0ff !important; 
+            text-shadow: 0 0 2px #00e0ff;
+        }
+        body.theme-blue-neon .logo, body.theme-blue-neon .section-title { 
+            color: #00e0ff !important; 
+            text-shadow: 0 0 5px #00e0ff, 0 0 10px #00e0ff; 
+        }
+        body.theme-blue-neon header { 
+            background: rgba(13, 13, 26, 0.9) !important; 
+            border-bottom: 1px solid #00e0ff; 
+            box-shadow: 0 2px 10px rgba(0, 224, 255, 0.5);
+        }
+        body.theme-blue-neon .album-card { border: 1px solid #00e0ff40; }
+        body.theme-blue-neon .album-card:hover { 
+            box-shadow: 0 0 20px rgba(0, 224, 255, 0.8) !important; 
+            border-color: #00e0ff;
+        }
+        body.theme-blue-neon .btn-primary { 
+            background: #00e0ff !important; 
+            color: #000 !important;
+        }
+        body.theme-blue-neon .song-list li { 
+            color: #00e0ff !important; 
+        }
+        body.theme-blue-neon .bottom-nav-item.active { 
+            color: #00e0ff !important; 
+            background: rgba(0, 224, 255, 0.15); 
+        }
+        body.theme-blue-neon .bar { background: #00e0ff !important; }
+
+        /* Resto de temas originales */
+        body.theme-default .album-img, body.theme-default .album-detail-img { border-color: #1DB954; }
+        body.theme-fire .album-img, body.theme-fire .album-detail-img { border-color: #ff4500; }
         body.theme-neon .album-img, body.theme-neon .album-detail-img { border-color: #00ff88; }
         body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0f0f23 100%) !important; color: #00ff88 !important; }
         body.theme-neon .logo { color: #00ff88 !important; text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88 !important; animation: neonPulse 2s ease-in-out infinite alternate !important; }
@@ -496,65 +720,6 @@
         body.theme-floral .btn-primary { background: #ff85a2 !important; color: #3d1c2b !important; font-weight: bold; }
         body.theme-floral .song-list li { color: #ff85a2 !important; }
         body.theme-floral .bottom-nav-item.active { color: #ff85a2 !important; }
-        
-        /* --- NUEVOS TEMAS --- */
-
-        /* 1. Tema Blue Neon Encendido */
-        body.theme-blue-neon { 
-            background: #000;
-            color: #00eaff !important;
-            text-shadow: 0 0 5px #00eaff80;
-        }
-        body.theme-blue-neon .album-img, body.theme-blue-neon .album-detail-img { border-color: #00eaff; box-shadow: 0 0 10px #00eaff80; }
-        body.theme-blue-neon header { background: #030a11 !important; border-bottom: 1px solid #00eaff; box-shadow: 0 2px 10px #00eaff30; }
-        body.theme-blue-neon .logo, body.theme-blue-neon .section-title { 
-            color: #00eaff !important; 
-            text-shadow: 0 0 10px #00eaff, 0 0 20px #00eaff60;
-            animation: neonGlow 1.5s ease-in-out infinite alternate;
-        }
-        body.theme-blue-neon .album-card:hover { 
-            background: #00eaff1a !important; 
-            box-shadow: 0 0 25px rgba(0, 234, 255, 0.7) !important; 
-        }
-        body.theme-blue-neon .btn-primary { background: #00eaff !important; color: #000 !important; font-weight: bold; }
-        body.theme-blue-neon .song-list li { color: #00eaff !important; border-color: #00eaff33; }
-        body.theme-blue-neon .bottom-nav-item.active { color: #00eaff !important; background: rgba(0, 234, 255, 0.15); }
-        body.theme-blue-neon .song-actions span:hover { color: #00eaff; }
-
-        /* 2. Tema Navideño Animado (Nieve) - CORREGIDO: QUITAR OVERFLOW HIDDEN DEL BODY */
-        body.theme-christmas { 
-            background: linear-gradient(180deg, #1f421f 0%, #001a00 100%) !important; 
-            color: #ff4747 !important; 
-            /* overflow: hidden; <--- ESTO CAUSABA EL PROBLEMA, SE QUITA */
-            position: relative;
-        }
-        body.theme-christmas::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            /* --- Nieve pequeña y sutil (radios reducidos) --- */
-            background: url('data:image/svg+xml;utf8,<svg width="100%%" height="100%%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="snowGrad" cx="50%%" cy="50%%" r="50%%" fx="50%%" fy="50%%"><stop offset="0%%" stop-color="white" stop-opacity="0.8"/><stop offset="100%%" stop-color="white" stop-opacity="0"/></radialGradient></defs><circle cx="5" cy="5" r="1.5" fill="url(#snowGrad)"/><circle cx="20" cy="20" r="1" fill="url(#snowGrad)"/><circle cx="35" cy="15" r="1.2" fill="url(#snowGrad)"/><circle cx="50" cy="30" r="1.8" fill="url(#snowGrad)"/><circle cx="65" cy="5" r="0.8" fill="url(#snowGrad)"/><circle cx="80" cy="25" r="1.4" fill="url(#snowGrad)"/><circle cx="95" cy="10" r="1.5" fill="url(#snowGrad)"/></svg>'),
-                        url('data:image/svg+xml;utf8,<svg width="100%%" height="100%%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="30" r="1.2" fill="white" opacity="0.7"/><circle cx="25" cy="45" r="1.8" fill="white" opacity="0.9"/><circle cx="40" cy="55" r="1" fill="white" opacity="0.6"/><circle cx="55" cy="70" r="1.5" fill="white" opacity="0.8"/><circle cx="70" cy="60" r="0.9" fill="white" opacity="0.5"/><circle cx="85" cy="75" r="1.4" fill="white" opacity="0.7"/><circle cx="100" cy="90" r="1.8" fill="white" opacity="0.9"/></svg>');
-            background-repeat: repeat;
-            animation: snowfall 15s linear infinite;
-            z-index: 9998; /* Debe estar sobre el fondo pero bajo el contenido principal */
-        }
-        body.theme-christmas .album-img, body.theme-christmas .album-detail-img { border-color: #ff4747; box-shadow: 0 0 10px #ff4747; }
-        body.theme-christmas header { background: #001a00cc !important; border-bottom: 2px solid #00ff00; }
-        body.theme-christmas .logo, body.theme-christmas .section-title { color: #00ff00 !important; text-shadow: 1px 1px 2px #000, 0 0 5px #00ff00; }
-        body.theme-christmas .album-card:hover { 
-            background: rgba(255, 71, 71, 0.1) !important; 
-            box-shadow: 0 0 20px rgba(255, 71, 71, 0.6) !important; 
-        }
-        body.theme-christmas .btn-primary { background: #ff4747 !important; color: #fff !important; font-weight: bold; }
-        body.theme-christmas .song-list li { color: #ff4747 !important; }
-        body.theme-christmas .bottom-nav { background: #0d2d0d !important; }
-        body.theme-christmas .bottom-nav-item.active { color: #00ff00 !important; background: rgba(0, 255, 0, 0.15); }
-        body.theme-christmas .song-actions span:hover { color: #00ff00; }
 
 
         @keyframes fire-glow { from { box-shadow: 0 0 10px #ff8c00, 0 0 20px #ff8c00, 0 0 30px #ff4500, 0 0 40px #ff0000; } to { box-shadow: 0 0 15px #ff8c00, 0 0 25px #ff8c00, 0 0 40px #ff4500, 0 0 55px #ff0000; } }
@@ -562,17 +727,6 @@
         @keyframes neonPulse { 0% { text-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88; } 100% { text-shadow: 0 0 25px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88; } }
         @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        /* NUEVAS ANIMACIONES */
-        @keyframes neonGlow {
-            0% { text-shadow: 0 0 5px #00eaff, 0 0 10px #00eaff60; }
-            100% { text-shadow: 0 0 10px #00eaff, 0 0 25px #00eaffaa; }
-        }
-
-        @keyframes snowfall {
-            0% { background-position: 0% 0%, 0% 0%; }
-            100% { background-position: 500px 1000px, 200px 400px; }
-        }
 
         /* --- ESTILOS PARA MÓVILES --- */
         @media (max-width: 768px) {
@@ -593,113 +747,6 @@
             .full-control-btn { font-size: 2rem; }
             .full-play-btn { font-size: 3rem; }
         }
-
-        /* --- Ecualizador Animado --- */
-        .equalizer {
-            display: flex;
-            align-items: flex-end;
-            width: 14px;
-            height: 14px;
-            margin-right: 8px;
-            justify-content: space-between;
-            overflow: hidden;
-            flex-shrink: 0;
-            opacity: 0; /* Oculto por defecto */
-            transition: opacity 0.3s;
-        }
-
-        .playing .equalizer {
-            opacity: 1; /* Visible cuando está reproduciendo */
-        }
-        
-        /* Ajuste para el ecualizador grande en el Full Player */
-        #full-player .equalizer {
-            width: 30px; 
-            height: 30px;
-            margin: 10px auto; /* Centrar debajo del título/artista */
-            opacity: 0; /* Lo gestionaremos con la clase playing */
-        }
-        #full-player.playing #full-player-equalizer, 
-        #full-player.paused #full-player-equalizer {
-            opacity: 1;
-        }
-
-        #full-player .equalizer .bar {
-            width: 6px;
-        }
-
-
-        .bar {
-            width: 3px;
-            background: #1DB954;
-            animation: equalize 0.8s ease-in-out infinite;
-            border-radius: 1px;
-            transform-origin: bottom;
-        }
-
-        .playing .bar {
-            height: 100%;
-        }
-        
-        /* Efecto de pausa: barras pequeñas y estáticas */
-        .paused .equalizer .bar {
-            height: 30%;
-            animation: none;
-            opacity: 0.7;
-        }
-
-        .bar:nth-child(1) { height: 70%; animation-delay: -0.2s; }
-        .bar:nth-child(2) { height: 30%; animation-delay: -0.5s; }
-        .bar:nth-child(3) { height: 90%; animation-delay: -0.7s; }
-
-        @keyframes equalize {
-            0% { height: 20%; }
-            40% { height: 100%; }
-            80% { height: 40%; }
-            100% { height: 20%; }
-        }
-        /* --- Fin Ecualizador Animado --- */
-        
-        /* Estilos específicos para la canción actualmente reproduciéndose */
-        .song-list li.playing, .download-item.playing {
-            color: #1DB954;
-            background: rgba(29, 185, 84, 0.1);
-            font-weight: bold;
-        }
-        .song-list li.paused, .download-item.paused {
-            color: #90ee90; /* Un color ligeramente diferente para pausado en la lista */
-            background: rgba(29, 185, 84, 0.05);
-            font-weight: 500;
-        }
-        
-        /* Ajuste de alineación para el mini player */
-        .player-info-mini {
-            display: flex;
-            align-items: center;
-        }
-        
-        /* Asegura que los botones del mini reproductor se vean limpios */
-        .mini-controls-buttons {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-        .mini-controls-buttons button {
-            font-size: 1.2rem;
-            padding: 0;
-            background: none;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .mini-controls-buttons button:hover {
-            color: #1DB954;
-        }
-        /* Ajuste para el botón de play/pause en el mini player */
-        .mini-controls-buttons #mini-play-btn {
-            font-size: 1.8rem;
-        }
     </style>
 </head>
 <body>
@@ -713,6 +760,7 @@
                     <option value="default">🎵 Default</option>
                     <option value="blue-neon">🔵 Blue Neon</option>
                     <option value="christmas">🎄 Navidad Nieve</option>
+                    <option value="fenix">🔥 Fénix</option>
                     <option value="neon">⚡ Neon Cyberpunk</option>
                     <option value="minimal">✨ Elegancia Minimal</option>
                     <option value="sunset">🌅 Sunset Vibes</option>
@@ -764,7 +812,6 @@
                 <div id="downloads-content"><div style="text-align: center; padding: 2rem;">No tienes canciones descargadas</div></div>
             </section>
             <section class="content-section" id="admin-section">
-                <div class="section-title">⚙️ Panel de Administración</div>
                 <div id="admin-content"></div>
             </section>
         </main>
@@ -820,15 +867,15 @@
             </div>
             
             
-            <!-- SE ELIMINA LA SECCIÓN DE MODO (REPEAT Y SHUFFLE) -->
-            
+            <!-- SECCIÓN DE BARRA DE PROGRESO Y TIEMPO -->
             <div class="full-progress-container">
-                <!-- Se elimina ⏪ y ⏩ de la vista, dejando el tiempo y la barra -->
                 <span class="full-progress-time" id="full-current-time">0:00</span>
                 <div class="full-progress-bar" onclick="seekToFull(event)"><div class="full-progress-fill" id="full-progress-fill"></div></div>
                 <span class="full-progress-time" id="full-total-time">0:00</span>
             </div>
             <div class="full-player-volume"><input type="range" class="full-volume-slider" min="0" max="100" value="70" oninput="setVolume(this.value)"></div>
+            
+            <!-- CONTENEDOR DE LETRAS ELIMINADO -->
         </div>
     </div>
     
@@ -1640,22 +1687,48 @@
                 }
                 
                 overallProgressBar.style.width = `${((index + 1) / fileQueue.length) * 100}%`;
-                updateFileQueueUI();
-            }
+                    updateFileQueueUI();
+                }
 
-            progressLabel.textContent = 'Subida completada';
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-                fileQueue = [];
-                updateFileQueueUI();
-            }, 2000);
-            isUploading = false;
-            await loadAllData();
-            await renderAdminPanel();
+                progressLabel.textContent = 'Subida completada';
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    fileQueue = [];
+                    updateFileQueueUI();
+                }, 2000);
+                isUploading = false;
+                await loadAllData();
+                await renderAdminPanel();
         }
         window.deleteAlbum = async function(albumId) { if (!confirm('¿Eliminar álbum y todas sus canciones?')) return; showLoadingIndicator(true); try { await supabase.from('songs').delete().eq('album_id', albumId); await supabase.from('albums').delete().eq('id', albumId); alert('✅ Álbum eliminado'); await loadAllData(); await renderAdminPanel(); } catch (error) { alert('❌ Error: ' + error.message); } finally { showLoadingIndicator(false); } }
-        window.editSong = async function(songId, currentTitle) { const newTitle = prompt('Nuevo nombre:', currentTitle); if (newTitle && newTitle.trim() && newTitle !== currentTitle) { showLoadingIndicator(true); try { await supabase.from('songs').update({ title: newTitle.trim() }).eq('id', songId); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { showLoadingIndicator(false); } } }
-        window.deleteSong = async function(songId) { if (!confirm('¿Eliminar esta canción?')) return; showLoadingIndicator(true); try { await supabase.from('songs').delete().eq('id', songId); await loadAllData(); await renderAdminPanel(); } catch (err) { alert('❌ Error: ' + err.message); } finally { showLoadingIndicator(false); } }
+        window.editSong = async function(songId, currentTitle) { 
+            const newTitle = prompt('Nuevo nombre:', currentTitle); 
+            if (newTitle && newTitle.trim() && newTitle !== currentTitle) { 
+                showLoadingIndicator(true); 
+                try { 
+                    await supabase.from('songs').update({ title: newTitle.trim() }).eq('id', songId); 
+                    await loadAllData(); 
+                    await renderAdminPanel(); 
+                } catch (err) { 
+                    alert('❌ Error: ' + err.message); 
+                } finally { 
+                    showLoadingIndicator(false); 
+                } 
+            } 
+        }
+        window.deleteSong = async function(songId) { 
+            if (!confirm('¿Eliminar esta canción?')) return; 
+            showLoadingIndicator(true); 
+            try { 
+                await supabase.from('songs').delete().eq('id', songId); 
+                await loadAllData(); 
+                await renderAdminPanel(); 
+            } catch (err) { 
+                alert('❌ Error: ' + err.message); 
+            } finally { 
+                showLoadingIndicator(false); 
+            } 
+        }
         
         // --- INICIALIZACIÓN Y CARGA DE DATOS ---
         async function loadSupabase() { showLoadingIndicator(true); try { supabase = window.supabase.createClient(supabaseUrl, supabaseKey); supabase.auth.onAuthStateChange((_, session) => { currentUser = session?.user || null; updateAuthUI(); }); const { data: { session } } = await supabase.auth.getSession(); currentUser = session?.user || null; updateAuthUI(); await initDownloadDB(); await loadAllData(); } catch (error) { document.getElementById('album-genres-container').innerHTML = `<div style="text-align:center;padding:3rem;"><h2 style="color:#ff4757;">❌ Error Conexión</h2><p>${error.message}</p></div>`; } finally { showLoadingIndicator(false); } }
@@ -1664,6 +1737,7 @@
             try { 
                 const [{ data: albumsData, error: albumsError }, { data: songsData, error: songsError }] = await Promise.all([
                     supabase.from('albums').select('*, genre, is_hidden').order('created_at', { ascending: false }), 
+                    // Consulta genérica que incluye todos los campos, incluyendo 'lyrics' si existe.
                     supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })
                 ]); 
                 if (albumsError) throw albumsError; 
@@ -1695,8 +1769,8 @@
             detailView.innerHTML = `<button class="back-btn" onclick="goBackToAlbumsGrid()">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><img class="album-detail-img" src="${coverUrl}" alt="${album.title}"><div style="font-size:1.5rem;font-weight:bold;">${album.title}</div><div style="color:#b3b3b3;">${album.artist}</div></div><div id="detail-song-list">Cargando...</div>`;
             
             try {
-                const { data: songs, error } = await supabase.from('songs').select('*').eq('album_id', album.id).order('created_at', { ascending: false });
-                if (error) throw error;
+                // Usar la consulta global para obtener canciones
+                const songs = allSongs.filter(s => s.album_id === album.id);
                 if (!songs || songs.length === 0) {
                     document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>';
                     return;
@@ -1750,9 +1824,6 @@
         // --- REPRODUCTOR (Controles y Media Session) ---
         function openFullPlayer() { document.getElementById('full-player').classList.add('active'); }
         window.closeFullPlayer = function() { document.getElementById('full-player').classList.remove('active'); }
-        // Se eliminan toggleRepeatMode y toggleShuffleMode del JS ya que los botones fueron eliminados
-        /* window.toggleRepeatMode = function() { /* Lógica de repetición * / }
-        window.toggleShuffleMode = function() { /* Lógica de aleatorio * / } */
         window.setVolume = function(value) { audio.volume = value / 100; }
         
         window.seekToFull = function(event) { 
@@ -1835,6 +1906,20 @@
             }
         }
 
+        // --- LÓGICA DE LETRAS ELIMINADA ---
+        /*
+        function updateFullPlayerLyrics() {
+            const lyricsEl = document.getElementById('full-player-lyrics');
+            if (currentSong && currentSong.lyrics) {
+                lyricsEl.textContent = currentSong.lyrics;
+                lyricsEl.style.display = 'block';
+            } else {
+                lyricsEl.textContent = "No hay letras disponibles para esta canción.";
+                lyricsEl.style.display = 'block';
+            }
+        }
+        */
+
         window.playSong = function(song, album, playlist, index) {
             currentSong = song; 
             currentAlbum = album || {}; 
@@ -1882,12 +1967,13 @@
             } 
         }
         
-        // Se asegura de usar la portada del currentAlbum
+        // Se asegura de usar la portada del currentAlbum y elimina la llamada a letras
         function updateFullPlayer() { 
             // Usa la carátula de currentAlbum
             document.getElementById('full-player-cover').src = currentAlbum?.cover_url || ''; 
             document.getElementById('full-player-title').textContent = currentSong.title; 
             document.getElementById('full-player-artist').textContent = currentAlbum.artist; 
+            // updateFullPlayerLyrics(); // ELIMINADO
         }
         
         function updatePlayButtons() { 
@@ -1945,6 +2031,7 @@
                 const albumCard = e.target.closest('.album-card');
                 if (albumCard) {
                     lastScrollPosition = window.scrollY;
+                    // Uso de camelCase para dataset
                     const index = parseInt(albumCard.dataset.albumIndex);
                     if (!isNaN(index)) showAlbumDetail(allAlbums[index]);
                     return;
@@ -1952,6 +2039,7 @@
 
                 const searchAlbumItem = e.target.closest('.search-album-item');
                 if (searchAlbumItem) {
+                    // Uso de camelCase para dataset
                     const index = parseInt(searchAlbumItem.dataset.albumIndex);
                     if (!isNaN(index) && allAlbums[index]) {
                         document.getElementById('search-input').value = '';
@@ -1963,12 +2051,14 @@
                 
                 const songLi = e.target.closest('.song-list li');
                 if (songLi && !e.target.closest('.song-actions') && !e.target.closest('.song-duration')) {
+                    // Uso de camelCase para dataset
                     const index = parseInt(songLi.dataset.songIndex);
                     if (!isNaN(index)) playSongFromPlaylist(index);
                     return;
                 }
                 
                 if (e.target.matches('.play-icon')) {
+                    // Uso de camelCase para dataset
                     const index = parseInt(e.target.dataset.songIndex);
                     if (!isNaN(index)) playSongFromPlaylist(index);
                     return;
