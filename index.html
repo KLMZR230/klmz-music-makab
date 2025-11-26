@@ -25,7 +25,8 @@
             touch-action: manipulation; /* Bloquea el zoom de doble toque */
         }
         /* CORRECCIÓN VISUAL: Oculta el mensaje de error del DOMTokenList si el navegador lo inyecta */
-        *:contains("Failed to execute 'add' on 'DOMTokenList'") {
+        *:contains("Failed to execute 'add' on 'DOMTokenList'"),
+        *:contains("The token provided must not be empty.") {
             display: none !important;
         }
 
@@ -373,7 +374,7 @@
         .admin-song-actions button { margin-left: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
         .no-songs { color: #888; padding: 1rem; text-align: center; font-style: italic; }
         .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-        .stat-card { background: #333; padding: 1.5rem; border-radius: 8px; text-align: center; border-left: 4px solid #1DB954; }
+        .stat-card { background: #333; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
         .stat-number { font-size: 2rem; font-weight: bold; color: #1DB954; }
         .stat-label { color: #b3b3b3; margin-top: 0.5rem; }
         .offline-indicator { background: #ff4757; color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem; }
@@ -1147,21 +1148,39 @@
         async function downloadSong(song, album) {
             const downloadBtn = document.querySelector(`#detail-song-list [data-song-id="${song.id}"] .download-icon`);
             if (downloadBtn) downloadBtn.textContent = '⏳'; 
+            
+            if (!song.song_url || !album.cover_url) {
+                console.error('Error en descarga: URL de canción o cover vacía.');
+                alert('Error: La URL de la canción o la portada no está disponible.');
+                if (downloadBtn) downloadBtn.textContent = '↓'; 
+                return;
+            }
+
             try { 
-                const response = await fetch(song.song_url);
-                if (!response.ok) throw new Error(`Error al descargar la canción: ${response.statusText}`);
-                const audioBlob = await response.blob(); 
+                let audioResponse;
+                try {
+                    audioResponse = await fetch(song.song_url);
+                } catch (e) {
+                    // Captura el error de red (Failed to fetch) aquí
+                    throw new Error(`Fallo al obtener audio: ${e.message || 'Error de red'}`);
+                }
+
+                let coverResponse = { ok: false };
+                try {
+                    coverResponse = await fetch(album.cover_url);
+                } catch (e) {
+                    console.warn(`Fallo al obtener cover, continuando sin cover: ${e.message}`);
+                }
+
+                if (!audioResponse.ok) {
+                    throw new Error(`Error al descargar la canción: ${audioResponse.status} - ${audioResponse.statusText}`);
+                }
+
+                const audioBlob = await audioResponse.blob(); 
                 let coverBlob = null; 
                 
-                if (album && album.cover_url) { 
-                    try { 
-                        const coverRes = await fetch(album.cover_url); 
-                        if (coverRes.ok) {
-                            coverBlob = await coverRes.blob(); 
-                        }
-                    } catch (e) {
-                        console.error('Error al descargar la portada (se continuará sin ella):', e);
-                    } 
+                if (coverResponse.ok) { 
+                    coverBlob = await coverResponse.blob(); 
                 } 
 
                 const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBlob, downloadedAt: new Date().toISOString() }; 
@@ -1182,9 +1201,10 @@
                 }
                 
             } catch (e) { 
-                if (downloadBtn) downloadBtn.textContent = '↓'; 
-                alert('Error en la descarga.'); 
+                // Muestra el mensaje de error capturado
+                alert(`Error en la descarga: ${e.message}. La fuente podría estar inaccesible.`); 
                 console.error('Error en descarga:', e);
+                if (downloadBtn) downloadBtn.textContent = '↓'; 
             } 
         }
         
@@ -1263,10 +1283,10 @@
                 
                 // Generar URL para la portada si existe
                 let coverUrl = '';
-                if (songData.coverBlob) {
+                // CORRECCIÓN: Verifica si coverBlob existe y es un Blob antes de intentar crear URL
+                if (songData.coverBlob instanceof Blob) {
                     coverUrl = URL.createObjectURL(songData.coverBlob);
                 } else {
-                    // Placeholder si no hay cover
                     coverUrl = 'https://placehold.co/200x200/333/fff?text=No+Cover'; 
                 }
                 
