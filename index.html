@@ -13,16 +13,13 @@
             font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
             background: #181818;
             color: #fff;
-            /* CORRECCIÓN FONDO: Asegura altura completa y fondo fijo */
             min-height: 100vh; 
             background-attachment: fixed; 
-            /* --- CONTROL DE COMPORTAMIENTO NATIVO --- */
             user-select: none; 
             -webkit-user-select: none;
             -ms-user-select: none;
             touch-action: manipulation; 
         }
-        /* CORRECCIÓN VISUAL: Oculta el mensaje de error del DOMTokenList si el navegador lo inyecta */
         *:contains("Failed to execute 'add' on 'DOMTokenList'"),
         *:contains("The token provided must not be empty.") {
             display: none !important;
@@ -48,9 +45,8 @@
         .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease; }
         .app-container { 
             display: flex; 
-            /* CORRECCIÓN: Altura fija calculada para permitir scroll interno en los contenedores */
             height: calc(100vh - 60px); 
-            overflow: hidden; /* Evita scroll en el body principal */
+            overflow: hidden; 
         }
         main { 
             flex:1; 
@@ -61,13 +57,11 @@
             min-width: 0; 
             position: relative; 
             z-index: 20;
-            /* Main maneja el scroll general */
             overflow-y: auto;
             height: 100%;
             -webkit-overflow-scrolling: touch;
         }
         
-        /* --- CORRECCIÓN DE ZOOM EN MÓVILES (Input Text) --- */
         #search-input, #admin-album-search, #modal-album-search { 
             width: 100%; 
             padding: 1rem; 
@@ -79,7 +73,7 @@
             transition: all 0.3s ease; 
             user-select: text;
             -webkit-user-select: text;
-            font-size: 16px; /* Evita zoom en iOS */
+            font-size: 16px; 
         }
         
         .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
@@ -110,7 +104,6 @@
             position: relative;
         }
         
-        /* CORRECCIÓN IMAGEN NÍTIDA PARA MÓVILES */
         .album-detail-img { 
             width: 200px; 
             height: 200px; 
@@ -122,16 +115,15 @@
             transition: all 0.3s ease; 
         }
 
-        /* --- ESTRUCTURA DE ÁLBUM CON ENCABEZADO FIJO --- */
         #album-detail {
             display: none;
             flex-direction: column;
-            height: 100%; /* Ocupa todo el alto */
-            overflow: hidden; /* Sin scroll en el contenedor padre */
+            height: 100%; 
+            overflow: hidden; 
         }
 
         .album-detail-header-sticky {
-            flex-shrink: 0; /* No se encoge */
+            flex-shrink: 0; 
             background: transparent; 
             z-index: 30;
             padding-top: 0;
@@ -143,7 +135,6 @@
             color: #fff;
         }
 
-        /* Lista de canciones con su propio SCROLL */
         #detail-song-list {
             flex: 1; 
             overflow-y: auto; 
@@ -173,7 +164,6 @@
         }
         .song-list li:hover { background: rgba(255,255,255,.05); transform: translateX(2px);}
         
-        /* --- ARREGLO COLOR TÍTULO --- */
         .song-list .song-info { 
             flex-grow: 1; 
             min-width: 0; 
@@ -187,7 +177,6 @@
             white-space: nowrap; 
             overflow: hidden; 
             text-overflow: ellipsis; 
-            /* COLOR BLANCO PARA TÍTULOS */
             color: #ffffff; 
         }
         .song-list .song-artist { color:#b3b3b3; font-size: 0.85rem; }
@@ -493,7 +482,7 @@
 
         /* Tema Navideño (Christmas) */
         body.theme-christmas {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/disparo-vertical-arboles-cubiertos-nieve-cielo-nublado-azul-invierno-argentiere_181624-11712.png') !important;
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/christmas-forest-1920-x-1080-wnd8iqolk3rsltja.jpg') !important;
             background-size: cover !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
@@ -560,7 +549,7 @@
 
         /* Tema Fuego Infernal (theme-fire) */
         body.theme-fire { 
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/baphomet%20movil.jpg') !important; 
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/infernal.jpg') !important; 
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
@@ -578,7 +567,7 @@
 
         /* Nuevo Tema Fénix (theme-fenix) */
         body.theme-fenix {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix%20movil.jpg') !important;
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix.jpg') !important;
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
@@ -1302,45 +1291,24 @@
         function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
         
         // --- PANEL DE ADMINISTRACIÓN ---
-        // ✅ NUEVA FUNCIÓN DE SUBIDA ROBUSTA (BYPASS 546 WORKER LIMIT)
+        
+        // ✅ FUNCIÓN DE SUBIDA CORREGIDA PARA USAR FORMDATA CON LA EDGE FUNCTION
+        // Esto soluciona el error 500 (porque ahora enviamos 'files' correctamente)
         function uploadFileWithProgress(file, onProgress) {
             return new Promise(async (resolve, reject) => {
                 try {
-                    // 1. Pedir URL firmada a la Edge Function (SIN enviar el archivo, solo metadatos)
-                    // Esto evita que la función se bloquee procesando el archivo
-                    const response = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${supabaseKey}`,
-                            'Content-Type': 'application/json',
-                            'apikey': supabaseKey
-                        },
-                        body: JSON.stringify({
-                            filename: file.name,
-                            fileType: file.type
-                        })
-                    });
+                    const formData = new FormData();
+                    // IMPORTANTE: La función espera el campo 'file' o 'files'. Usamos 'file' que es estándar.
+                    formData.append('file', file); 
 
-                    if (!response.ok) {
-                        // Intentar fallback si la función espera FormData
-                        // Si la función es antigua y espera FormData, fallará con archivos grandes de todos modos
-                        const errorText = await response.text();
-                        throw new Error(`Error al obtener URL de subida: ${response.status} - ${errorText}`);
-                    }
-
-                    const data = await response.json();
-                    if (!data.uploadUrl) {
-                        throw new Error('La función no devolvió una URL de subida válida.');
-                    }
-                    
-                    const uploadUrl = data.uploadUrl;
-                    const publicUrl = data.publicUrl; // La URL final del archivo en R2
-
-                    // 2. Subir DIRECTAMENTE a R2 usando la URL firmada (Bypass Edge Function Limit)
-                    // Usamos XMLHttpRequest para tener progreso real
+                    // Usamos XMLHttpRequest para tener progreso real de subida
                     const xhr = new XMLHttpRequest();
-                    xhr.open('PUT', uploadUrl, true);
-                    xhr.setRequestHeader('Content-Type', file.type);
+                    xhr.open('POST', `${supabaseUrl}/functions/v1/generate-upload-url`, true);
+                    
+                    // Headers necesarios para la función
+                    xhr.setRequestHeader('Authorization', `Bearer ${supabaseKey}`);
+                    xhr.setRequestHeader('apikey', supabaseKey);
+                    // NO establecer Content-Type header manualmente con FormData, el navegador lo hace.
 
                     xhr.upload.onprogress = (e) => {
                         if (e.lengthComputable) {
@@ -1351,15 +1319,29 @@
 
                     xhr.onload = () => {
                         if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve(publicUrl);
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.publicUrl) {
+                                    resolve(response.publicUrl);
+                                } else {
+                                    reject(new Error('Respuesta inválida de la función: No se recibió publicUrl'));
+                                }
+                            } catch (e) {
+                                reject(new Error('Error parseando respuesta JSON de la función'));
+                            }
                         } else {
-                            reject(new Error(`Error subiendo a R2: ${xhr.status}`));
+                            // Si falla con 546, intentamos capturarlo aquí
+                            if (xhr.status === 546) {
+                                reject(new Error('WORKER_LIMIT: El archivo es demasiado grande para la función.'));
+                            } else {
+                                reject(new Error(`Error Edge Function: ${xhr.status} ${xhr.statusText} - ${xhr.responseText}`));
+                            }
                         }
                     };
 
-                    xhr.onerror = () => reject(new Error('Error de red durante la subida a R2'));
+                    xhr.onerror = () => reject(new Error('Error de red al contactar la función'));
                     
-                    xhr.send(file);
+                    xhr.send(formData);
 
                 } catch (error) {
                     console.error("💥 Error en el proceso de subida:", error);
