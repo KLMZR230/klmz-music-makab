@@ -24,6 +24,11 @@
             -ms-user-select: none;
             touch-action: manipulation; /* Bloquea el zoom de doble toque */
         }
+        /* CORRECCIÓN VISUAL: Oculta el mensaje de error del DOMTokenList si el navegador lo inyecta */
+        *:contains("Failed to execute 'add' on 'DOMTokenList'") {
+            display: none !important;
+        }
+
         header { 
             background: #121212; 
             padding: 1rem 1.5rem; 
@@ -108,14 +113,27 @@
         .album-detail-header-sticky {
             position: sticky;
             top: 0; /* Pegado justo debajo del header principal (que es fijo) */
-            background: #181818; 
+            /* CORRECCIÓN: Fondo transparente pero con desenfoque para mantener la legibilidad */
+            background: transparent; 
+            backdrop-filter: none;
             z-index: 30;
             padding-top: 0;
             padding-bottom: 1.5rem;
-            margin-bottom: 0; /* Ajustado para que el padding y margin del main lo manejen */
+            margin-bottom: 0; 
+            box-shadow: none; 
         }
-        /* Asegura que el fondo sticky se adapte al tema */
-        body.theme-christmas .album-detail-header-sticky { background: transparent; }
+        /* Ajuste para el texto dentro del encabezado pegajoso (blanco por defecto) */
+        .album-detail-header-sticky > div {
+            color: #fff;
+        }
+
+        /* Asegura que el fondo sticky sea transparente en todos los temas */
+        body.theme-christmas .album-detail-header-sticky,
+        body.theme-fire .album-detail-header-sticky,
+        body.theme-fenix .album-detail-header-sticky { 
+            background: transparent; 
+            backdrop-filter: none;
+        }
 
         .song-list { 
             width:100%; 
@@ -409,10 +427,6 @@
         #full-player.playing #full-player-equalizer, 
         #full-player.paused #full-player-equalizer {
             opacity: 1;
-        }
-
-        #full-player .equalizer .bar {
-            width: 6px;
         }
 
 
@@ -1075,7 +1089,7 @@
         const getLocalFavorites = () => JSON.parse(localStorage.getItem('klmz_favorites') || '[]');
         const saveLocalFavorites = (favs) => localStorage.setItem('klmz_favorites', JSON.stringify(favs));
         window.toggleFavorite = function(songId, el) { event.stopPropagation(); let favorites = getLocalFavorites(); if (favorites.includes(songId)) { favorites = favorites.filter(id => id !== songId); } else { favorites.push(songId); } saveLocalFavorites(favorites); if (el) { el.innerHTML = favorites.includes(songId) ? '❤️' : '🤍'; el.style.color = favorites.includes(songId) ? '#1DB954' : '#666'; } }
-        async function loadFavorites() { const content = document.getElementById('favorites-content'); const favorites = getLocalFavorites(); if (favorites.length === 0) { content.innerHTML = '<div style="text-align: center; padding: 3rem;"><h2>💔 No tienes favoritos</h2></div>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites); if (error) throw error; content.innerHTML = `<div class="favorites-list">${songs.map(song => `<div class="favorite-item" data-song='${JSON.stringify(song)}'><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.albums?.artist || ''}</div></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar favoritos'; } }
+        async function loadFavorites() { const content = document.getElementById('favorites-content'); const favorites = getLocalFavorites(); if (favorites.length === 0) { content.innerHTML = '<div style="text-align: center; padding: 2rem;"><h2>💔 No tienes favoritos</h2></div>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', favorites); if (error) throw error; content.innerHTML = `<div class="favorites-list">${songs.map(song => `<div class="favorite-item" data-song='${JSON.stringify(song)}'><div class="favorite-info"><div class="favorite-title">${song.title}</div><div class="favorite-artist">${song.albums?.artist || ''}</div></div></div>`).join('')}</div>`; } catch (e) { content.innerHTML = 'Error al cargar favoritos'; } }
         
         window.searchMusic = function() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
@@ -1217,7 +1231,24 @@
                 content.innerHTML = 'Error al cargar descargas.'; 
             } 
         }
-        async function getAllOfflineSongs() { return new Promise((resolve, reject) => { if (!downloadDB) return reject(new Error('IDB no disponible')); const request = downloadDB.transaction(['songs'], 'readonly').objectStore('songs').getAll(); request.onsuccess = () => { const songs = request.result || []; songs.sort((a, b) => new Date(b.downloadAt) - new Date(a.downloadAt)); resolve(songs); }; request.onerror = (e) => reject(e.target.error); }); }
+        async function getAllOfflineSongs() { 
+             // CORRECCIÓN: Manejo de errores de IndexedDB si la base de datos no está abierta
+            return new Promise((resolve, reject) => { 
+                if (!downloadDB) return resolve([]); 
+                
+                const request = downloadDB.transaction(['songs'], 'readonly').objectStore('songs').getAll(); 
+                
+                request.onsuccess = () => { 
+                    const songs = request.result || []; 
+                    songs.sort((a, b) => new Date(b.downloadAt) - new Date(a.downloadAt)); 
+                    resolve(songs); 
+                }; 
+                request.onerror = (e) => {
+                    console.error("Error al obtener canciones de IndexedDB:", e.target.error);
+                    resolve([]); // Devuelve un arreglo vacío en caso de error
+                };
+            }); 
+        }
         
         // --- FUNCIÓN MEJORADA PARA REPRODUCIR CANCIÓN OFFLINE CON PORTADA ---
         window.playOfflineSong = function(songId) {
@@ -1527,7 +1558,7 @@
                     await loadAllData();
                     await renderAdminPanel();
                 } catch (err) {
-                    alert('❌ Error: ' + err.message);
+                    alert('❌ Error: ' + err.message); 
                 } finally {
                     showLoadingIndicator(false);
                 }
@@ -1852,10 +1883,14 @@
         
         window.seekToFull = function(event) { 
             const pBar = event.currentTarget; 
-            if (audio.duration) {
-                const clickX = event.clientX;
-                const rect = pBar.getBoundingClientRect();
-                const newTime = ((clickX - rect.left) / rect.width) * audio.duration;
+            const rect = pBar.getBoundingClientRect();
+            // CORRECCIÓN: Usar event.clientX o event.touches[0].clientX para el soporte táctil
+            const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+            
+            if (audio.duration && clientX) {
+                // CORRECCIÓN: Usar rect.width para la longitud total y rect.left para el offset.
+                const relativeX = clientX - rect.left;
+                const newTime = (relativeX / rect.width) * audio.duration;
                 audio.currentTime = newTime;
             }
         }
@@ -1878,6 +1913,9 @@
         
         function updateMediaSession(song, album) {
             if ('mediaSession' in navigator) {
+                // CORRECCIÓN: Asegurar que album.cover_url se use
+                const coverUrl = album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ';
+
                 // Configuración de metadatos (necesario para la carátula)
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: song.title,
@@ -1885,12 +1923,12 @@
                     album: album.title || 'Álbum Desconocido',
                     artwork: [
                         // Aseguramos que la carátula se muestre correctamente en las notificaciones
-                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '96x96', type: 'image/png' },
-                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '128x128', type: 'image/png' },
-                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '192x192', type: 'image/png' },
-                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '256x256', type: 'image/png' },
-                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '384x384', type: 'image/png' },
-                        { src: album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ', sizes: '512x512', type: 'image/png' },
+                        { src: coverUrl, sizes: '96x96', type: 'image/png' },
+                        { src: coverUrl, sizes: '128x128', type: 'image/png' },
+                        { src: coverUrl, sizes: '192x192', type: 'image/png' },
+                        { src: coverUrl, sizes: '256x256', type: 'image/png' },
+                        { src: coverUrl, sizes: '384x384', type: 'image/png' },
+                        { src: coverUrl, sizes: '512x512', type: 'image/png' },
                     ]
                 });
 
@@ -1914,8 +1952,16 @@
             
             // 2. Aplicar estado al reproductor mini y full
             const playerClass = isPlaying ? 'playing' : (currentSong ? 'paused' : '');
-            document.getElementById('mini-player').classList.add(playerClass);
-            document.getElementById('full-player').classList.add(playerClass);
+            
+            // VERIFICACIÓN CRÍTICA: Solo agregar clases si playerClass no está vacío.
+            if (playerClass) {
+                const miniPlayerEl = document.getElementById('mini-player');
+                if (miniPlayerEl) miniPlayerEl.classList.add(playerClass);
+                
+                const fullPlayerEl = document.getElementById('full-player');
+                if (fullPlayerEl) fullPlayerEl.classList.add(playerClass);
+            }
+
 
             // 3. Aplicar estado a la canción actual en las listas (Álbumes y Descargas)
             if (currentSong) {
