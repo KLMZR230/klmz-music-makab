@@ -13,12 +13,9 @@
             font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
             background: #181818;
             color: #fff;
-            padding-bottom: 84px;
-            transition: all 0.3s ease;
-            width: 100%;
-            overflow-x: hidden;
-            /* CORRECCIÓN FONDO: Asegura que el fondo cubra al menos toda la pantalla siempre */
+            /* CORRECCIÓN FONDO: Asegura altura completa y fondo fijo */
             min-height: 100vh; 
+            background-attachment: fixed; 
             /* --- CONTROL DE COMPORTAMIENTO NATIVO --- */
             user-select: none; 
             -webkit-user-select: none;
@@ -51,9 +48,9 @@
         .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease; }
         .app-container { 
             display: flex; 
-            /* CORRECCIÓN: Altura dinámica para permitir scroll interno correcto */
+            /* CORRECCIÓN: Altura fija calculada para permitir scroll interno en los contenedores */
             height: calc(100vh - 60px); 
-            overflow: hidden;
+            overflow: hidden; /* Evita scroll en el body principal */
         }
         main { 
             flex:1; 
@@ -64,12 +61,13 @@
             min-width: 0; 
             position: relative; 
             z-index: 20;
-            /* CORRECCIÓN: Main ahora maneja el scroll de la sección principal */
+            /* Main maneja el scroll general */
             overflow-y: auto;
-            height: 100%; 
+            height: 100%;
+            -webkit-overflow-scrolling: touch;
         }
         
-        /* --- CORRECCIÓN DE ZOOM EN MÓVILES --- */
+        /* --- CORRECCIÓN DE ZOOM EN MÓVILES (Input Text) --- */
         #search-input, #admin-album-search, #modal-album-search { 
             width: 100%; 
             padding: 1rem; 
@@ -81,7 +79,7 @@
             transition: all 0.3s ease; 
             user-select: text;
             -webkit-user-select: text;
-            font-size: 16px; 
+            font-size: 16px; /* Evita zoom en iOS */
         }
         
         .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
@@ -124,17 +122,16 @@
             transition: all 0.3s ease; 
         }
 
-        /* --- NUEVA ESTRUCTURA PARA VISTA DE ÁLBUM (SCROLL INTERNO) --- */
+        /* --- ESTRUCTURA DE ÁLBUM CON ENCABEZADO FIJO --- */
         #album-detail {
-            display: none; /* Se controla por JS */
+            display: none;
             flex-direction: column;
-            height: 100%; /* Ocupa todo el alto disponible de main */
-            overflow: hidden; /* Evita scroll en el contenedor padre */
+            height: 100%; /* Ocupa todo el alto */
+            overflow: hidden; /* Sin scroll en el contenedor padre */
         }
 
-        /* Cabecera FIJA (No se mueve) */
         .album-detail-header-sticky {
-            flex-shrink: 0; /* No encoger */
+            flex-shrink: 0; /* No se encoge */
             background: transparent; 
             z-index: 30;
             padding-top: 0;
@@ -146,13 +143,13 @@
             color: #fff;
         }
 
-        /* Lista de canciones con SCROLL INDEPENDIENTE */
+        /* Lista de canciones con su propio SCROLL */
         #detail-song-list {
-            flex: 1; /* Ocupa el resto del espacio */
-            overflow-y: auto; /* Scroll solo aquí */
-            padding-bottom: 120px; /* Espacio para el reproductor */
-            -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+            flex: 1; 
+            overflow-y: auto; 
+            padding-bottom: 120px; 
             width: 100%;
+            -webkit-overflow-scrolling: touch;
         }
 
         .song-list { 
@@ -164,7 +161,7 @@
         .song-list li { 
             padding:.7rem; 
             cursor:pointer; 
-            color:#1db954; /* Color base para iconos/meta */
+            color:#1db954; 
             border-bottom:1px solid #333; 
             display:flex; 
             justify-content:space-between; 
@@ -176,7 +173,7 @@
         }
         .song-list li:hover { background: rgba(255,255,255,.05); transform: translateX(2px);}
         
-        /* --- ARREGLO PARA NOMBRES LARGOS Y COLOR --- */
+        /* --- ARREGLO COLOR TÍTULO --- */
         .song-list .song-info { 
             flex-grow: 1; 
             min-width: 0; 
@@ -184,27 +181,21 @@
             display: flex; 
             align-items: center;
         }
-        /* CORRECCIÓN COLOR DE TÍTULO: Blanco por defecto para resaltar */
         .song-list .song-title { 
             font-weight: 500; 
             display: block; 
             white-space: nowrap; 
             overflow: hidden; 
             text-overflow: ellipsis; 
-            color: #ffffff; /* Blanco brillante */
+            /* COLOR BLANCO PARA TÍTULOS */
+            color: #ffffff; 
         }
-        
-        /* Ajustes de color específicos por tema para los títulos */
-        body.theme-fire .song-list .song-title { color: #ffcc80; }
-        body.theme-fenix .song-list .song-title { color: #ffaa00; }
-        body.theme-christmas .song-list .song-title { color: #fff; text-shadow: 0 0 2px #000; }
-
         .song-list .song-artist { color:#b3b3b3; font-size: 0.85rem; }
-        .song-list li:hover .song-title { color: #1DB954; font-weight: 600; } /* Verde al pasar mouse */
+        .song-list li:hover .song-title { color: #1DB954; font-weight: 600; }
         
         .song-meta { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0;}
         .song-actions { display: flex; gap: 0.8rem; align-items: center; }
-        .song-actions span { font-size: 1.2rem; cursor: pointer; color: #ccc; transition: all 0.3s ease; } /* Iconos más claros */
+        .song-actions span { font-size: 1.2rem; cursor: pointer; color: #bbb; transition: all 0.3s ease; }
         .song-actions span:hover { color: #fff; transform: scale(1.1); }
         
         .play-icon { font-size: 1.1rem !important; }
@@ -502,7 +493,7 @@
 
         /* Tema Navideño (Christmas) */
         body.theme-christmas {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/christmas-forest-1920-x-1080-wnd8iqolk3rsltja.jpg') !important;
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/disparo-vertical-arboles-cubiertos-nieve-cielo-nublado-azul-invierno-argentiere_181624-11712.png') !important;
             background-size: cover !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
@@ -569,7 +560,7 @@
 
         /* Tema Fuego Infernal (theme-fire) */
         body.theme-fire { 
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/infernal.jpg') !important; 
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/baphomet%20movil.jpg') !important; 
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
@@ -587,7 +578,7 @@
 
         /* Nuevo Tema Fénix (theme-fenix) */
         body.theme-fenix {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix.jpg') !important;
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix%20movil.jpg') !important;
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
@@ -1311,42 +1302,64 @@
         function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
         
         // --- PANEL DE ADMINISTRACIÓN ---
+        // ✅ NUEVA FUNCIÓN DE SUBIDA ROBUSTA (BYPASS 546 WORKER LIMIT)
         function uploadFileWithProgress(file, onProgress) {
             return new Promise(async (resolve, reject) => {
                 try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-
+                    // 1. Pedir URL firmada a la Edge Function (SIN enviar el archivo, solo metadatos)
+                    // Esto evita que la función se bloquee procesando el archivo
                     const response = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${supabaseKey}`,
+                            'Content-Type': 'application/json',
                             'apikey': supabaseKey
                         },
-                        body: formData
+                        body: JSON.stringify({
+                            filename: file.name,
+                            fileType: file.type
+                        })
                     });
 
                     if (!response.ok) {
+                        // Intentar fallback si la función espera FormData
+                        // Si la función es antigua y espera FormData, fallará con archivos grandes de todos modos
                         const errorText = await response.text();
-                        throw new Error(`La llamada a la función de Supabase falló: ${response.status} - ${errorText}`);
+                        throw new Error(`Error al obtener URL de subida: ${response.status} - ${errorText}`);
                     }
 
                     const data = await response.json();
-                    if (!data.success || data.error) {
-                        throw new Error(data.error || 'La función de Supabase devolvió un error.');
+                    if (!data.uploadUrl) {
+                        throw new Error('La función no devolvió una URL de subida válida.');
                     }
                     
-                    resolve(data.publicUrl);
-                    
-                    let progress = 0;
-                    const interval = setInterval(() => {
-                        progress += 10;
-                        if (progress <= 100) {
-                            onProgress(progress);
-                        } else {
-                            clearInterval(interval);
+                    const uploadUrl = data.uploadUrl;
+                    const publicUrl = data.publicUrl; // La URL final del archivo en R2
+
+                    // 2. Subir DIRECTAMENTE a R2 usando la URL firmada (Bypass Edge Function Limit)
+                    // Usamos XMLHttpRequest para tener progreso real
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('PUT', uploadUrl, true);
+                    xhr.setRequestHeader('Content-Type', file.type);
+
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const percentComplete = (e.loaded / e.total) * 100;
+                            onProgress(percentComplete);
                         }
-                    }, 50);
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(publicUrl);
+                        } else {
+                            reject(new Error(`Error subiendo a R2: ${xhr.status}`));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error('Error de red durante la subida a R2'));
+                    
+                    xhr.send(file);
 
                 } catch (error) {
                     console.error("💥 Error en el proceso de subida:", error);
