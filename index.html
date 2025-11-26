@@ -17,11 +17,13 @@
             transition: all 0.3s ease;
             width: 100%;
             overflow-x: hidden;
+            /* CORRECCIÓN FONDO: Asegura que el fondo cubra al menos toda la pantalla siempre */
+            min-height: 100vh; 
             /* --- CONTROL DE COMPORTAMIENTO NATIVO --- */
-            user-select: none; /* Evita la copia de texto */
+            user-select: none; 
             -webkit-user-select: none;
             -ms-user-select: none;
-            touch-action: manipulation; /* Bloquea el zoom de doble toque */
+            touch-action: manipulation; 
         }
         /* CORRECCIÓN VISUAL: Oculta el mensaje de error del DOMTokenList si el navegador lo inyecta */
         *:contains("Failed to execute 'add' on 'DOMTokenList'"),
@@ -47,7 +49,12 @@
         .theme-selector { display: flex; align-items: center; gap: 0.3rem; margin-right: 0.5rem; }
         .theme-selector label { font-size: 0.7rem; color: #b3b3b3; }
         .theme-selector select { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease; }
-        .app-container { display: flex; min-height: calc(100vh - 60px);}
+        .app-container { 
+            display: flex; 
+            /* CORRECCIÓN: Altura dinámica para permitir scroll interno correcto */
+            height: calc(100vh - 60px); 
+            overflow: hidden;
+        }
         main { 
             flex:1; 
             padding:1rem; 
@@ -56,11 +63,13 @@
             width: 100%;
             min-width: 0; 
             position: relative; 
-            z-index: 20; 
+            z-index: 20;
+            /* CORRECCIÓN: Main ahora maneja el scroll de la sección principal */
+            overflow-y: auto;
+            height: 100%; 
         }
         
         /* --- CORRECCIÓN DE ZOOM EN MÓVILES --- */
-        /* Se fuerza font-size: 16px para evitar que iOS haga zoom al enfocar */
         #search-input, #admin-album-search, #modal-album-search { 
             width: 100%; 
             padding: 1rem; 
@@ -72,7 +81,7 @@
             transition: all 0.3s ease; 
             user-select: text;
             -webkit-user-select: text;
-            font-size: 16px; /* CRÍTICO: Evita zoom automático en móviles */
+            font-size: 16px; 
         }
         
         .section-title { font-size:1.8rem; font-weight:bold; margin-bottom:1.5rem; transition: all 0.3s ease; }
@@ -91,7 +100,6 @@
             z-index: 25; 
         }
         .album-card:hover { transform:scale(1.05); box-shadow: 0 0 15px rgba(29, 185, 84, 0.4); }
-        /* AJUSTE BORDES DE CARÁTULA */
         .album-img { 
             border-radius:50%; 
             width:100px; 
@@ -103,6 +111,7 @@
             border: 1px solid #444; 
             position: relative;
         }
+        
         /* CORRECCIÓN IMAGEN NÍTIDA PARA MÓVILES */
         .album-detail-img { 
             width: 200px; 
@@ -114,42 +123,48 @@
             border: 1px solid #444; 
             transition: all 0.3s ease; 
         }
-        /* ESTILO PARA HACER EL ENCABEZADO DEL ALBUM FIJO */
+
+        /* --- NUEVA ESTRUCTURA PARA VISTA DE ÁLBUM (SCROLL INTERNO) --- */
+        #album-detail {
+            display: none; /* Se controla por JS */
+            flex-direction: column;
+            height: 100%; /* Ocupa todo el alto disponible de main */
+            overflow: hidden; /* Evita scroll en el contenedor padre */
+        }
+
+        /* Cabecera FIJA (No se mueve) */
         .album-detail-header-sticky {
-            position: sticky;
-            top: 0; 
+            flex-shrink: 0; /* No encoger */
             background: transparent; 
-            backdrop-filter: none;
             z-index: 30;
             padding-top: 0;
-            padding-bottom: 1.5rem;
-            margin-bottom: 0; 
-            box-shadow: none; 
+            padding-bottom: 1rem;
+            text-align: center;
         }
-        /* Ajuste para el texto dentro del encabezado pegajoso (blanco por defecto) */
+        
         .album-detail-header-sticky > div {
             color: #fff;
         }
 
-        /* Asegura que el fondo sticky sea transparente en todos los temas */
-        body.theme-christmas .album-detail-header-sticky,
-        body.theme-fire .album-detail-header-sticky,
-        body.theme-fenix .album-detail-header-sticky { 
-            background: transparent; 
-            backdrop-filter: none;
+        /* Lista de canciones con SCROLL INDEPENDIENTE */
+        #detail-song-list {
+            flex: 1; /* Ocupa el resto del espacio */
+            overflow-y: auto; /* Scroll solo aquí */
+            padding-bottom: 120px; /* Espacio para el reproductor */
+            -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+            width: 100%;
         }
 
         .song-list { 
             width:100%; 
-            margin-top:1rem; 
-            padding-bottom: 120px; 
+            margin-top:0; 
             min-width: 0; 
         }
         .song-list ul { list-style:none; padding:0; margin:0;}
         .song-list li { 
             padding:.7rem; 
             cursor:pointer; 
-            color:#1db954; 
+            color:#1db954; /* Color base para iconos/meta */
             border-bottom:1px solid #333; 
             display:flex; 
             justify-content:space-between; 
@@ -159,28 +174,39 @@
             min-width: 0; 
             position: relative; 
         }
-        .song-list li:hover { color:#fff; background: rgba(255,255,255,.05); transform: translateX(2px);}
-        /* --- ARREGLO PARA NOMBRES LARGOS --- */
+        .song-list li:hover { background: rgba(255,255,255,.05); transform: translateX(2px);}
+        
+        /* --- ARREGLO PARA NOMBRES LARGOS Y COLOR --- */
         .song-list .song-info { 
             flex-grow: 1; 
             min-width: 0; 
             overflow: hidden; 
-            display: flex; /* Añadido para alinear el ecualizador */
+            display: flex; 
             align-items: center;
         }
+        /* CORRECCIÓN COLOR DE TÍTULO: Blanco por defecto para resaltar */
         .song-list .song-title { 
             font-weight: 500; 
             display: block; 
             white-space: nowrap; 
             overflow: hidden; 
             text-overflow: ellipsis; 
+            color: #ffffff; /* Blanco brillante */
         }
+        
+        /* Ajustes de color específicos por tema para los títulos */
+        body.theme-fire .song-list .song-title { color: #ffcc80; }
+        body.theme-fenix .song-list .song-title { color: #ffaa00; }
+        body.theme-christmas .song-list .song-title { color: #fff; text-shadow: 0 0 2px #000; }
+
         .song-list .song-artist { color:#b3b3b3; font-size: 0.85rem; }
-        .song-list li:hover .song-title { color: #1DB954; font-weight: 600; }
+        .song-list li:hover .song-title { color: #1DB954; font-weight: 600; } /* Verde al pasar mouse */
+        
         .song-meta { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0;}
         .song-actions { display: flex; gap: 0.8rem; align-items: center; }
-        .song-actions span { font-size: 1.2rem; cursor: pointer; color: #666; transition: all 0.3s ease; }
+        .song-actions span { font-size: 1.2rem; cursor: pointer; color: #ccc; transition: all 0.3s ease; } /* Iconos más claros */
         .song-actions span:hover { color: #fff; transform: scale(1.1); }
+        
         .play-icon { font-size: 1.1rem !important; }
         .playlist-item { background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; border-left: 3px solid #1DB954; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center;}
         .playlist-item:hover { background: #333; border-left-color: #1ed760; }
@@ -220,9 +246,7 @@
         .full-play-btn { font-size: 3.5rem; }
         .full-play-btn:hover { transform: scale(1.1); color: #1DB954; }
         
-        /* ELIMINACIÓN DE BOTONES DE MODO */
         .mode-controls { display: none !important; }
-        
         .mode-btn { background: none; border: 1px solid #444; color: #b3b3b3; padding: 0.5rem; border-radius: 50%; cursor: pointer; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
         .mode-btn:hover { color: #fff; border-color: #666; }
         .mode-btn.active { color: #1DB954; border-color: #1DB954; background: rgba(29,185,84,0.1); }
@@ -235,7 +259,6 @@
         .full-player-close { position: absolute; top: 30px; right: 40px; background: none; border: none; font-size: 2.5rem; color: #fff; cursor: pointer; transition: all 0.3s ease; }
         .full-player-close:hover { color: #ff4757; }
         
-        /* --- ESTILOS DE LETRAS --- */
         .full-player-lyrics {
             width: 90%;
             max-width: 400px;
@@ -261,8 +284,6 @@
         .modal-content p { text-align: center; margin-top: 1rem; }
         .form-group { margin-bottom:1rem;}
         .form-group label { display:block; margin-bottom:0.5rem;}
-        /* --- CORRECCIÓN DE ZOOM EN FORMULARIOS --- */
-        /* Se fuerza font-size: 16px para inputs y selects */
         .form-group input, .form-group select { 
             width:100%; 
             padding:.7rem; 
@@ -271,7 +292,7 @@
             border-radius:4px; 
             color:#fff; 
             transition: all 0.3s ease;
-            font-size: 16px; /* CRÍTICO: Evita zoom automático en móviles */
+            font-size: 16px; 
         }
         
         .btn-primary { background:#1DB954; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:999px; cursor:pointer; width:100%; margin-top:.7rem; transition: all 0.3s ease; }
@@ -301,7 +322,6 @@
         .copyright { position: fixed; bottom: 0; left: 0; right: 0; background: #0a0a0a; color: #666; font-size: 0.7rem; text-align: center; padding: 2px 0; z-index: 10000; border-top: 1px solid #222; }
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
         
-        /* --- ESTILOS DE BÚSQUEDA --- */
         .search-song-item, .search-album-item, .admin-album-item-list { 
             background: #242424; 
             padding: 0.8rem; 
@@ -320,7 +340,6 @@
         #search-results h3 { margin-top: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem; }
         
         .favorites-list, .downloads-list { margin-top: 1rem; }
-        /* AÑADIDA CLASE PLAYING/PAUSED A DESCARGAS */
         .download-item { 
             background: #242424; 
             padding: 1rem; 
@@ -361,15 +380,13 @@
             flex-shrink: 0;
         }
 
-
-        #album-detail, #playlist-detail { padding-bottom: 120px; }
+        #playlist-detail { padding-bottom: 120px; }
         .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
         .admin-section h3 { margin-top: 0; border-bottom: 2px solid #1DB954; padding-bottom: 0.8rem; margin-bottom: 1.5rem; color: #1DB954; display: flex; align-items: center; gap: 0.5rem; }
         .admin-form input[type="file"] { background: #333; border: 2px dashed #1DB954; padding: 1rem; border-radius: 8px; text-align: center; cursor: pointer; }
         .admin-form input[type="file"]:hover { background: #404040; }
         .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; margin-right: 0.5rem; }
         .btn-secondary:hover { background: #666; }
-        /* Ajuste específico para la lista de administración */
         .admin-album-item { 
             background: #2c2c2c; 
             border-radius: 8px; 
@@ -435,7 +452,6 @@
             opacity: 1; 
         }
         
-        /* Ajuste para el ecualizador grande en el Full Player */
         #full-player .equalizer {
             width: 30px; 
             height: 30px;
@@ -460,7 +476,6 @@
             height: 100%;
         }
         
-        /* Efecto de pausa: barras pequeñas y estáticas */
         .paused .equalizer .bar {
             height: 30%;
             animation: none;
@@ -477,52 +492,9 @@
             80% { height: 40%; }
             100% { height: 20%; }
         }
-        /* --- Fin Ecualizador Animado --- */
-        
-        /* Estilos específicos para la canción actualmente reproduciéndose */
-        .song-list li.playing, .download-item.playing {
-            color: #1DB954;
-            background: rgba(29, 185, 84, 0.1);
-            font-weight: bold;
-        }
-        .song-list li.paused, .download-item.paused {
-            color: #90ee90;
-            background: rgba(29, 185, 84, 0.05);
-            font-weight: 500;
-        }
-        
-        /* Ajuste de alineación para el mini player */
-        .player-info-mini {
-            display: flex;
-            align-items: center;
-        }
-        
-        /* Asegura que los botones del mini reproductor se vean limpios */
-        .mini-controls-buttons {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-        .mini-controls-buttons button {
-            font-size: 1.2rem;
-            padding: 0;
-            background: none;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .mini-controls-buttons button:hover {
-            color: #1DB954;
-        }
-        /* Ajuste para el botón de play/pause en el mini player */
-        .mini-controls-buttons #mini-play-btn {
-            font-size: 1.8rem;
-        }
         
         /* --- TEMAS COMPLETOS ACTUALIZADOS (FONDOS NÍTIDOS EN MÓVILES) --- */
         
-        /* ANIMACIÓN DE NIEVE */
         @keyframes subtle-snowfall-vertical-slow {
             0% { background-position: 0 0; }
             100% { background-position: 0 1000vh; }
@@ -530,19 +502,16 @@
 
         /* Tema Navideño (Christmas) */
         body.theme-christmas {
-            /* PROPIEDADES CRÍTICAS PARA QUE EL FONDO SE VEA NÍTIDO EN MÓVILES */
             background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/christmas-forest-1920-x-1080-wnd8iqolk3rsltja.jpg') !important;
             background-size: cover !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
             background-attachment: fixed !important;
-            /* FIN PROPIEDADES CRÍTICAS */
-            background-color: #0b2210 !important; /* Fondo de respaldo */
+            background-color: #0b2210 !important; 
             color: #fff !important;
-            overflow-y: scroll !important; 
+            overflow-y: hidden !important; /* Scroll handled by main */
         }
         
-        /* Capa de oscuridad y nieve (se mantiene como estaba) */
         body.theme-christmas::after {
             content: '';
             position: fixed;
@@ -565,7 +534,6 @@
         body.theme-christmas .bottom-nav-item.active { color: #fde047 !important; background: rgba(253, 224, 71, 0.1); }
         body.theme-christmas .bar { background: #fde047 !important; }
 
-        /* Capas de nieve (se mantienen) */
         body.theme-christmas::before {
             content: '';
             position: fixed;
@@ -601,12 +569,10 @@
 
         /* Tema Fuego Infernal (theme-fire) */
         body.theme-fire { 
-            /* PROPIEDADES CRÍTICAS PARA QUE EL FONDO SE VEA NÍTIDO EN MÓVILES */
             background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/infernal.jpg') !important; 
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
-            /* FIN PROPIEDADES CRÍTICAS */
             background-color: #3d0303 !important; 
             color: #ffcc80 !important; 
         }
@@ -621,12 +587,10 @@
 
         /* Nuevo Tema Fénix (theme-fenix) */
         body.theme-fenix {
-            /* PROPIEDADES CRÍTICAS PARA QUE EL FONDO SE VEA NÍTIDO EN MÓVILES */
             background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix.jpg') !important;
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
-            /* FIN PROPIEDADES CRÍTICAS */
             background-color: #1a0000 !important;
             color: #ffaa00 !important; 
         }
