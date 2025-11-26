@@ -1003,6 +1003,9 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlanhhdmhxcXNxZnBvcnNvcG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyOTc5ODEsImV4cCI6MjA3Mjg3Mzk4MX0.ljIXELjbguWE4nxmVTF7GS-F_0E2wI6F5Zn0h9oKOh8';
         const ADMIN_EMAIL = 'klmzr@gmail.com';
         const SKIP_TIME = 10; // Tiempo en segundos para adelantar/retroceder
+        
+        // Placeholder elegante en Base64 (Disco de Vinilo) para cuando falle la carga de imagen
+        const DEFAULT_COVER_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzMzMyIgc3Ryb2tlPSIjNTU1IiBzdHJva2Utd2lkdGg9IjIiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIxNSIgZmlsbD0iIzFEQjk1NCIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjMiIGZpbGw9IiMwMDAiLz4KPC9zdmc+';
 
         // ✅ VARIABLES GLOBALES
         let currentSong = null, currentAlbum = null, currentPlaylist = [], currentIndex = 0, isPlaying = false, allAlbums = [], allSongs = [], currentUser = null, songsWithAlbumInfo = [], repeatMode = 'off', shuffleMode = false, db = null, supabase = null, downloadDB = null, currentSongIdToAdd = null;
@@ -1151,13 +1154,13 @@
                 try {
                     audioResponse = await fetch(song.song_url);
                 } catch (e) {
-                    // Captura el error de red (Failed to fetch) aquí
                     throw new Error(`Fallo al obtener audio: ${e.message || 'Error de red'}`);
                 }
 
                 let coverResponse = { ok: false };
                 try {
-                    coverResponse = await fetch(album.cover_url);
+                    // Intento de fetch con credenciales 'anonymous' para evitar bloqueos CORS en algunas configuraciones
+                    coverResponse = await fetch(album.cover_url, { mode: 'cors', credentials: 'omit' });
                 } catch (e) {
                     console.warn(`Fallo al obtener cover, continuando sin cover: ${e.message}`);
                 }
@@ -1173,7 +1176,17 @@
                     coverBlob = await coverResponse.blob(); 
                 } 
 
-                const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBlob, downloadedAt: new Date().toISOString() }; 
+                // Guardamos también la URL original como fallback
+                const downloadData = { 
+                    id: song.id, 
+                    title: song.title, 
+                    artist: album?.artist, 
+                    albumTitle: album?.title, 
+                    audioBlob, 
+                    coverBlob, 
+                    originalCoverUrl: album.cover_url, // NUEVO: Guardar URL original
+                    downloadedAt: new Date().toISOString() 
+                }; 
                 
                 const tx = downloadDB.transaction('songs', 'readwrite');
                 const store = tx.objectStore('songs');
@@ -1191,7 +1204,6 @@
                 }
                 
             } catch (e) { 
-                // Muestra el mensaje de error capturado
                 alert(`Error en la descarga: ${e.message}. La fuente podría estar inaccesible.`); 
                 console.error('Error en descarga:', e);
                 if (downloadBtn) downloadBtn.textContent = '↓'; 
@@ -1200,7 +1212,7 @@
         
         async function isSongDownloaded(songId) { if (!downloadDB) return false; return new Promise(resolve => { const request = downloadDB.transaction('songs').objectStore('songs').get(songId); request.onsuccess = () => resolve(!!request.result); request.onerror = () => resolve(false); }); }
         
-        // --- FUNCIÓN loadDownloads (CON CARÁTULA EN LISTA) ---
+        // --- FUNCIÓN loadDownloads (CON MEJOR FALLBACK DE IMAGEN) ---
         async function loadDownloads() { 
             const content = document.getElementById('downloads-content'); 
             try { 
@@ -1211,13 +1223,21 @@
                 } 
                 
                 content.innerHTML = `<div class="downloads-list">${songs.map(song => {
-                    // Generar URL de Blob para el cover aquí (solo para la lista)
-                    const coverUrl = (song.coverBlob && song.coverBlob.size > 0) ? URL.createObjectURL(song.coverBlob) : 'https://placehold.co/40x40/333/fff?text=No+Cover';
+                    // Lógica de Fallback para la imagen
+                    let coverUrl = DEFAULT_COVER_BASE64; // Default: Icono SVG base64
+                    
+                    if (song.coverBlob && song.coverBlob.size > 0) {
+                        // 1. Prioridad: Blob descargado
+                        coverUrl = URL.createObjectURL(song.coverBlob);
+                    } else if (navigator.onLine && song.originalCoverUrl) {
+                        // 2. Fallback: URL original si hay internet
+                        coverUrl = song.originalCoverUrl;
+                    } 
                     
                     return `
                     <div class="download-item" onclick="playOfflineSong('${song.id}')" data-song-id="${song.id}">
                         <div class="download-info">
-                            <img class="download-cover-mini" src="${coverUrl}" alt="Cover">
+                            <img class="download-cover-mini" src="${coverUrl}" alt="Cover" onerror="this.src='${DEFAULT_COVER_BASE64}'">
                             <!-- Ecualizador aquí -->
                             <div class="equalizer song-eq" data-song-id="${song.id}" style="margin-left: 8px; margin-right: 0;">
                                 <div class="bar"></div>
@@ -1235,7 +1255,6 @@
                     </div>`;
                 }).join('')}</div>`; 
                 
-                // Aplicar indicadores después de la carga
                 updatePlaybackIndicators();
 
             } catch (e) { 
@@ -1260,7 +1279,7 @@
             }); 
         }
         
-        // --- FUNCIÓN playOfflineSong CORREGIDA PARA EL COVER EN REPRODUCTOR ---
+        // --- FUNCIÓN playOfflineSong CORREGIDA CON FALLBACKS ---
         window.playOfflineSong = function(songId) {
             const tx = downloadDB.transaction('songs');
             const store = tx.objectStore('songs');
@@ -1271,14 +1290,14 @@
 
                 const audioUrl = URL.createObjectURL(songData.audioBlob);
                 
-                // Generar URL para la portada si existe
-                let coverUrl = 'https://placehold.co/200x200/333/fff?text=No+Cover'; 
-                // CORRECCIÓN CLAVE: Verificar si coverBlob existe, tiene tamaño y es un Blob
+                // Lógica de Fallback para el reproductor
+                let coverUrl = DEFAULT_COVER_BASE64;
                 if (songData.coverBlob && songData.coverBlob.size > 0 && songData.coverBlob instanceof Blob) {
                     coverUrl = URL.createObjectURL(songData.coverBlob);
-                } 
+                } else if (navigator.onLine && songData.originalCoverUrl) {
+                    coverUrl = songData.originalCoverUrl;
+                }
                 
-                // Preparar datos de la canción y del álbum
                 const song = { 
                     id: songData.id, 
                     title: songData.title, 
@@ -1288,10 +1307,9 @@
                 const album = { 
                     artist: songData.artist, 
                     title: songData.albumTitle, 
-                    cover_url: coverUrl // Esta URL (Blob o Placeholder) se usa para el reproductor
+                    cover_url: coverUrl 
                 };
                 
-                // Reproducir, configurando la playlist actual como solo esta canción
                 playSong(song, album, [song], 0);
             };
             request.onerror = (e) => console.error('Error al obtener canción offline:', e);
