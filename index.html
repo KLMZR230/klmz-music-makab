@@ -482,14 +482,14 @@
 
         /* Tema Navideño (Christmas) */
         body.theme-christmas {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/christmas-forest-1920-x-1080-wnd8iqolk3rsltja.jpg') !important;
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/disparo-vertical-arboles-cubiertos-nieve-cielo-nublado-azul-invierno-argentiere_181624-11712.png') !important;
             background-size: cover !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
             background-attachment: fixed !important;
             background-color: #0b2210 !important; 
             color: #fff !important;
-            overflow-y: hidden !important; /* Scroll handled by main */
+            overflow-y: hidden !important; 
         }
         
         body.theme-christmas::after {
@@ -549,7 +549,7 @@
 
         /* Tema Fuego Infernal (theme-fire) */
         body.theme-fire { 
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/infernal.jpg') !important; 
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/baphomet%20movil.jpg') !important; 
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
@@ -567,7 +567,7 @@
 
         /* Nuevo Tema Fénix (theme-fenix) */
         body.theme-fenix {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix.jpg') !important;
+            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix%20movil.jpg') !important;
             background-size: cover !important;
             background-position: center center !important;
             background-attachment: fixed !important;
@@ -783,6 +783,11 @@
         <main>
             <section class="content-section active" id="home-section">
                 <div id="album-genres-container"></div>
+                
+                <!-- CORRECCIÓN: Botón "Volver" movido fuera del contenedor de detalle 
+                     para que no interfiera con el Flexbox. Se oculta si no está en detalle. -->
+                <button class="back-btn" id="album-back-btn" onclick="goBackToAlbumsGrid()" style="display: none;">← Volver</button>
+                
                 <div id="album-detail" style="display:none;"></div>
             </section>
             <section class="content-section" id="search-section">
@@ -990,41 +995,63 @@
         
         // --- NAVEGACIÓN Y VISTAS ---
         function showSection(sectionId) { 
-            if (sectionId === 'home' && document.getElementById('album-detail').style.display === 'block') {
+            // Manejador para el botón "Volver" dentro del detalle del álbum
+            if (sectionId === 'home' && document.getElementById('album-detail').style.display === 'flex') {
                 goBackToAlbumsGrid();
                 document.querySelectorAll('.bottom-nav-item').forEach(i => i.classList.remove('active'));
                 document.getElementById('nav-home').classList.add('active');
                 return;
             }
 
-            window.scrollTo(0, 0);
+            // Guardar scroll si estamos en la vista principal de álbumes
+            if (document.getElementById('album-genres-container').style.display !== 'none' && document.querySelector('main')) {
+                lastScrollPosition = document.querySelector('main').scrollTop;
+            }
+
+            // Ocultar todas las secciones
             document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active')); 
             document.getElementById(`${sectionId}-section`).classList.add('active'); 
+            
+            // Actualizar barra de navegación inferior
             document.querySelectorAll('.bottom-nav-item').forEach(i=>i.classList.remove('active')); 
             const navId = sectionId === 'favorites' ? 'favs' : sectionId; 
             document.getElementById(`nav-${navId}`)?.classList.add('active'); 
             
             if (sectionId === 'home') {
                 showAlbumsGrid(); 
-            } else if (sectionId==='playlists') {
-                renderPlaylistsList(); 
-            } else if (sectionId==='favorites') {
-                loadFavorites(); 
-            } else if (sectionId==='downloads') {
-                loadDownloads(); 
-            } else if (sectionId==='admin') {
-                renderAdminPanel();
+                // Restauramos el scroll después de que la grid sea visible
+                setTimeout(() => {
+                    document.querySelector('main').scrollTop = lastScrollPosition;
+                }, 0);
+            } else {
+                // Para cualquier otra sección, nos aseguramos de ir al inicio de esa sección.
+                document.querySelector('main').scrollTop = 0;
+                if (sectionId==='playlists') {
+                    renderPlaylistsList(); 
+                } else if (sectionId==='favorites') {
+                    loadFavorites(); 
+                } else if (sectionId==='downloads') {
+                    loadDownloads(); 
+                } else if (sectionId==='admin') {
+                    renderAdminPanel();
+                }
             }
         }
 
         function showAlbumsGrid() { 
             document.getElementById('album-detail').style.display = 'none'; 
             document.getElementById('album-genres-container').style.display = 'block'; 
+            // Ocultar el botón Volver
+            document.getElementById('album-back-btn').style.display = 'none';
         }
 
+        // CORRECCIÓN: Función dedicada para volver del detalle de álbum
         function goBackToAlbumsGrid() {
             showAlbumsGrid();
-            setTimeout(() => window.scrollTo({ top: lastScrollPosition, behavior: 'auto' }), 0);
+            // Restaura la posición de scroll guardada.
+            setTimeout(() => {
+                document.querySelector('main').scrollTop = lastScrollPosition;
+            }, 0);
         }
 
         // --- AUTENTICACIÓN ---
@@ -1045,7 +1072,7 @@
         function addSongToPlaylist(playlistId, songId) { const playlists = getPlaylists(); const playlist = playlists.find(p => p.id === playlistId); if (playlist && !playlist.songs.includes(songId)) { playlist.songs.push(songId); savePlaylists(playlists); alert(`Canción añadida a "${playlist.name}"`); } }
         function deletePlaylist(playlistId) { if (confirm('¿Eliminar playlist?')) { let p = getPlaylists().filter(pl => pl.id !== playlistId); savePlaylists(p); renderPlaylistsList(); } }
         function renderPlaylistsList() { const playlists = getPlaylists(); const content = document.getElementById('playlists-content'); let html = `<div class="section-title">Mis Playlists</div>`; html += playlists.length === 0 ? `<div style="text-align:center;padding:3rem;"><h2>No tienes playlists</h2></div>` : playlists.map(p => `<div class="playlist-item" onclick="renderPlaylistDetail('${p.id}')"><div class="playlist-info"><strong>${p.name}</strong><small>${p.songs.length} canciones</small></div><div class="playlist-actions"><span class="delete-playlist" onclick="event.stopPropagation(); deletePlaylist('${p.id}')">🗑️</span></div></div>`).join(''); html += `<div style="margin-top:2rem;"><button class="btn-primary" onclick="handleCreatePlaylistFromPage()">+ Crear Playlist</button></div>`; content.innerHTML = html; }
-        async function renderPlaylistDetail(playlistId) { window.scrollTo(0, 0); const playlist = getPlaylists().find(p => p.id === playlistId); if (!playlist) return; const content = document.getElementById('playlists-content'); content.innerHTML = `<button class="back-btn" onclick="showSection('playlists')">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><h2>${playlist.name}</h2><small>${playlist.songs.length} canciones</small></div><div id="playlist-detail-songs">Cargando...</div>`; if (playlist.songs.length === 0) { document.getElementById('playlist-detail-songs').innerHTML = '<p style="text-align:center;">Playlist vacía.</p>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', playlist.songs); if (error) throw error; const sortedSongs = playlist.songs.map(songId => songs.find(s => s.id === songId)).filter(Boolean); currentPlaylist = sortedSongs; const favorites = getLocalFavorites(); document.getElementById('playlist-detail-songs').innerHTML = `<div class="song-list"><ul>${sortedSongs.map((song, idx) => `<li data-song-index="${idx}" data-song-id="${song.id}"><div class="song-info"><div class="equalizer song-eq" data-song-id="${song.id}"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div><span class="song-title">${song.title}</span><span class="song-artist">${song.albums?.artist || ''}</span></div><div class="song-meta"><div class="song-actions"><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'}">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></div></li>`).join('')}</ul></div>`; } catch(e) { content.innerHTML += `<p style="color:red">Error al cargar canciones.</p>`; } }
+        async function renderPlaylistDetail(playlistId) { document.querySelector('main').scrollTop = 0; const playlist = getPlaylists().find(p => p.id === playlistId); if (!playlist) return; const content = document.getElementById('playlists-content'); content.innerHTML = `<button class="back-btn" onclick="showSection('playlists')">← Volver</button><div style="text-align:center;margin-bottom:2rem;"><h2>${playlist.name}</h2><small>${playlist.songs.length} canciones</small></div><div id="playlist-detail-songs">Cargando...</div>`; if (playlist.songs.length === 0) { document.getElementById('playlist-detail-songs').innerHTML = '<p style="text-align:center;">Playlist vacía.</p>'; return; } try { const { data: songs, error } = await supabase.from('songs').select('*, albums:album_id(*)').in('id', playlist.songs); if (error) throw error; const sortedSongs = playlist.songs.map(songId => songs.find(s => s.id === songId)).filter(Boolean); currentPlaylist = sortedSongs; const favorites = getLocalFavorites(); document.getElementById('playlist-detail-songs').innerHTML = `<div class="song-list"><ul>${sortedSongs.map((song, idx) => `<li data-song-index="${idx}" data-song-id="${song.id}"><div class="song-info"><div class="equalizer song-eq" data-song-id="${song.id}"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div><span class="song-title">${song.title}</span><span class="song-artist">${song.albums?.artist || ''}</span></div><div class="song-meta"><div class="song-actions"><span onclick="toggleFavorite('${song.id}', this)" title="Favorito" style="color:${favorites.includes(song.id)?'#1DB954':'#666'}">${favorites.includes(song.id)?'❤️':'🤍'}</span><span class="play-icon" data-song-index="${idx}">▶</span></div></div></li>`).join('')}</ul></div>`; } catch(e) { content.innerHTML += `<p style="color:red">Error al cargar canciones.</p>`; } }
         function handleCreatePlaylistFromPage() { const name = prompt("Nombre de la playlist:"); if (name) { createPlaylist(name); renderPlaylistsList(); } }
         function openAddToPlaylistModal(songId) { currentSongIdToAdd = songId; const listEl = document.getElementById('playlist-selection-list'); listEl.innerHTML = getPlaylists().map(p => `<li onclick="addCurrentSongToPlaylist('${p.id}')">${p.name}</li>`).join(''); document.getElementById('add-to-playlist-modal').style.display = 'flex'; hideCreatePlaylistView(); }
         function closeAddToPlaylistModal() { document.getElementById('add-to-playlist-modal').style.display = 'none'; currentSongIdToAdd = null; }
@@ -1293,12 +1320,11 @@
         // --- PANEL DE ADMINISTRACIÓN ---
         
         // ✅ FUNCIÓN DE SUBIDA CORREGIDA PARA USAR FORMDATA CON LA EDGE FUNCTION
-        // Esto soluciona el error 500 (porque ahora enviamos 'files' correctamente)
+        // Esto soluciona el error 500 y mantiene la subida vía Edge Function/R2.
         function uploadFileWithProgress(file, onProgress) {
             return new Promise(async (resolve, reject) => {
                 try {
                     const formData = new FormData();
-                    // IMPORTANTE: La función espera el campo 'file' o 'files'. Usamos 'file' que es estándar.
                     formData.append('file', file); 
 
                     // Usamos XMLHttpRequest para tener progreso real de subida
@@ -1321,25 +1347,26 @@
                         if (xhr.status >= 200 && xhr.status < 300) {
                             try {
                                 const response = JSON.parse(xhr.responseText);
-                                if (response.publicUrl) {
-                                    resolve(response.publicUrl);
+                                // Aceptamos cualquier propiedad que parezca una URL válida (publicUrl, url, fileUrl)
+                                const finalUrl = response.publicUrl || response.url || response.fileUrl;
+                                
+                                if (finalUrl) {
+                                    resolve(finalUrl);
                                 } else {
-                                    reject(new Error('Respuesta inválida de la función: No se recibió publicUrl'));
+                                    console.error("Respuesta de la función:", response);
+                                    reject(new Error('La función respondió OK pero no devolvió una URL válida (publicUrl/url).'));
                                 }
                             } catch (e) {
-                                reject(new Error('Error parseando respuesta JSON de la función'));
+                                console.error("Error parseando respuesta:", xhr.responseText);
+                                reject(new Error('Error parseando respuesta JSON de la función.'));
                             }
                         } else {
-                            // Si falla con 546, intentamos capturarlo aquí
-                            if (xhr.status === 546) {
-                                reject(new Error('WORKER_LIMIT: El archivo es demasiado grande para la función.'));
-                            } else {
-                                reject(new Error(`Error Edge Function: ${xhr.status} ${xhr.statusText} - ${xhr.responseText}`));
-                            }
+                            // Si falla con 546 (Worker Limit) o cualquier otro error de Edge Function
+                            reject(new Error(`Error Edge Function: ${xhr.status} ${xhr.statusText} - ${xhr.responseText}`));
                         }
                     };
 
-                    xhr.onerror = () => reject(new Error('Error de red al contactar la función'));
+                    xhr.onerror = () => reject(new Error('Error de red al contactar la función. Verifica tu conexión.'));
                     
                     xhr.send(formData);
 
@@ -1793,7 +1820,7 @@
             try { 
                 const [{ data: albumsData, error: albumsError }, { data: songsData, error: songsError }] = await Promise.all([
                     supabase.from('albums').select('*, genre, is_hidden').order('created_at', { ascending: false }), 
-                    // Consulta genérica que incluye todos los campos, incluyendo 'lyrics' si existe.
+                    // Consulta genérica que incluye todos los campos, incluyendo 'lyrics' if exists.
                     supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })
                 ]); 
                 if (albumsError) throw albumsError; 
@@ -1812,19 +1839,29 @@
         }
 
         async function showAlbumDetail(album) {
-            window.scrollTo(0, 0);
-            showSection('home');
+            // 1. Guardamos la posición actual del scroll del main antes de cambiar la vista
+            lastScrollPosition = document.querySelector('main').scrollTop; 
+            
+            // Note: No llamamos showSection('home') aquí para evitar el loop del botón activo
+            document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active')); 
+            document.getElementById(`home-section`).classList.add('active'); 
+
             currentAlbum = album;
             document.getElementById('album-genres-container').style.display = 'none';
             const detailView = document.getElementById('album-detail');
-            detailView.style.display = 'block';
+            // Nota: Cambiamos a 'flex' para que funcione la estructura flexbox de encabezado fijo
+            detailView.style.display = 'flex'; 
             
-            // Usar la URL de la portada del álbum
+            // Mostrar el botón Volver
+            document.getElementById('album-back-btn').style.display = 'inline-block';
+            
+            // Poner el scroll del detalle al principio
+            const detailSongList = document.getElementById('detail-song-list');
+            if (detailSongList) detailSongList.scrollTop = 0;
+
             const coverUrl = album.cover_url || 'https://placehold.co/200x200/333/fff?text=No+Cover'; 
             
-            // CORRECCIÓN: Estructura para el encabezado pegajoso
             detailView.innerHTML = `
-                <button class="back-btn" onclick="goBackToAlbumsGrid()">← Volver</button>
                 <div class="album-detail-header-sticky">
                     <div style="text-align:center;">
                         <img class="album-detail-img" src="${coverUrl}" alt="${album.title}">
@@ -1836,7 +1873,6 @@
             `;
             
             try {
-                // Usar la consulta global para obtener canciones
                 const songs = allSongs.filter(s => s.album_id === album.id);
                 if (!songs || songs.length === 0) {
                     document.getElementById('detail-song-list').innerHTML = '<p>No hay canciones.</p>';
@@ -1876,7 +1912,6 @@
                     });
                 });
                 
-                // Al cargar el detalle, actualizamos el estado de reproducción
                 updatePlaybackIndicators();
 
             } catch (error) {
@@ -1896,21 +1931,21 @@
         window.seekToFull = function(event) { 
             const pBar = event.currentTarget; 
             const rect = pBar.getBoundingClientRect();
-            // CORRECCIÓN: Usar event.clientX o event.touches[0].clientX para el soporte táctil
             const clientX = event.clientX || (event.touches && event.touches[0].clientX);
             
             if (audio.duration && clientX) {
-                // CORRECCIÓN: Usar rect.width para la longitud total y rect.left para el offset.
                 const relativeX = clientX - rect.left;
                 const newTime = (relativeX / rect.width) * audio.duration;
-                audio.currentTime = newTime;
+                // CORRECCIÓN DE ERROR: Usamos Math.min para asegurar que no se avance más allá del final,
+                // lo que podría disparar el evento 'ended' prematuramente.
+                audio.currentTime = Math.min(newTime, audio.duration - 0.1); 
             }
         }
         
         // --- Funciones para Adelantar y Retroceder ---
         window.seekForward = function(time = SKIP_TIME) {
             if (audio.duration) {
-                audio.currentTime = Math.min(audio.currentTime + time, audio.duration);
+                audio.currentTime = Math.min(audio.currentTime + time, audio.duration - 0.1);
             }
         }
         
@@ -1925,16 +1960,13 @@
         
         function updateMediaSession(song, album) {
             if ('mediaSession' in navigator) {
-                // CORRECCIÓN: Asegurar que album.cover_url se use
                 const coverUrl = album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ';
 
-                // Configuración de metadatos (necesario para la carátula)
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: song.title,
                     artist: album.artist || 'Artista Desconocido',
                     album: album.title || 'Álbum Desconocido',
                     artwork: [
-                        // Aseguramos que la carátula se muestre correctamente en las notificaciones
                         { src: coverUrl, sizes: '96x96', type: 'image/png' },
                         { src: coverUrl, sizes: '128x128', type: 'image/png' },
                         { src: coverUrl, sizes: '192x192', type: 'image/png' },
@@ -1944,28 +1976,23 @@
                     ]
                 });
 
-                // Controladores de acciones (necesarios para los botones de las notificaciones)
                 navigator.mediaSession.setActionHandler('play', () => togglePlay());
                 navigator.mediaSession.setActionHandler('pause', () => togglePlay());
                 navigator.mediaSession.setActionHandler('previoustrack', () => previousSong());
                 navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
                 
-                // Se agregan los handlers para adelantar/retroceder (para notificaciones)
                 navigator.mediaSession.setActionHandler('seekbackward', (details) => seekBackward(details.seekOffset || SKIP_TIME));
                 navigator.mediaSession.setActionHandler('seekforward', (details) => seekForward(details.seekOffset || SKIP_TIME));
             }
         }
 
         function updatePlaybackIndicators() {
-            // 1. Limpiar todos los indicadores de "playing" y "paused"
             document.querySelectorAll('.song-list li, .download-item, #mini-player, #full-player').forEach(el => {
                 el.classList.remove('playing', 'paused');
             });
             
-            // 2. Aplicar estado al reproductor mini y full
             const playerClass = isPlaying ? 'playing' : (currentSong ? 'paused' : '');
             
-            // VERIFICACIÓN CRÍTICA: Solo agregar clases si playerClass no está vacío.
             if (playerClass) {
                 const miniPlayerEl = document.getElementById('mini-player');
                 if (miniPlayerEl) miniPlayerEl.classList.add(playerClass);
@@ -1975,7 +2002,6 @@
             }
 
 
-            // 3. Aplicar estado a la canción actual en las listas (Álbumes y Descargas)
             if (currentSong) {
                 const currentLi = document.querySelector(`.song-list li[data-song-id="${currentSong.id}"]`);
                 if (currentLi) {
@@ -1995,14 +2021,12 @@
             currentPlaylist = playlist || [song]; 
             currentIndex = index || 0; 
             
-            // Si la canción es offline y se generó un Blob URL, este se usará
             const audioSource = song.isOffline ? song.song_url : song.song_url;
             
             updateAllPlayers(); 
-            updateMediaSession(song, currentAlbum); // Pasa currentAlbum que ahora tiene el cover_url
+            updateMediaSession(song, currentAlbum); 
             
             if (audio && audioSource) { 
-                // Revocar el Blob URL anterior si existe para evitar fugas de memoria
                 if (audio.src.startsWith('blob:') && audio.src !== audioSource) {
                     URL.revokeObjectURL(audio.src);
                 }
@@ -2021,24 +2045,20 @@
             updateMiniPlayer(); 
             updateFullPlayer(); 
             updatePlayButtons(); 
-            updatePlaybackIndicators(); // Actualiza el ecualizador y el color de la fila
+            updatePlaybackIndicators(); 
         }
         
-        // Se asegura de usar la portada del currentAlbum
         function updateMiniPlayer() { 
             const miniPlayer = document.getElementById('mini-player'); 
             if (miniPlayer && currentSong) { 
                 miniPlayer.style.display = 'flex'; 
-                // Usa la carátula de currentAlbum (ya sea Blob URL u online URL)
                 document.getElementById('mini-player-img').src = currentAlbum?.cover_url || 'https://placehold.co/44x44/333/fff?text=No+Cover'; 
                 document.getElementById('mini-player-title').textContent = currentSong.title; 
                 document.getElementById('mini-player-artist').textContent = currentAlbum.artist; 
             } 
         }
         
-        // Se asegura de usar la portada del currentAlbum
         function updateFullPlayer() { 
-            // Usa la carátula de currentAlbum (ya sea Blob URL u online URL)
             document.getElementById('full-player-cover').src = currentAlbum?.cover_url || 'https://placehold.co/200x200/333/fff?text=No+Cover';
             document.getElementById('full-player-title').textContent = currentSong.title; 
             document.getElementById('full-player-artist').textContent = currentAlbum.artist; 
@@ -2050,7 +2070,8 @@
             document.getElementById('full-play-btn').textContent = playText; 
         }
         
-        // --- PUNTO DE ENTRADA Y EVENTOS GLOBALES ---
+        // --- INICIALIZACIÓN Y EVENTOS ---
+
         document.addEventListener('DOMContentLoaded', () => {
             loadSavedTheme();
             updateOnlineStatus();
@@ -2062,19 +2083,19 @@
             audio.addEventListener('play', () => { 
                 isPlaying = true; 
                 updatePlayButtons();
-                updatePlaybackIndicators(); // Actualizar al reproducir
+                updatePlaybackIndicators(); 
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
             });
             audio.addEventListener('pause', () => { 
                 isPlaying = false; 
                 updatePlayButtons(); 
-                updatePlaybackIndicators(); // Actualizar al pausar
+                updatePlaybackIndicators(); 
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
             });
             audio.addEventListener('ended', () => { 
                 isPlaying = false; 
                 updatePlayButtons(); 
-                updatePlaybackIndicators(); // Actualizar al finalizar
+                updatePlaybackIndicators(); 
                 nextSong(); 
             });
             audio.addEventListener('timeupdate', () => { 
@@ -2098,8 +2119,6 @@
             document.addEventListener('click', (e) => {
                 const albumCard = e.target.closest('.album-card');
                 if (albumCard) {
-                    lastScrollPosition = window.scrollY;
-                    // Uso de camelCase para dataset
                     const index = parseInt(albumCard.dataset.albumIndex);
                     if (!isNaN(index)) showAlbumDetail(allAlbums[index]);
                     return;
@@ -2107,7 +2126,6 @@
 
                 const searchAlbumItem = e.target.closest('.search-album-item');
                 if (searchAlbumItem) {
-                    // Uso de camelCase para dataset
                     const index = parseInt(searchAlbumItem.dataset.albumIndex);
                     if (!isNaN(index) && allAlbums[index]) {
                         document.getElementById('search-input').value = '';
@@ -2119,14 +2137,12 @@
                 
                 const songLi = e.target.closest('.song-list li');
                 if (songLi && !e.target.closest('.song-actions') && !e.target.closest('.song-duration')) {
-                    // Uso de camelCase para dataset
                     const index = parseInt(songLi.dataset.songIndex);
                     if (!isNaN(index)) playSongFromPlaylist(index);
                     return;
                 }
                 
                 if (e.target.matches('.play-icon')) {
-                    // Uso de camelCase para dataset
                     const index = parseInt(e.target.dataset.songIndex);
                     if (!isNaN(index)) playSongFromPlaylist(index);
                     return;
