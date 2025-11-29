@@ -8,10 +8,12 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Metal+Mania&display=swap');
         * { box-sizing: border-box; }
+        
+        /* --- ARREGLO 1: FONDOS EN MÓVILES (SOLUCIÓN DEFINITIVA) --- */
         body {
             margin: 0;
             font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-            background: #181818; /* Fondo base por si falla la imagen */
+            background-color: #181818; /* Color base */
             color: #fff;
             padding-bottom: 84px;
             transition: all 0.3s ease;
@@ -21,12 +23,11 @@
             -webkit-user-select: none;
             -ms-user-select: none;
             touch-action: manipulation;
-            position: relative; /* Necesario para el fondo fijo */
+            position: relative;
             min-height: 100vh;
         }
 
-        /* --- SOLUCIÓN FONDOS MÓVILES (Pseudo-elemento fijo) --- */
-        /* En lugar de poner la imagen en body directamente, usamos ::before para que sea fixed al viewport */
+        /* Pseudo-elemento para el fondo fijo (Evita el zoom en móviles) */
         body::before {
             content: '';
             position: fixed;
@@ -34,13 +35,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1; /* Detrás de todo */
+            z-index: -1;
             background-position: center center;
             background-size: cover;
             background-repeat: no-repeat;
-            opacity: 1;
-            transition: background-image 0.5s ease;
             pointer-events: none;
+            transition: opacity 0.3s ease, background-image 0.3s ease;
         }
 
         /* CORRECCIÓN VISUAL: Oculta errores del DOMTokenList */
@@ -143,40 +143,16 @@
         }
         .album-detail-header-sticky > div { color: #fff; }
 
-        .song-list { 
-            width:100%; 
-            margin-top:1rem; 
-            padding-bottom: 120px; 
-            min-width: 0; 
-        }
+        .song-list { width:100%; margin-top:1rem; padding-bottom: 120px; min-width: 0; }
         .song-list ul { list-style:none; padding:0; margin:0;}
         .song-list li { 
-            padding:.7rem; 
-            cursor:pointer; 
-            color:#1db954; 
-            border-bottom:1px solid #333; 
-            display:flex; 
-            justify-content:space-between; 
-            align-items:center; 
-            transition: all 0.3s ease; 
-            gap: 1rem;
-            min-width: 0; 
-            position: relative; 
+            padding:.7rem; cursor:pointer; color:#1db954; border-bottom:1px solid #333; 
+            display:flex; justify-content:space-between; align-items:center; 
+            transition: all 0.3s ease; gap: 1rem; min-width: 0; position: relative; 
         }
         .song-list li:hover { color:#fff; background: rgba(255,255,255,.05); transform: translateX(2px);}
-        
-        .song-list .song-info { 
-            flex-grow: 1; 
-            min-width: 0; 
-            overflow: hidden; 
-        }
-        .song-list .song-title { 
-            font-weight: 500; 
-            display: block; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-        }
+        .song-list .song-info { flex-grow: 1; min-width: 0; overflow: hidden; }
+        .song-list .song-title { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .song-list .song-artist { color:#b3b3b3; font-size: 0.85rem; }
         .song-list li:hover .song-title { color: #1DB954; font-weight: 600; }
         .song-meta { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0;}
@@ -211,12 +187,7 @@
         .full-player-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:9999; align-items:center; justify-content:center; flex-direction:column; transition: all 0.3s ease;}
         .full-player-backdrop.active { display: flex;}
         .full-player-cover { 
-            width: 200px; 
-            height: 200px; 
-            border-radius: 12px; 
-            object-fit:cover; 
-            border: 4px solid #444; 
-            transition: all 0.3s ease;
+            width: 200px; height: 200px; border-radius: 12px; object-fit:cover; border: 4px solid #444; transition: all 0.3s ease;
         }
         .full-player-title { font-size: 1.8rem; font-weight: bold; margin: 1rem 0 .5rem 0; text-align: center;}
         .full-player-artist { color: #b3b3b3; font-size: 1.1rem; margin-bottom: 2rem; text-align: center;}
@@ -228,6 +199,8 @@
         .full-play-btn:hover { transform: scale(1.1); color: #1DB954; }
         
         .full-progress-bar { flex: 1; height: 8px; background: #4f4f4f; border-radius: 4px; cursor: pointer; position: relative;}
+        /* ARREGLO: Aumentar área táctil de la barra */
+        .full-progress-bar::after { content:''; position: absolute; top: -10px; bottom: -10px; left: 0; right: 0; }
         .full-progress-fill { height: 100%; background: #1DB954; border-radius: 4px; width: 0%; position: absolute; top: 0; left: 0; transition: width 0.1s linear;}
         .full-progress-container { width: 90%; max-width: 400px; display: flex; align-items: center; gap: 1rem;}
         .full-progress-time { font-size: 1rem; color: #b3b3b3; min-width: 50px;}
@@ -274,14 +247,8 @@
         .loading-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1rem; z-index: 2000; border: 2px solid #1DB954; }
         
         .search-song-item, .search-album-item, .admin-album-item-list { 
-            background: #242424; 
-            padding: 0.8rem; 
-            margin-bottom: 0.8rem; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            transition: all 0.3s ease; 
+            background: #242424; padding: 0.8rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; 
+            display: flex; align-items: center; transition: all 0.3s ease; 
         }
         .search-song-item:hover, .search-album-item:hover { background: #333; }
         .search-song-info, .search-album-info { flex: 1; }
@@ -292,29 +259,13 @@
         
         .favorites-list, .downloads-list { margin-top: 1rem; }
         .download-item { 
-            background: #242424; 
-            padding: 1rem; 
-            margin-bottom: 0.8rem; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border-left: 3px solid #1DB954; 
-            transition: all 0.3s ease; 
-            position: relative;
+            background: #242424; padding: 1rem; margin-bottom: 0.8rem; border-radius: 8px; cursor: pointer; 
+            display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #1DB954; 
+            transition: all 0.3s ease; position: relative;
         }
         .download-item:hover { background: #333; }
-        .download-item.playing { 
-            color: #1DB954;
-            background: rgba(29, 185, 84, 0.1);
-            font-weight: bold;
-        }
-        .download-item.paused {
-            color: #90ee90;
-            background: rgba(29, 185, 84, 0.05);
-            font-weight: 500;
-        }
+        .download-item.playing { color: #1DB954; background: rgba(29, 185, 84, 0.1); font-weight: bold; }
+        .download-item.paused { color: #90ee90; background: rgba(29, 185, 84, 0.05); font-weight: 500; }
         .download-info { flex: 1; display: flex; align-items: center;}
         .download-text { margin-left: 8px; }
         .download-title { font-weight: bold; margin-bottom: 0.3rem; color: #fff; }
@@ -322,15 +273,7 @@
         .download-item-actions { display: flex; gap: 0.5rem; align-items: center; }
         .delete-download { cursor: pointer; color: #ff4757; font-size: 1rem; transition: all 0.3s ease; }
         .delete-download:hover { transform: scale(1.2); }
-        .download-cover-mini {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            object-fit: cover;
-            background: #333;
-            flex-shrink: 0;
-            border: 1px solid #444;
-        }
+        .download-cover-mini { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #333; flex-shrink: 0; border: 1px solid #444; }
 
         #album-detail, #playlist-detail { padding-bottom: 120px; }
         .admin-section { margin-bottom: 2.5rem; background: #242424; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1DB954; }
@@ -340,14 +283,8 @@
         .btn-secondary { background: #555; color: #fff; border: none; padding: .7rem 1.5rem; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; margin-right: 0.5rem; }
         .btn-secondary:hover { background: #666; }
         .admin-album-item { 
-            background: #2c2c2c; 
-            border-radius: 8px; 
-            margin-bottom: 1.5rem; 
-            border-left: 3px solid #1DB954; 
-            overflow: hidden; 
-            display: block; 
-            padding: 0;
-            cursor: default;
+            background: #2c2c2c; border-radius: 8px; margin-bottom: 1.5rem; border-left: 3px solid #1DB954; 
+            overflow: hidden; display: block; padding: 0; cursor: default;
         }
         .admin-album-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #333; }
         .admin-item-info { flex: 1; }
@@ -386,166 +323,56 @@
         body.offline-mode .bottom-nav { background: #0d2d0d !important; }
         body.offline-mode .offline-indicator { background: #ff9800 !important; animation: pulse 2s infinite; }
 
-        .equalizer {
-            display: flex;
-            align-items: flex-end;
-            width: 14px;
-            height: 14px;
-            margin-right: 8px;
-            justify-content: space-between;
-            overflow: hidden;
-            flex-shrink: 0;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
+        /* Ecualizador */
+        .equalizer { display: flex; align-items: flex-end; width: 14px; height: 14px; margin-right: 8px; justify-content: space-between; overflow: hidden; flex-shrink: 0; opacity: 0; transition: opacity 0.3s; }
         .playing .equalizer { opacity: 1; }
-        
-        #full-player .equalizer {
-            width: 30px; 
-            height: 30px;
-            margin: 10px auto;
-            opacity: 0;
-        }
-        #full-player.playing #full-player-equalizer, 
-        #full-player.paused #full-player-equalizer {
-            opacity: 1;
-        }
-
-        .bar {
-            width: 3px;
-            background: #1DB954;
-            animation: equalize 0.8s ease-in-out infinite;
-            border-radius: 1px;
-            transform-origin: bottom;
-        }
-
+        #full-player .equalizer { width: 30px; height: 30px; margin: 10px auto; opacity: 0; }
+        #full-player.playing #full-player-equalizer, #full-player.paused #full-player-equalizer { opacity: 1; }
+        .bar { width: 3px; background: #1DB954; animation: equalize 0.8s ease-in-out infinite; border-radius: 1px; transform-origin: bottom; }
         .playing .bar { height: 100%; }
-        
-        .paused .equalizer .bar {
-            height: 30%;
-            animation: none;
-            opacity: 0.7;
-        }
-
+        .paused .equalizer .bar { height: 30%; animation: none; opacity: 0.7; }
         .bar:nth-child(1) { height: 70%; animation-delay: -0.2s; }
         .bar:nth-child(2) { height: 30%; animation-delay: -0.5s; }
         .bar:nth-child(3) { height: 90%; animation-delay: -0.7s; }
-
-        @keyframes equalize {
-            0% { height: 20%; }
-            40% { height: 100%; }
-            80% { height: 40%; }
-            100% { height: 20%; }
-        }
+        @keyframes equalize { 0% { height: 20%; } 40% { height: 100%; } 80% { height: 40%; } 100% { height: 20%; } }
         
-        .song-list li.playing, .download-item.playing {
-            color: #1DB954;
-            background: rgba(29, 185, 84, 0.1);
-            font-weight: bold;
-        }
-        .song-list li.paused, .download-item.paused {
-            color: #90ee90;
-            background: rgba(29, 185, 84, 0.05);
-            font-weight: 500;
-        }
-        
+        /* Ajuste para el mini player */
         .player-info-mini { display: flex; align-items: center; }
-        
-        .mini-controls-buttons {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-        .mini-controls-buttons button {
-            font-size: 1.2rem;
-            padding: 0;
-            background: none;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
+        .mini-controls-buttons { display: flex; align-items: center; gap: 0.8rem; }
+        .mini-controls-buttons button { font-size: 1.2rem; padding: 0; background: none; border: none; color: #fff; cursor: pointer; transition: all 0.3s ease; }
         .mini-controls-buttons button:hover { color: #1DB954; }
         .mini-controls-buttons #mini-play-btn { font-size: 1.8rem; }
         
-        /* --- TEMAS COMPLETOS (Actualizados para usar ::before en vez de body bg directo) --- */
-        /* Animación Nieve */
-        @keyframes subtle-snowfall-vertical-slow {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 1000vh; }
-        }
-
-        /* Tema Christmas */
-        body.theme-christmas::before {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/christmas-forest-1920-x-1080-wnd8iqolk3rsltja.jpg') !important;
-            opacity: 1;
-        }
-        /* Capa oscura extra para christmas */
-        body.theme-christmas::after {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 10;
-            pointer-events: none;
-        }
-        body.theme-christmas main { z-index: 20; position: relative; } /* Asegurar que el contenido esté sobre la capa oscura */
-
-        /* Capa de Nieve (usando un div extra o pseudo elemento en main) */
-        body.theme-christmas .app-container::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; 
-            z-index: 99; 
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="700" height="700"><defs><pattern id="xl-snow" width="700" height="700" patternUnits="userSpaceOnUse"><circle cx="40" cy="40" r="12" fill="rgba(255, 255, 255, 0.15)"/></pattern></defs><rect width="700" height="700" fill="url(%23xl-snow)"/></svg>') !important; 
-            background-repeat: repeat;
-            animation: subtle-snowfall-vertical-slow 720s linear infinite;
-        }
-
-        body.theme-christmas header { 
-            background: rgba(20, 90, 50, 0.8) !important;
-            border-bottom: 2px solid #fde047; 
-        } 
+        /* --- TEMAS (Usando body::before para el fondo fijo) --- */
+        @keyframes subtle-snowfall-vertical-slow { 0% { background-position: 0 0; } 100% { background-position: 0 1000vh; } }
+        
+        body.theme-christmas::before { background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/christmas-forest-1920-x-1080-wnd8iqolk3rsltja.jpg'); }
+        body.theme-christmas header { background: rgba(20, 90, 50, 0.8) !important; border-bottom: 2px solid #fde047; }
         body.theme-christmas .logo, body.theme-christmas .section-title { color: #fde047 !important; text-shadow: 0 0 1px #fde047; }
-        body.theme-christmas .btn-primary { background: #fde047 !important; color: #16a34a !important; font-weight: bold; }
+        body.theme-christmas .btn-primary { background: #fde047 !important; color: #16a34a !important; }
         body.theme-christmas .bottom-nav-item.active { color: #fde047 !important; background: rgba(253, 224, 71, 0.1); }
-        body.theme-christmas .bar { background: #fde047 !important; }
-
-        /* Tema Fire */
-        body.theme-fire::before {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/infernal.jpg') !important;
-            background-color: #3d0303 !important;
-        }
+        
+        body.theme-fire::before { background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/infernal.jpg'); background-color: #3d0303; }
         body.theme-fire { color: #ffcc80 !important; }
-        body.theme-fire .album-img, body.theme-fire .album-detail-img { border-color: #ff4500; }
         body.theme-fire .logo { font-family: 'Metal Mania', cursive !important; color: #ff4500 !important; animation: logo-flicker 2s infinite linear alternate; }
         body.theme-fire header { background: rgba(10,0,0,0.8) !important; border-bottom: 2px solid #ff4500; }
         body.theme-fire .btn-primary { background: #ff4500 !important; color: #fff !important; }
         body.theme-fire .bottom-nav-item.active { color: #ff4500 !important; }
 
-        /* Tema Fenix */
-        body.theme-fenix::before {
-            background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix.jpg') !important;
-            background-color: #1a0000 !important;
-        }
+        body.theme-fenix::before { background-image: url('https://pub-0c024c9a5a7a439aa0319b5140a52857.r2.dev/fenix.jpg'); background-color: #1a0000; }
         body.theme-fenix { color: #ffaa00 !important; }
         body.theme-fenix .logo { color: #ffaa00 !important; text-shadow: 0 0 5px #ff6600; }
         body.theme-fenix header { background: rgba(50, 20, 0, 0.9) !important; border-bottom: 1px solid #ff6600; }
         body.theme-fenix .btn-primary { background: #ff6600 !important; color: #fff !important; }
         body.theme-fenix .bottom-nav-item.active { color: #ffaa00 !important; }
 
-        /* Tema Blue Neon */
         body.theme-blue-neon { background-color: #0d0d1a !important; color: #00e0ff !important; }
-        body.theme-blue-neon::before { background: none !important; } /* Sin imagen de fondo */
+        body.theme-blue-neon::before { background: none; }
         body.theme-blue-neon .logo { color: #00e0ff !important; text-shadow: 0 0 5px #00e0ff; }
         body.theme-blue-neon header { background: rgba(13, 13, 26, 0.9) !important; border-bottom: 1px solid #00e0ff; }
         body.theme-blue-neon .btn-primary { background: #00e0ff !important; color: #000 !important; }
         body.theme-blue-neon .bottom-nav-item.active { color: #00e0ff !important; }
-        body.theme-blue-neon .bar { background: #00e0ff !important; }
-
-        /* Resto de temas (solo colores, sin imagen de fondo compleja) */
+        
         body.theme-neon { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 70%, #0f0f23 100%) !important; color: #00ff88 !important; }
         body.theme-neon header { background: #0f0f23 !important; border-bottom: 1px solid #00ff88; }
         body.theme-neon .logo { color: #00ff88 !important; }
@@ -556,13 +383,8 @@
         body.theme-minimal header { background: #0f0f0f !important; border-bottom: 1px solid #333; }
         body.theme-minimal .btn-primary { background: #f5f5f5 !important; color: #0f0f0f !important; }
 
-        /* Asegurar que el fondo sticky sea transparente en todos los temas */
-        body.theme-christmas .album-detail-header-sticky,
-        body.theme-fire .album-detail-header-sticky,
-        body.theme-fenix .album-detail-header-sticky { 
-            background: transparent; 
-            backdrop-filter: none;
-        }
+        /* Asegurar que el fondo sticky sea transparente */
+        body.theme-christmas .album-detail-header-sticky, body.theme-fire .album-detail-header-sticky, body.theme-fenix .album-detail-header-sticky { background: transparent; backdrop-filter: none; }
 
         @keyframes fire-glow { from { box-shadow: 0 0 10px #ff8c00, 0 0 20px #ff8c00, 0 0 30px #ff4500, 0 0 40px #ff0000; } to { box-shadow: 0 0 15px #ff8c00, 0 0 25px #ff8c00, 0 0 40px #ff4500, 0 0 55px #ff0000; } }
         @keyframes logo-flicker { 0%, 100% { text-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500, 0 0 20px #ff8c00, 0 0 40px #ff0000; opacity: 1; } 50% { text-shadow: 0 0 8px #ff4500, 0 0 15px #ff4500, 0 0 25px #ff8c00, 0 0 45px #ff0000; opacity: 0.95; } }
@@ -892,30 +714,31 @@
             resultsEl.innerHTML = html === '' ? '<h3>Sin resultados</h3>' : html;
         }
 
-        // --- OFFLINE Y DESCARGAS ---
+        // --- OFFLINE Y DESCARGAS (CORREGIDO: FOTOS) ---
         async function initDownloadDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('KLMZDownloads', 2); request.onerror = e => reject(e.target.error); request.onsuccess = e => { downloadDB = e.target.result; resolve(downloadDB); }; request.onupgradeneeded = e => { const db = e.target.result; if (!db.objectStoreNames.contains('songs')) db.createObjectStore('songs', { keyPath: 'id' }); }; }); }
         
         async function downloadSong(song, album) {
             const downloadBtn = document.querySelector(`#detail-song-list [data-song-id="${song.id}"] .download-icon`);
             if (downloadBtn) downloadBtn.textContent = '⏳'; 
-            if (!song.song_url) { alert('Error: La URL de la canción no está disponible.'); if (downloadBtn) downloadBtn.textContent = '↓'; return; }
-
+            
             try { 
-                let audioResponse;
-                try { audioResponse = await fetch(song.song_url); } catch (e) { throw new Error(`Fallo al obtener audio: ${e.message || 'Error de red'}`); }
-                if (!audioResponse.ok) throw new Error(`Error al descargar audio: ${audioResponse.status}`);
+                // 1. Descargar Audio
+                const audioResponse = await fetch(song.song_url);
+                if (!audioResponse.ok) throw new Error("Audio fail");
                 const audioBlob = await audioResponse.blob(); 
 
-                // Intentar descargar portada, pero no fallar si error
+                // 2. Descargar Imagen (Con Fallback Seguro para evitar error CORS)
                 let coverBlob = null;
                 if (album.cover_url) {
                     try {
                         const coverResponse = await fetch(album.cover_url);
-                        if (coverResponse.ok) coverBlob = await coverResponse.blob(); 
-                    } catch (e) { console.warn('No se pudo descargar portada', e); }
+                        if (coverResponse.ok) {
+                            coverBlob = await coverResponse.blob(); 
+                        }
+                    } catch (e) { console.warn('No se pudo descargar portada por CORS/Red, usando placeholder.', e); }
                 }
                 
-                const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBlob, downloadedAt: new Date().toISOString() }; 
+                const downloadData = { id: song.id, title: song.title, artist: album?.artist, albumTitle: album?.title, audioBlob, coverBlob, downloadedAt: new Date().toISOString(), originalCover: album.cover_url }; 
                 const tx = downloadDB.transaction('songs', 'readwrite');
                 const store = tx.objectStore('songs');
                 store.put(downloadData);
@@ -925,7 +748,7 @@
                 if (document.getElementById('downloads-section').classList.contains('active')) loadDownloads();
                 
             } catch (e) { 
-                alert(`Error en la descarga: ${e.message}`); 
+                alert(`Error: ${e.message}`); 
                 if (downloadBtn) downloadBtn.textContent = '↓'; 
             } 
         }
@@ -939,10 +762,12 @@
                 if (songs.length === 0) { content.innerHTML = '<div style="text-align:center;padding:3rem"><h2>No tienes descargas</h2></div>'; return; } 
                 
                 content.innerHTML = `<div class="downloads-list">${songs.map(song => {
-                    // Verificación robusta del Blob de la imagen
+                    // Verificación robusta del Blob de la imagen + Fallback a online si existe
                     let coverUrl = 'https://placehold.co/40x40/333/fff?text=No+Cover';
                     if (song.coverBlob && song.coverBlob instanceof Blob) {
                         coverUrl = URL.createObjectURL(song.coverBlob);
+                    } else if (navigator.onLine && song.originalCover) {
+                         coverUrl = song.originalCover;
                     }
                     
                     return `
@@ -986,7 +811,11 @@
                 const audioUrl = URL.createObjectURL(songData.audioBlob);
                 
                 let coverUrl = 'https://placehold.co/200x200/333/fff?text=No+Cover';
-                if (songData.coverBlob instanceof Blob) coverUrl = URL.createObjectURL(songData.coverBlob);
+                if (songData.coverBlob instanceof Blob) {
+                    coverUrl = URL.createObjectURL(songData.coverBlob);
+                } else if(navigator.onLine && songData.originalCover) {
+                    coverUrl = songData.originalCover;
+                }
                 
                 const song = { id: songData.id, title: songData.title, song_url: audioUrl, isOffline: true };
                 const album = { artist: songData.artist, title: songData.albumTitle, cover_url: coverUrl };
@@ -1125,7 +954,7 @@
         function formatTime(s) { const m = Math.floor(s / 60); const sc = Math.floor(s % 60).toString().padStart(2, '0'); return `${m}:${sc}`; }
         window.playSongFromPlaylist = function(i) { if (!currentPlaylist[i]) return; const s = currentPlaylist[i]; const a = s.albums || allAlbums.find(x => x.id === s.album_id) || currentAlbum; playSong(s, a, currentPlaylist, i); }
         
-        // ✅ MEDIA SESSION & NOTIFICACIONES
+        // ✅ MEDIA SESSION & NOTIFICACIONES (CORREGIDO: SEEKING)
         function updateMediaSession(song, album) {
             if ('mediaSession' in navigator) {
                 const cover = album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ';
@@ -1136,17 +965,17 @@
                 navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
                 navigator.mediaSession.setActionHandler('seekbackward', (d) => seekBackward(d.seekOffset || SKIP_TIME));
                 navigator.mediaSession.setActionHandler('seekforward', (d) => seekForward(d.seekOffset || SKIP_TIME));
-                // ✅ ARREGLO PARA QUE LA BARRA DE NOTIFICACIÓN FUNCIONE
+                
+                // Handler de la barra de notificaciones
                 navigator.mediaSession.setActionHandler('seekto', (details) => {
                     if (details.seekTime !== undefined && audio.duration) {
                         audio.currentTime = details.seekTime;
-                        updateMediaPositionState(); // Actualizar estado inmediatamente
+                        updateMediaPositionState(); 
                     }
                 });
             }
         }
         
-        // Helper para mantener la posición sincronizada en la notificación
         function updateMediaPositionState() {
             if ('mediaSession' in navigator && audio.duration && !isNaN(audio.duration)) {
                 try {
@@ -1155,7 +984,7 @@
                         playbackRate: audio.playbackRate,
                         position: audio.currentTime
                     });
-                } catch(e) { /* Ignorar errores de estado inválido */ }
+                } catch(e) { }
             }
         }
 
