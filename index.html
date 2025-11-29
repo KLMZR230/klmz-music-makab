@@ -954,7 +954,7 @@
         function formatTime(s) { const m = Math.floor(s / 60); const sc = Math.floor(s % 60).toString().padStart(2, '0'); return `${m}:${sc}`; }
         window.playSongFromPlaylist = function(i) { if (!currentPlaylist[i]) return; const s = currentPlaylist[i]; const a = s.albums || allAlbums.find(x => x.id === s.album_id) || currentAlbum; playSong(s, a, currentPlaylist, i); }
         
-        // ✅ MEDIA SESSION & NOTIFICACIONES (CORREGIDO: SEEKING)
+        // ✅ MEDIA SESSION & NOTIFICACIONES (CORREGIDO: BOTONES PREV/NEXT)
         function updateMediaSession(song, album) {
             if ('mediaSession' in navigator) {
                 const cover = album.cover_url || 'https://placehold.co/512x512/333/fff?text=KLMZ';
@@ -963,10 +963,10 @@
                 navigator.mediaSession.setActionHandler('pause', () => togglePlay());
                 navigator.mediaSession.setActionHandler('previoustrack', () => previousSong());
                 navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
-                navigator.mediaSession.setActionHandler('seekbackward', (d) => seekBackward(d.seekOffset || SKIP_TIME));
-                navigator.mediaSession.setActionHandler('seekforward', (d) => seekForward(d.seekOffset || SKIP_TIME));
+                // IMPORTANTE: Quitamos seekbackward/seekforward para forzar la aparición de Next/Prev en móviles
+                // navigator.mediaSession.setActionHandler('seekbackward', ...) // ELIMINADO
+                // navigator.mediaSession.setActionHandler('seekforward', ...) // ELIMINADO
                 
-                // Handler de la barra de notificaciones
                 navigator.mediaSession.setActionHandler('seekto', (details) => {
                     if (details.seekTime !== undefined && audio.duration) {
                         audio.currentTime = details.seekTime;
@@ -1039,8 +1039,25 @@
                 if (e.target.closest('.search-album-item')) { const idx = parseInt(e.target.closest('.search-album-item').dataset.albumIndex); if (!isNaN(idx) && allAlbums[idx]) { document.getElementById('search-input').value=''; document.getElementById('search-results').innerHTML=''; showAlbumDetail(allAlbums[idx]); } return; }
                 const li = e.target.closest('.song-list li'); if (li && !e.target.closest('.song-actions')) { const idx = parseInt(li.dataset.songIndex); if (!isNaN(idx)) playSongFromPlaylist(idx); return; }
                 if (e.target.matches('.play-icon')) { const idx = parseInt(e.target.dataset.songIndex); if (!isNaN(idx)) playSongFromPlaylist(idx); return; }
-                const ssi = e.target.closest('.search-song-item'); if (ssi) { const s = songsWithAlbumInfo.find(x => x.id === ssi.dataset.songId); if (s) playSong(s, s.albums, [s], 0); return; }
-                const fi = e.target.closest('.favorite-item'); if (fi) { const s = JSON.parse(fi.dataset.song); if(s) playSong(s, s.albums, [s], 0); return; }
+                
+                // ARREGLO 2: Pasando toda la lista al clickear desde búsqueda o favoritos
+                const ssi = e.target.closest('.search-song-item'); 
+                if (ssi) { 
+                    const s = songsWithAlbumInfo.find(x => x.id === ssi.dataset.songId); 
+                    // Obtener todas las canciones visibles en la búsqueda
+                    const allVisible = Array.from(document.querySelectorAll('.search-song-item')).map(el => songsWithAlbumInfo.find(x => x.id === el.dataset.songId)).filter(Boolean);
+                    const idx = allVisible.findIndex(x => x.id === s.id);
+                    if (s) playSong(s, s.albums, allVisible, idx); 
+                    return; 
+                }
+                const fi = e.target.closest('.favorite-item'); 
+                if (fi) { 
+                    const s = JSON.parse(fi.dataset.song); 
+                    const allFavs = Array.from(document.querySelectorAll('.favorite-item')).map(el => JSON.parse(el.dataset.song));
+                    const idx = allFavs.findIndex(x => x.id === s.id);
+                    if(s) playSong(s, s.albums, allFavs, idx); 
+                    return; 
+                }
                 if (e.target.closest('#mini-player') && !e.target.closest('.mini-controls-buttons')) openFullPlayer();
             });
         });
