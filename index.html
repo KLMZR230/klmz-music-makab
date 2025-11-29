@@ -1304,8 +1304,13 @@
                     cover_url: coverUrl 
                 };
                 
-                // Reproducir, configurando la playlist actual como solo esta canción
-                playSong(song, album, [song], 0);
+                // CORRECCIÓN: La playlist actual debe ser la lista de descargas para la navegación
+                getAllOfflineSongs().then(downloads => {
+                    currentPlaylist = downloads;
+                    currentIndex = downloads.findIndex(s => s.id === songId);
+                    if (currentIndex === -1) currentIndex = 0;
+                    playSong(song, album, currentPlaylist, currentIndex);
+                });
             };
             request.onerror = (e) => console.error('Error al obtener canción offline:', e);
         }
@@ -2130,7 +2135,7 @@
             });
             
             const createPlaylistForm = document.getElementById('create-playlist-form-modal');
-            if (createPlaylistForm) { createPlaylistForm.addEventListener('submit', (e) => { e.preventDefault(); const input = document.getElementById('new-playlist-name-modal'); const newPlaylist = createPlaylist(input.value); if (newPlaylist && currentSongIdToAdd) { addSongToPlaylist(newPlaylist.id, currentSongIdToAdd); closeAddToPlaylistModal(); } input.value = ''; }); }
+            if (createPlaylistForm) { createPlaylistForm.addEventListener('submit', (e) => { e.preventDefault(); const input = document.getElementById('new-playlist-name-modal'); const newPlaylist = createPlaylist(input.value); if (newPlaylist && currentSongIdToAdd) { addSongToPlaylist(newPlaylist.id, currentPlaylist[currentIndex]?.album_id, input.value); closeAddToPlaylistModal(); } input.value = ''; }); }
             
             document.addEventListener('click', (e) => {
                 const albumCard = e.target.closest('.album-card');
