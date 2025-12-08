@@ -833,17 +833,65 @@
         function updateOnlineStatus(){document.body.classList.toggle('offline-mode',!navigator.onLine);const indicator=document.getElementById('offline-indicator');if(indicator)indicator.style.display=navigator.onLine?'none':'inline-block'}
         
         // --- PANEL DE ADMINISTRACIÓN ---
+        
+        // --- 🔥 ARREGLO IMPORTANTE: SUBIDA DIRECTA A R2 (BYPASS EDGE FUNCTION BODY LIMIT) 🔥 ---
+        // Esta función ahora pide una URL firmada (Pre-signed URL) y sube el archivo DIRECTAMENTE a R2.
+        // Esto permite subir archivos de 100MB, 500MB, etc. sin colapsar la Edge Function.
         function uploadFileWithProgress(file, onProgress) {
             return new Promise(async (resolve, reject) => {
                 try {
-                    const formData = new FormData(); formData.append('file', file);
-                    const response = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, { method: 'POST', headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }, body: formData });
-                    if (!response.ok) throw new Error(`Error: ${response.status}`);
+                    // PASO 1: Obtener URL firmada (Pre-signed URL) de la Edge Function
+                    // En lugar de enviar el archivo (que falla si es > 6MB), enviamos solo el nombre y tipo.
+                    const response = await fetch(`${supabaseUrl}/functions/v1/generate-upload-url`, {
+                        method: 'POST',
+                        headers: { 
+                            'Authorization': `Bearer ${supabaseKey}`, 
+                            'apikey': supabaseKey,
+                            'Content-Type': 'application/json' 
+                        },
+                        body: JSON.stringify({ 
+                            filename: file.name,
+                            filetype: file.type
+                        })
+                    });
+
+                    if (!response.ok) throw new Error(`Error obteniendo permiso de subida: ${response.status}`);
+                    
                     const data = await response.json();
-                    if (!data.success) throw new Error(data.error);
-                    resolve(data.publicUrl);
-                    let progress = 0;
-                    const interval = setInterval(() => { progress += 10; if (progress <= 100) onProgress(progress); else clearInterval(interval); }, 50);
+                    
+                    // IMPORTANTE: Tu backend debe devolver { uploadUrl: "...", publicUrl: "..." }
+                    // Si la respuesta no tiene uploadUrl, asumimos que el backend aún no se ha actualizado
+                    if (!data.uploadUrl) {
+                        throw new Error("El backend debe devolver 'uploadUrl' para subidas de archivos grandes.");
+                    }
+
+                    // PASO 2: Subir directamente a R2 usando la URL firmada
+                    // Usamos XMLHttpRequest porque fetch() aún no soporta bien el progreso de subida.
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('PUT', data.uploadUrl, true);
+                    xhr.setRequestHeader('Content-Type', file.type);
+
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const percent = (e.loaded / e.total) * 100;
+                            onProgress(percent);
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            // Subida exitosa a R2. Resolvemos con la URL pública final.
+                            resolve(data.publicUrl);
+                        } else {
+                            reject(new Error(`Error al subir a R2: ${xhr.statusText} (${xhr.status})`));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error('Error de red al subir a R2'));
+                    
+                    // Enviar el archivo crudo (binary)
+                    xhr.send(file);
+
                 } catch (error) { reject(error); }
             });
         }
@@ -900,6 +948,7 @@
         function removeFromQueue(itemId) { fileQueue = fileQueue.filter(item => item.id !== itemId); updateFileQueueUI(); }
         function updateFileQueueUI() { const c = document.getElementById('file-queue-container'); if (!c) return; c.innerHTML = fileQueue.length === 0 ? '<p style="color:#666;text-align:center;">Vacía</p>' : fileQueue.map(i => `<div class="file-queue-item ${i.status}"><div><strong>${i.name}</strong>${i.status === 'uploading' ? `<div class="upload-progress-container"><div class="upload-progress-bar"><div class="upload-progress-fill" id="progress-fill-${i.id}"></div></div></div>` : ''}</div>${i.status === 'pending' ? `<span class="file-remove" onclick="removeFromQueue(${i.id})">🗑️</span>` : ''}</div>`).join(''); }
         function startBatchUpload() { if (!selectedBatchAlbumId) { alert('❌ Selecciona un álbum.'); return; } const input = document.getElementById('batch-audio-files'); if (!input.files.length) { alert('❌ Selecciona archivos.'); return; } addFilesToQueue(input.files, selectedBatchAlbumId); input.value = ''; }
+        
         async function processBatchUpload() {
             if (isUploading || fileQueue.length === 0 || !selectedBatchAlbumId) return;
             isUploading = true; document.getElementById('batch-upload-progress').style.display = 'block';
@@ -907,14 +956,16 @@
                 if (item.status !== 'pending') continue;
                 try {
                     document.getElementById('batch-progress-label').textContent = `Subiendo: ${item.name}`; item.status = 'uploading'; updateFileQueueUI();
+                    // Usar la nueva lógica de subida directa
                     const url = await uploadFileWithProgress(item.file, (p) => { const el = document.getElementById(`progress-fill-${item.id}`); if(el) el.style.width = `${p}%`; });
                     await supabase.from('songs').insert([{ title: item.name.replace(/\.[^/.]+$/, ""), album_id: selectedBatchAlbumId, song_url: url }]);
                     item.status = 'success';
-                } catch (e) { item.status = 'error'; }
+                } catch (e) { item.status = 'error'; console.error(e); }
                 document.getElementById('batch-progress-fill').style.width = `${((index + 1) / fileQueue.length) * 100}%`; updateFileQueueUI();
             }
             document.getElementById('batch-progress-label').textContent = 'Completado'; setTimeout(() => { document.getElementById('batch-upload-progress').style.display = 'none'; fileQueue = []; updateFileQueueUI(); }, 2000); isUploading = false; await loadAllData(); await renderAdminPanel();
         }
+
         window.deleteAlbum = async function(id) { if (!confirm('¿Eliminar álbum?')) return; showLoadingIndicator(true); try { await supabase.from('songs').delete().eq('album_id', id); await supabase.from('albums').delete().eq('id', id); alert('✅ Eliminado'); await loadAllData(); await renderAdminPanel(); } catch (e) { alert('❌ Error: ' + e.message); } finally { showLoadingIndicator(false); } }
         window.editSong = async function(id, cur) { const n = prompt('Nuevo nombre:', cur); if (n && n.trim()) { showLoadingIndicator(true); try { await supabase.from('songs').update({ title: n.trim() }).eq('id', id); await loadAllData(); await renderAdminPanel(); } catch (e) { alert('❌ Error: ' + e.message); } finally { showLoadingIndicator(false); } } }
         window.deleteSong = async function(id) { if (!confirm('¿Eliminar canción?')) return; showLoadingIndicator(true); try { await supabase.from('songs').delete().eq('id', id); await loadAllData(); await renderAdminPanel(); } catch (e) { alert('❌ Error: ' + e.message); } finally { showLoadingIndicator(false); } }
@@ -963,9 +1014,6 @@
                 navigator.mediaSession.setActionHandler('pause', () => togglePlay());
                 navigator.mediaSession.setActionHandler('previoustrack', () => previousSong());
                 navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
-                // IMPORTANTE: Quitamos seekbackward/seekforward para forzar la aparición de Next/Prev en móviles
-                // navigator.mediaSession.setActionHandler('seekbackward', ...) // ELIMINADO
-                // navigator.mediaSession.setActionHandler('seekforward', ...) // ELIMINADO
                 
                 navigator.mediaSession.setActionHandler('seekto', (details) => {
                     if (details.seekTime !== undefined && audio.duration) {
