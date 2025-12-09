@@ -526,10 +526,14 @@
                 if('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused"; 
             });
             
-            // ERROR HANDLING
+            // MANEJADOR DE ERROR MEJORADO: Si el audio falla (e.g., por red o PWA), forzamos pausa.
             audio.addEventListener('error', (e) => {
                 console.error("Audio Error:", e);
-                showToast("Error al reproducir canción", "error");
+                showToast("Error al reproducir canción. (Intenta recargar)", "error");
+                // Forzar la pausa para resetear el estado de la UI y MediaSession si estaba activo
+                if (!audio.paused) {
+                    audio.pause(); 
+                }
             });
             
             // Scroll effect
@@ -777,18 +781,15 @@
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
                 
-                // CRUCIAL PWA FIX: Direct calls to audio.play/pause. 
-                // Eliminamos las actualizaciones explícitas de playbackState para depender
-                // de los eventos 'play' y 'pause' del audio, que son más fiables.
+                // ARREGLO CRUCIAL PWA: Hacemos la llamada lo más directa posible.
+                // Quitamos el .catch() del handler para que el sistema operativo
+                // se sienta seguro de que la acción se ejecutó.
                 navigator.mediaSession.setActionHandler('play', () => { 
-                    // FIX: Al presionar PLAY en la notificación, forzamos la reproducción. 
-                    // El evento 'play' global del audio se encargará de sincronizar la UI y MediaSession.
-                    audio.play().catch(e => console.error("MediaSession Play Error:", e));
+                    audio.play(); 
+                    // No manejamos la promesa aquí. Confiamos en el evento 'play' global para el estado.
                 });
                 
                 navigator.mediaSession.setActionHandler('pause', () => { 
-                    // FIX: Al presionar PAUSE en la notificación, forzamos la pausa.
-                    // El evento 'pause' global del audio se encargará de sincronizar la UI y MediaSession.
                     audio.pause();
                 });
                 
@@ -811,15 +812,13 @@
             if(!audio.src) return;
             if(audio.paused) { 
                 try {
-                    // FIX: Siempre intentar el play() con promesa en la PWA
+                    // Si el play falla, el evento 'error' o 'pause' se encargará de notificar y resetear
                     await audio.play(); 
                 } catch(e) { 
-                    console.error("Toggle Play Error (No user interaction or failed promise):", e);
-                    // Si falla (ej. si el SO bloquea el autoplay), forzar la pausa visual.
+                    console.error("Toggle Play Error:", e);
                     audio.pause(); 
                 }
             } else { 
-                // FIX: El pause() es síncrono y debe funcionar
                 audio.pause(); 
             }
         }
