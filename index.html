@@ -132,59 +132,69 @@
         }
         .full-player-backdrop.active { display: flex; animation: slideUp 0.3s ease-out; }
 
-        /* IMAGEN FULL PLAYER */
+        /* IMAGEN FULL PLAYER & BUTTON OVERLAY */
         .full-cover-container { 
             width: 100%; 
             max-width: 320px;
             height: auto;
-            max-height: 30vh;
             aspect-ratio: 1; 
             margin: 20px auto 30px; 
             border-radius: 12px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.5); 
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             background: #111; 
-            position: relative; 
+            position: relative;
         }
         .full-cover-large { 
             width: 100%; 
             height: 100%; 
-            object-fit: contain;
+            object-fit: cover;
         }
 
-        /* BOTÓN CERRAR - SOLO X, ESQUINA SUPERIOR DERECHA PANTALLA */
+        /* BOTÓN CERRAR - FUERA DE LA PORTADA */
         .close-player-btn-corner {
-            position: absolute;
-            top: 25px; /* Ajuste para safe area */
-            right: 25px;
-            background: none;
+            position: absolute; /* Posición absoluta respecto a .full-player-backdrop */
+            top: 20px;
+            right: 20px;
+            background: rgba(40, 40, 40, 0.8); /* Fondo oscuro semitransparente */
             color: #fff;
-            border: none;
-            font-size: 2rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             z-index: 50;
-            padding: 10px;
+            font-size: 1.5rem; /* Más grande para mejor touch target */
             line-height: 1;
-            font-weight: 300;
-            opacity: 0.8;
-            transition: opacity 0.2s;
+            transition: transform 0.2s, background 0.2s;
+            backdrop-filter: blur(4px);
         }
-        .close-player-btn-corner:active { opacity: 1; transform: scale(0.95); }
+        .close-player-btn-corner:active { transform: scale(0.9); background: rgba(0,0,0,0.8); }
         
         .full-info-container { text-align: left; width: 100%; max-width: 350px; margin: 0 auto 20px; }
         .full-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
         .full-artist { font-size: 1rem; color: var(--text-sub); }
         
-        /* REPRODUCCIÓN: Barra NÍTIDA */
-        .full-progress-bar { width: 100%; max-width: 350px; margin: 0 auto 30px; display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: #b3b3b3; font-family: monospace; }
+        /* REPRODUCCIÓN: Barra NÍTIDA Y PEQUEÑA */
+        .full-progress-bar { 
+            width: 100%; 
+            max-width: 350px; 
+            margin: 0 auto 30px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            font-size: 0.75rem; 
+            color: #b3b3b3; 
+            font-family: monospace; 
+        }
         
         .seek-slider {
             flex: 1; 
             -webkit-appearance: none; 
-            height: 2px;
+            height: 4px; /* Más fina */
             border-radius: 2px; 
             cursor: pointer; 
             background: #333; 
@@ -194,18 +204,23 @@
         
         .seek-slider::-webkit-slider-thumb { 
             -webkit-appearance: none; 
-            width: 20px; 
-            height: 20px; 
-            background: transparent; 
-            border: none;
+            width: 12px; /* Más pequeña */
+            height: 12px; 
+            background: #fff; /* Blanco limpio */
+            border-radius: 50%;
             cursor: pointer;
-            margin-top: -9px; 
-        }
-        .seek-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            background: transparent;
             border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        .seek-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        
+        .seek-slider::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border: none;
+            border-radius: 50%;
             cursor: pointer;
         }
         
@@ -293,8 +308,6 @@
             <div class="sidebar-item active" onclick="showSection('home')">🏠 Inicio</div>
             <div class="sidebar-item" onclick="showSection('search')">🔍 Buscar</div>
             <div class="sidebar-item" onclick="showSection('playlists')">📚 Biblioteca</div>
-            <div class="sidebar-item" onclick="showSection('favorites')">❤️ Favoritos</div>
-            <div class="sidebar-item" onclick="showSection('downloads')">⬇️ Descargas</div>
             <div class="sidebar-item" id="admin-link" style="display:none; color: #ff4500;" onclick="showSection('admin')">🛠️ Admin</div>
         </nav>
 
@@ -340,11 +353,13 @@
             </div>
 
             <div id="favorites-section" class="content-section" style="display:none;">
+                <button onclick="showSection('playlists')" style="background:none; border:none; color:#fff; margin-bottom:10px; cursor:pointer; font-size:1.2rem;">← Biblioteca</button>
                 <h2>Tus Me Gusta ❤️</h2>
                 <div id="favorites-list"></div>
             </div>
 
             <div id="downloads-section" class="content-section" style="display:none;">
+                <button onclick="showSection('playlists')" style="background:none; border:none; color:#fff; margin-bottom:10px; cursor:pointer; font-size:1.2rem;">← Biblioteca</button>
                 <h2>Descargas Offline</h2>
                 <div id="downloads-list"></div>
             </div>
@@ -374,9 +389,9 @@
     <!-- FULL PLAYER -->
     <div class="full-player-backdrop" id="full-player">
         
-        <!-- BOTÓN CERRAR - SOLO X, ESQUINA DERECHA -->
+        <!-- BOTÓN CERRAR - FUERA DE LA PORTADA -->
         <button class="close-player-btn-corner" onclick="closeFullPlayer()">✕</button>
-        
+
         <div class="full-cover-container">
             <img id="full-cover" class="full-cover-large">
         </div>
@@ -388,6 +403,7 @@
 
         <div class="full-progress-bar">
             <span id="curr-time">0:00</span>
+            <!-- Se eliminó onchange y se dejó solo oninput para la interacción -->
             <input type="range" class="seek-slider" id="seek-slider" min="0" max="100" value="0" oninput="onSeekInput(this.value)" onchange="onSeekChange(this.value)">
             <span id="tot-time">0:00</span>
         </div>
@@ -808,7 +824,7 @@
             }
         }
 
-        // --- PROGRESS BAR LOGIC (MEJORADO) ---
+        // --- PROGRESS BAR LOGIC (FIXED) ---
         function updateProgress() {
             if (isDraggingSeek) return;
             const pct = (audio.currentTime / audio.duration) * 100 || 0;
@@ -823,6 +839,7 @@
         }
 
         function onSeekInput(val) {
+            // Solo actualiza visualmente y el tiempo actual de manera temporal
             isDraggingSeek = true;
             updateSliderBackground(val);
             const time = (val / 100) * (audio.duration || 0);
@@ -830,11 +847,14 @@
         }
         
         function onSeekChange(val) {
+            // Al soltar, actualiza la posición de reproducción
             isDraggingSeek = false;
-            updateSliderBackground(val);
             if(audio.duration) {
+                // Establece el nuevo tiempo del audio
                 audio.currentTime = (val / 100) * audio.duration;
             }
+            // Llama a updateProgress inmediatamente para forzar la actualización de la UI después del cambio
+            updateProgress();
         }
         
         // Función visual para la barra "llena"
@@ -1118,7 +1138,7 @@
             showLoadingIndicator(false);
         }
         
-        // --- DOWNLOADS & DB ---
+        // --- DOWNLOADS & DB (FIXED) ---
         async function initDB() {
             return new Promise((resolve) => {
                 const req = indexedDB.open('KLMZDownloads', 2);
@@ -1128,16 +1148,25 @@
                     }
                 };
                 req.onsuccess = e => { downloadDB = e.target.result; resolve(); };
-                req.onerror = () => resolve(); // Fail gracefully
+                req.onerror = () => { 
+                    console.error("IndexedDB failed to open."); 
+                    showToast("Error al inicializar descargas (IndexedDB)", "error");
+                    resolve(); 
+                };
             });
         }
         
         async function isSongDownloaded(id) {
             return new Promise(r => {
                 if(!downloadDB) return r(false);
-                const tx = downloadDB.transaction('songs', 'readonly').objectStore('songs').get(id);
-                tx.onsuccess = () => r(!!tx.result);
-                tx.onerror = () => r(false);
+                try {
+                    const tx = downloadDB.transaction('songs', 'readonly').objectStore('songs').get(id);
+                    tx.onsuccess = () => r(!!tx.result);
+                    tx.onerror = () => { console.error("Error checking download status"); r(false); };
+                } catch(e) {
+                    console.error("IndexedDB Transaction Error:", e);
+                    r(false);
+                }
             });
         }
         
@@ -1145,25 +1174,47 @@
             const song = allSongs.find(s=>s.id===id);
             if(!song) return;
             const album = allAlbums.find(a=>a.id===song.album_id);
-            showToast("Iniciando descarga...");
+            if (!downloadDB) return showToast("Funcionalidad de descarga no disponible", "error");
+
+            showToast("Iniciando descarga de: " + song.title);
             
             try {
-                const blob = await fetch(song.song_url).then(r => r.blob());
+                // Fetch audio blob
+                const audioResponse = await fetch(song.song_url);
+                if (!audioResponse.ok) throw new Error("Audio fetch failed");
+                const audioBlob = await audioResponse.blob();
+
+                // Fetch cover blob (optional, handle failure gracefully)
                 let coverBlob = null;
-                try { coverBlob = await fetch(album.cover_url).then(r => r.blob()); } catch(e){}
+                try { 
+                    const coverResponse = await fetch(album.cover_url);
+                    if (coverResponse.ok) coverBlob = await coverResponse.blob(); 
+                } catch(e){
+                    console.warn("Cover image download failed:", e);
+                }
                 
+                // Save to IndexedDB
                 const tx = downloadDB.transaction('songs', 'readwrite');
                 tx.objectStore('songs').put({
                     id: song.id, title: song.title, artist: album.artist,
-                    audioBlob: blob, coverBlob: coverBlob, 
+                    audioBlob: audioBlob, coverBlob: coverBlob, 
                     albumTitle: album.title, originalCover: album.cover_url
                 });
                 tx.oncomplete = () => { 
-                    showToast("¡Descarga completada!"); 
+                    showToast("¡Descarga completada: " + song.title + "!"); 
                     // Update icon if visible
                     if(document.getElementById('album-detail').style.display === 'block') showAlbumDetail(album.id);
+                    // Rerender downloads if the user is currently on the Downloads view
+                    if(document.getElementById('downloads-section').style.display === 'block') loadDownloads();
                 };
-            } catch(e) { showToast("Error al descargar", "error"); console.error(e); }
+                tx.onerror = (e) => {
+                    showToast("Error al guardar en almacenamiento local", "error");
+                    console.error("IndexedDB save error:", e);
+                };
+            } catch(e) { 
+                showToast("Error al descargar: " + e.message, "error"); 
+                console.error(e); 
+            }
         }
         
         async function loadDownloads() {
@@ -1172,14 +1223,23 @@
             req.onsuccess = () => {
                 const songs = req.result;
                 if(songs.length === 0) {
-                    document.getElementById('downloads-list').innerHTML = '<p>No hay descargas.</p>';
+                    document.getElementById('downloads-list').innerHTML = '<p>No hay descargas. Puedes descargar canciones desde la vista de álbum.</p>';
                     return;
                 }
                 
+                // Clean up previous URLs to avoid memory leaks
+                if (window.offlineSongs) {
+                    window.offlineSongs.forEach(s => {
+                        if (s.audioUrl) URL.revokeObjectURL(s.audioUrl);
+                        if (s.coverUrl) URL.revokeObjectURL(s.coverUrl);
+                    });
+                }
+
                 // Prepare global memory for offline playing
                 window.offlineSongs = songs.map(s => ({
                     ...s,
-                    audioUrl: URL.createObjectURL(s.audioBlob),
+                    // Use audioBlob directly if available
+                    audioUrl: s.audioBlob ? URL.createObjectURL(s.audioBlob) : s.song_url, 
                     coverUrl: s.coverBlob ? URL.createObjectURL(s.coverBlob) : s.originalCover
                 }));
 
@@ -1192,17 +1252,41 @@
                         </div>
                     </div>`).join('');
             };
+            req.onerror = (e) => {
+                console.error("Error loading downloads:", e);
+                document.getElementById('downloads-list').innerHTML = '<p style="color:red;">Error al cargar descargas.</p>';
+            };
         }
         
         window.playOfflineSong = function(id) {
             const data = window.offlineSongs.find(s => s.id === id);
             if(data) {
-                playSong(
-                    { id: data.id, title: data.title, song_url: data.audioUrl, album_id: 'offline' },
-                    { artist: data.artist, title: data.albumTitle, cover_url: data.coverUrl, id: 'offline' },
-                    window.offlineSongs.map(s => ({ id: s.id, title: s.title, song_url: s.audioUrl, album_id: 'offline' })), // Playlist context
-                    window.offlineSongs.findIndex(s => s.id === id)
-                );
+                // Crear un objeto 'song' y 'album' temporal para el reproductor
+                const tempSong = { 
+                    id: data.id, 
+                    title: data.title, 
+                    // Asegúrate de usar la URL del Blob si existe, si no, usa la original
+                    song_url: data.audioUrl, 
+                    album_id: 'offline' 
+                };
+                const tempAlbum = { 
+                    artist: data.artist, 
+                    title: data.albumTitle, 
+                    cover_url: data.coverUrl, 
+                    id: 'offline' 
+                };
+
+                // Crear el contexto de la lista de reproducción (todas las canciones offline)
+                const offlinePlaylist = window.offlineSongs.map(s => ({ 
+                    id: s.id, 
+                    title: s.title, 
+                    song_url: s.audioUrl, 
+                    album_id: 'offline' 
+                }));
+                const index = offlinePlaylist.findIndex(s => s.id === id);
+                
+                playSong(tempSong, tempAlbum, offlinePlaylist, index);
+                showToast(`Reproduciendo offline: ${data.title}`);
             }
         }
 
@@ -1222,13 +1306,24 @@
             const lists = JSON.parse(localStorage.getItem('klmz_playlists') || '[]');
             const favs = JSON.parse(localStorage.getItem('klmz_favs') || '[]');
             
-            // 1. Tarjeta de "Tus Me Gusta" (Integrada en Biblioteca)
+            // 1. Tarjeta de "Tus Me Gusta"
             const favoritesCard = `
                 <div class="album-card" style="margin-bottom:10px; flex-direction:row; padding:10px; gap:15px; align-items:center; background:linear-gradient(90deg, #333 0%, #201025 100%); border:1px solid rgba(255,255,255,0.1);" onclick="showSection('favorites')">
                     <div style="width:60px; height:60px; background:linear-gradient(135deg, #450af5, #c4efd9); display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:1.5rem;">❤️</div>
                     <div style="text-align:left; flex:1;">
                         <div style="font-weight:bold; color:#fff;">Tus Me Gusta</div>
                         <div style="font-size:0.8rem; color:#b3b3b3;">${favs.length} canciones</div>
+                    </div>
+                </div>
+            `;
+
+            // 2. Tarjeta de "Descargas" (Integrada aquí)
+            const downloadsCard = `
+                <div class="album-card" style="margin-bottom:10px; flex-direction:row; padding:10px; gap:15px; align-items:center; background:linear-gradient(90deg, #333 0%, #102520 100%); border:1px solid rgba(255,255,255,0.1);" onclick="showSection('downloads')">
+                    <div style="width:60px; height:60px; background:linear-gradient(135deg, #0af545, #c4efef); display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:1.5rem;">⬇️</div>
+                    <div style="text-align:left; flex:1;">
+                        <div style="font-weight:bold; color:#fff;">Descargas Offline</div>
+                        <div style="font-size:0.8rem; color:#b3b3b3;">Música sin conexión</div>
                     </div>
                 </div>
             `;
@@ -1244,7 +1339,7 @@
                 </div>
             `).join('') : '';
 
-            document.getElementById('playlists-list').innerHTML = favoritesCard + (playlistCards || '');
+            document.getElementById('playlists-list').innerHTML = favoritesCard + downloadsCard + (playlistCards || '');
         }
 
         function deletePlaylist(id) {
@@ -1449,5 +1544,3 @@
     </script>
 </body>
 </html>
-
-
