@@ -126,31 +126,18 @@
             z-index: 9999;
             background: linear-gradient(180deg, #222 0%, #000 100%);
             flex-direction: column; 
-            justify-content: center; /* ESTO CENTRA TODO VERTICALMENTE */
+            justify-content: center; 
             padding: 30px 20px; 
             overflow-y: auto;
         }
         .full-player-backdrop.active { display: flex; animation: slideUp 0.3s ease-out; }
 
-        /* Botón cerrar flotante arriba a la derecha */
-        .close-player-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            padding: 10px;
-            z-index: 10;
-        }
-
-        /* IMAGEN FULL PLAYER (TAMAÑO AJUSTADO) */
+        /* IMAGEN FULL PLAYER & BOTÓN CERRAR */
         .full-cover-container { 
             width: 100%; 
             max-width: 320px;
             height: auto;
-            max-height: 30vh; /* Altura controlada */
+            max-height: 30vh;
             aspect-ratio: 1; 
             margin: 20px auto 30px; 
             border-radius: 12px; 
@@ -160,12 +147,35 @@
             align-items: center;
             justify-content: center;
             background: #111; 
+            position: relative; /* Para posicionar el botón dentro */
         }
         .full-cover-large { 
             width: 100%; 
             height: 100%; 
             object-fit: contain;
         }
+
+        /* BOTÓN CERRAR (DENTRO DE LA FOTO) */
+        .close-player-btn-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.5); /* Fondo oscuro semitransparente */
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            z-index: 20;
+            transition: background 0.2s;
+        }
+        .close-player-btn-overlay:active { background: rgba(0,0,0,0.8); }
         
         .full-info-container { text-align: left; width: 100%; max-width: 350px; margin: 0 auto 20px; }
         .full-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
@@ -366,10 +376,11 @@
 
     <!-- FULL PLAYER -->
     <div class="full-player-backdrop" id="full-player">
-        <button class="close-player-btn" onclick="closeFullPlayer()">﹀</button>
         
         <div class="full-cover-container">
             <img id="full-cover" class="full-cover-large">
+            <!-- BOTÓN CERRAR DENTRO DE LA FOTO -->
+            <button class="close-player-btn-overlay" onclick="closeFullPlayer()">✕</button>
         </div>
         
         <div class="full-info-container">
@@ -482,6 +493,12 @@
             audio.addEventListener('play', () => { isPlaying = true; updatePlayerUI(); });
             audio.addEventListener('pause', () => { isPlaying = false; updatePlayerUI(); });
             
+            // ERROR HANDLING
+            audio.addEventListener('error', (e) => {
+                console.error("Audio Error:", e);
+                showToast("Error al reproducir canción", "error");
+            });
+            
             // Scroll effect
             document.getElementById('main-scroll').addEventListener('scroll', (e) => {
                 const topBar = document.getElementById('top-bar');
@@ -573,7 +590,7 @@
                 <div class="album-card" onclick="showAlbumDetail('${a.id}')">
                     <div class="album-img-container">
                         <img class="album-img" src="${a.cover_url}" loading="lazy">
-                        <div class="play-overlay">
+                        <div class="play-overlay" onclick="event.stopPropagation(); playContext('${a.id}', 0)">
                             <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         </div>
                     </div>
@@ -644,7 +661,6 @@
             if(contextId === 'favorites') {
                 const favs = JSON.parse(localStorage.getItem('klmz_favs') || '[]');
                 list = allSongs.filter(s => favs.includes(s.id));
-                // FIX: No forzamos un albumInfo genérico para que playSong busque el original
                 albumInfo = null; 
             } 
             else if (contextId.startsWith('playlist_')) {
@@ -659,6 +675,8 @@
             if(list.length > 0) {
                 currentPlaylist = list;
                 playSong(list[index], albumInfo, list, index);
+            } else {
+                showToast("Este álbum está vacío", "error");
             }
         }
 
@@ -672,7 +690,10 @@
             currentIndex = index !== undefined ? index : 0;
 
             audio.src = song.song_url;
-            audio.play().catch(e => console.log("Play error", e));
+            audio.play().catch(e => {
+                console.error("Play error", e);
+                showToast("Error al reproducir", "error");
+            });
             
             updatePlayerUI();
             
