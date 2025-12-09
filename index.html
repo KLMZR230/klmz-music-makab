@@ -76,8 +76,29 @@
         .album-card:hover { background: var(--bg-card-hover); transform: translateY(-5px); }
         .album-img-container { width: 100%; aspect-ratio: 1; margin-bottom: 12px; position: relative; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; }
         .album-img { width: 100%; height: 100%; object-fit: cover; }
-        .play-overlay { position: absolute; bottom: 8px; right: 8px; width: 45px; height: 45px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(8px); transition: 0.3s; color: #000; font-size: 1.2rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        
+        /* PLAY BUTTON FIXED (SVG) */
+        .play-overlay { 
+            position: absolute; 
+            bottom: 8px; 
+            right: 8px; 
+            width: 45px; 
+            height: 45px; 
+            background: var(--primary); 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            opacity: 0; 
+            transform: translateY(8px); 
+            transition: 0.3s; 
+            color: #000; /* Color del icono (negro) */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+            z-index: 10;
+        }
         .album-card:hover .play-overlay { opacity: 1; transform: translateY(0); }
+        .play-overlay svg { width: 24px; height: 24px; fill: currentColor; display: block; }
+
         .album-title { color: #fff; font-weight: 700; font-size: 0.95rem; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }
         .album-artist { color: var(--text-sub); font-size: 0.85rem; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -105,12 +126,12 @@
         }
         .full-player-backdrop.active { display: flex; animation: slideUp 0.3s ease-out; }
 
-        /* IMAGEN FULL PLAYER */
+        /* IMAGEN FULL PLAYER (ARREGLADA: MÁS PEQUEÑA) */
         .full-cover-container { 
             width: 100%; 
             max-width: 320px;
             height: auto;
-            max-height: 40vh;
+            max-height: 30vh; /* REDUCIDO para que no ocupe tanto */
             aspect-ratio: 1; 
             margin: 20px auto 30px; 
             border-radius: 12px; 
@@ -131,7 +152,7 @@
         .full-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
         .full-artist { font-size: 1rem; color: var(--text-sub); }
         
-        /* REPRODUCCIÓN: Barra de progreso NÍTIDA, FINA Y SIN PUNTO */
+        /* REPRODUCCIÓN: Barra funcional pero minimalista */
         .full-progress-bar { width: 100%; max-width: 350px; margin: 0 auto 30px; display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: #b3b3b3; font-family: monospace; }
         
         .seek-slider {
@@ -141,22 +162,26 @@
             border-radius: 2px; 
             cursor: pointer; 
             background: #333; 
+            position: relative;
+            z-index: 2;
         }
         
-        /* OCULTAR EL PUNTO BLANCO (THUMB) */
+        /* TRUCO: Thumb invisible pero GRANDE para que funcione el touch */
         .seek-slider::-webkit-slider-thumb { 
             -webkit-appearance: none; 
-            width: 0; 
-            height: 0; 
-            background: transparent; 
+            width: 20px; /* Ancho para el dedo */
+            height: 20px; /* Alto para el dedo */
+            background: transparent; /* Invisible */
             border: none;
-            box-shadow: none;
+            cursor: pointer;
+            margin-top: -9px; /* Centrarlo */
         }
         .seek-slider::-moz-range-thumb {
-            width: 0;
-            height: 0;
+            width: 20px;
+            height: 20px;
             background: transparent;
             border: none;
+            cursor: pointer;
         }
         
         .full-controls { display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; margin-bottom: 40px; }
@@ -209,7 +234,8 @@
             .sidebar { display: none; }
             .top-bar { padding: 15px; }
             .player-dock { bottom: 65px; }
-            .play-overlay { opacity: 1; transform: translateY(0); width: 40px; height: 40px; font-size: 1.1rem; }
+            /* Play visible en movil */
+            .play-overlay { opacity: 1; transform: translateY(0); width: 40px; height: 40px; }
         }
         
         /* Admin Styles */
@@ -416,7 +442,7 @@
         let downloadDB = null;
         let currentSong = null;
         let currentAlbum = null;
-        let lastScrollPosition = 0; // Fix scroll reset
+        let lastScrollPosition = 0;
         
         // ADMIN VARS
         let selectedBatchAlbumId = '';
@@ -532,7 +558,9 @@
                 <div class="album-card" onclick="showAlbumDetail('${a.id}')">
                     <div class="album-img-container">
                         <img class="album-img" src="${a.cover_url}" loading="lazy">
-                        <div class="play-overlay">▶</div>
+                        <div class="play-overlay">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
                     </div>
                     <div class="album-title">${a.title}</div>
                     <div class="album-artist">${a.artist}</div>
@@ -579,7 +607,7 @@
                         <div class="song-actions">
                             <button class="action-btn" onclick="event.stopPropagation(); addToPlaylistMenu('${s.id}')">+</button>
                             <button class="action-btn ${favs.includes(s.id)?'liked':''}" onclick="event.stopPropagation(); toggleLike('${s.id}')">
-                                ${favs.includes(s.id)?'❤️':'♡'}
+                                <span class="like-icon-${s.id}">${favs.includes(s.id)?'❤️':'♡'}</span>
                             </button>
                             <button class="action-btn" onclick="event.stopPropagation(); downloadWrapper('${s.id}')">
                                 ${dls[i]?'✅':'⬇️'}
@@ -663,29 +691,49 @@
             favBtn.textContent = favs.includes(currentSong.id) ? '❤️' : '♡';
             favBtn.style.color = favs.includes(currentSong.id) ? 'var(--primary)' : '#fff';
             
-            // Media Session
+            // Media Session (NOTIFICATION CONTROLS FIXED)
             if('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
-                navigator.mediaSession.setActionHandler('play', togglePlay);
-                navigator.mediaSession.setActionHandler('pause', togglePlay);
-                navigator.mediaSession.setActionHandler('nexttrack', nextSong);
-                navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+                
+                navigator.mediaSession.setActionHandler('play', () => { togglePlay(); });
+                navigator.mediaSession.setActionHandler('pause', () => { togglePlay(); });
+                navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
+                navigator.mediaSession.setActionHandler('previoustrack', () => { prevSong(); });
+                
+                // Seek Handler Added
+                navigator.mediaSession.setActionHandler('seekto', (details) => {
+                    if (details.fastSeek && 'fastSeek' in audio) {
+                      audio.fastSeek(details.seekTime);
+                      return;
+                    }
+                    audio.currentTime = details.seekTime;
+                    updateProgress();
+                });
+                
+                // Update Playback State
+                navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
             }
         }
 
         function togglePlay() {
             if(!audio.src) return;
-            if(audio.paused) audio.play();
-            else audio.pause();
+            if(audio.paused) { 
+                audio.play(); 
+                isPlaying = true;
+            } else { 
+                audio.pause(); 
+                isPlaying = false;
+            }
+            updatePlayerUI();
         }
 
         function nextSong() {
             if(currentIndex < currentPlaylist.length - 1) {
-                playSong(currentPlaylist[currentIndex + 1], currentAlbum, currentPlaylist, currentIndex + 1); // Pass currentAlbum context
+                playSong(currentPlaylist[currentIndex + 1], currentAlbum, currentPlaylist, currentIndex + 1); 
             } else {
-                // If playlist ends or context was null (favorites), try to find album for next song if context is null
+                // If playlist ends or context was null (favorites), try to find album for next song
                 const nextS = currentPlaylist[currentIndex + 1];
                 if(nextS) {
                      const nextAlb = currentAlbum || allAlbums.find(a => a.id === nextS.album_id);
@@ -728,7 +776,9 @@
         function onSeekChange(val) {
             isDraggingSeek = false;
             updateSliderBackground(val);
-            if(audio.duration) audio.currentTime = (val / 100) * audio.duration;
+            if(audio.duration) {
+                audio.currentTime = (val / 100) * audio.duration;
+            }
         }
         
         // Función visual para la barra "llena"
@@ -748,10 +798,12 @@
         function openFullPlayer() { document.getElementById('full-player').classList.add('active'); }
         function closeFullPlayer() { document.getElementById('full-player').classList.remove('active'); }
 
-        // --- FAVORITES FIXED ---
+        // --- FAVORITES FIXED (SIN SALTO) ---
         function toggleLike(id) {
             let favs = JSON.parse(localStorage.getItem('klmz_favs') || '[]');
-            if(favs.includes(id)) {
+            const isLiked = favs.includes(id);
+            
+            if(isLiked) {
                 favs = favs.filter(x => x !== id);
                 showToast("Eliminado de favoritos");
             } else {
@@ -760,18 +812,18 @@
             }
             localStorage.setItem('klmz_favs', JSON.stringify(favs));
             
-            // UI Updates
-            if(currentAlbum && document.getElementById('album-detail').style.display === 'block') {
-                showAlbumDetail(currentAlbum.id);
+            // ACTUALIZACIÓN DOM IN-PLACE (SIN RECARGAR TODO)
+            // Busca todos los iconos de corazón de esta canción y actualízalos
+            const icons = document.querySelectorAll(`.like-icon-${id}`);
+            icons.forEach(icon => {
+                icon.textContent = !isLiked ? '❤️' : '♡';
+                icon.parentElement.classList.toggle('liked', !isLiked);
+            });
+            
+            // Actualizar player si es la canción actual
+            if (currentSong && currentSong.id === id) {
+                updatePlayerUI();
             }
-            if(document.getElementById('favorites-section').style.display === 'block') {
-                loadFavorites();
-            }
-            // If in Library view, refresh count in Favorite card
-            if(document.getElementById('playlists-section').style.display === 'block') {
-                renderPlaylistsList();
-            }
-            updatePlayerUI();
         }
 
         function toggleFavoriteCurrent() { 
@@ -804,7 +856,9 @@
                             <div style="font-size:0.8rem;">${s.albums?.artist || ''}</div>
                         </div>
                         <div class="song-actions">
-                            <button class="action-btn liked" onclick="event.stopPropagation(); toggleLike('${s.id}')">❤️</button>
+                            <button class="action-btn liked" onclick="event.stopPropagation(); toggleLike('${s.id}')">
+                                <span class="like-icon-${s.id}">❤️</span>
+                            </button>
                         </div>
                     </div>
                 `).join('')}
@@ -1338,3 +1392,5 @@
     </script>
 </body>
 </html>
+
+
