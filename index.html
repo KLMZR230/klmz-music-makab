@@ -2,8 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <!-- Ajuste del viewport para una mejor compatibilidad con PWA y fluid-layout -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>KLMZ MUSIC</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -31,13 +32,19 @@
             background-color: var(--bg-base);
             color: var(--text-base);
             width: 100%;
+            /* Uso de 100vh y ajuste para asegurar que el layout se adapte al PWA */
             height: 100vh;
+            height: 100dvh; /* Unidad dinámica para mejor soporte móvil/PWA */
             overflow: hidden;
             user-select: none;
         }
 
         /* --- LAYOUT --- */
-        .app-layout { display: flex; height: 100%; width: 100%; }
+        .app-layout { 
+            display: flex; 
+            height: 100%; 
+            width: 100%; 
+        }
         
         /* Sidebar (Desktop) */
         .sidebar {
@@ -51,8 +58,13 @@
 
         /* Main View */
         .main-view {
-            flex: 1; background: linear-gradient(180deg, #222 0%, var(--bg-base) 40%);
-            overflow-y: auto; position: relative; padding: 20px; padding-bottom: 160px;
+            flex: 1; 
+            background: linear-gradient(180deg, #222 0%, var(--bg-base) 40%);
+            overflow-y: auto; 
+            position: relative; 
+            padding: 20px; 
+            /* Se mantiene el padding inferior grande para dejar espacio al dock/nav */
+            padding-bottom: 160px; 
             scroll-behavior: smooth;
         }
 
@@ -129,6 +141,8 @@
             justify-content: center; 
             padding: 30px 20px; 
             overflow-y: auto;
+            /* Asegura que el player ocupe toda la altura disponible */
+            height: 100dvh; 
         }
         .full-player-backdrop.active { display: flex; animation: slideUp 0.3s ease-out; }
 
@@ -136,7 +150,7 @@
         .full-cover-container { 
             width: 100%; 
             max-width: 320px;
-            /* Se establece una altura máxima en relación al viewport para que no ocupe toda la pantalla */
+            /* Reducción de la altura máxima para dejar espacio a los controles y título */
             max-height: 40vh; 
             height: auto;
             aspect-ratio: 1; 
@@ -150,17 +164,16 @@
         .full-cover-large { 
             width: 100%; 
             height: 100%; 
-            /* Se cambia a 'cover' para asegurar que la imagen llene el espacio sin cortarse bruscamente, ajustándose al contenedor */
             object-fit: cover; 
-            display: block; /* Asegura que la imagen se comporte como un bloque */
+            display: block;
         }
 
         /* BOTÓN CERRAR - FUERA DE LA PORTADA */
         .close-player-btn-corner {
-            position: absolute; /* Posición absoluta respecto a .full-player-backdrop */
+            position: absolute; 
             top: 20px;
             right: 20px;
-            background: rgba(40, 40, 40, 0.8); /* Fondo oscuro semitransparente */
+            background: rgba(40, 40, 40, 0.8); 
             color: #fff;
             border: 1px solid rgba(255,255,255,0.2);
             width: 36px;
@@ -171,7 +184,7 @@
             justify-content: center;
             cursor: pointer;
             z-index: 50;
-            font-size: 1.5rem; /* Más grande para mejor touch target */
+            font-size: 1.5rem;
             line-height: 1;
             transition: transform 0.2s, background 0.2s;
             backdrop-filter: blur(4px);
@@ -198,7 +211,7 @@
         .seek-slider {
             flex: 1; 
             -webkit-appearance: none; 
-            height: 4px; /* Más fina */
+            height: 4px; 
             border-radius: 2px; 
             cursor: pointer; 
             background: #333; 
@@ -208,9 +221,9 @@
         
         .seek-slider::-webkit-slider-thumb { 
             -webkit-appearance: none; 
-            width: 12px; /* Más pequeña */
+            width: 12px; 
             height: 12px; 
-            background: #fff; /* Blanco limpio */
+            background: #fff; 
             border-radius: 50%;
             cursor: pointer;
             border: none;
@@ -576,6 +589,7 @@
             try {
                 const [albums, songs] = await Promise.all([
                     supabase.from('albums').select('*').order('created_at', { ascending: false }),
+                    // Asegurar que la relación 'albums' se trae correctamente para la UI
                     supabase.from('songs').select('*, albums:album_id(*)').order('created_at', { ascending: false })
                 ]);
                 allAlbums = albums.data || [];
@@ -692,23 +706,30 @@
 
             if(contextId === 'favorites') {
                 const favs = JSON.parse(localStorage.getItem('klmz_favs') || '[]');
+                // Asegúrate de que las canciones existan en allSongs
                 list = allSongs.filter(s => favs.includes(s.id));
                 albumInfo = null; 
             } 
             else if (contextId.startsWith('playlist_')) {
-                // Handled in playPlaylist usually
+                // Lógica de Playlist
             } 
             else {
-                // It's an Album ID
+                // Es un Album ID
                 list = allSongs.filter(s => s.album_id === contextId);
                 albumInfo = allAlbums.find(a => a.id === contextId);
             }
 
             if(list.length > 0) {
-                currentPlaylist = list;
-                playSong(list[index], albumInfo, list, index);
+                // FIX: Asegurar que el albumInfo se pasa correctamente al iniciar la reproducción
+                const songToPlay = list[index];
+                
+                // Si albumInfo es nulo (ej. si venía de favoritos pero lo queremos para playSong), 
+                // lo buscamos por el ID de la canción si es necesario, aunque en esta lógica ya debería estar cubierto.
+                const finalAlbumInfo = albumInfo || allAlbums.find(a => a.id === songToPlay.album_id);
+                
+                playSong(songToPlay, finalAlbumInfo, list, index);
             } else {
-                showToast("Este álbum está vacío", "error");
+                showToast("Esta lista o álbum está vacío", "error");
             }
         }
 
@@ -716,7 +737,7 @@
         function playSong(song, album, playlist, index) {
             if(!song) return;
             currentSong = song;
-            // Si album es null (como en favoritos), busca el album original en allAlbums
+            // Asegurar que currentAlbum siempre sea un objeto válido
             currentAlbum = album || allAlbums.find(a => a.id === song.album_id) || { title: 'Desconocido', artist: 'Desconocido', cover_url: 'https://placehold.co/400?text=Music' };
             currentPlaylist = playlist || [song];
             currentIndex = index !== undefined ? index : 0;
@@ -957,15 +978,22 @@
                 return;
             }
             const res = allSongs.filter(s => s.title.toLowerCase().includes(val));
-            document.getElementById('search-results').innerHTML = res.map((s) => `
-                <div class="song-row" onclick="playSingle('${s.id}')">
-                    <img src="${s.albums?.cover_url}" style="width:40px;height:40px;border-radius:4px; margin-right:10px;">
-                    <div style="flex:1;">
-                        <div class="song-row-title">${s.title}</div>
-                        <div style="font-size:0.8rem;">${s.albums?.artist}</div>
+            document.getElementById('search-results').innerHTML = res.map((s) => {
+                 // Busca el álbum para obtener el artista y la carátula si no viene en la relación
+                const album = allAlbums.find(a => a.id === s.album_id) || s.albums;
+                const coverUrl = album?.cover_url || 'https://placehold.co/40x40?text=KLMZ';
+                const artist = album?.artist || 'Artista Desconocido';
+                
+                return `
+                    <div class="song-row" onclick="playSingle('${s.id}')">
+                        <img src="${coverUrl}" style="width:40px;height:40px;border-radius:4px; margin-right:10px;">
+                        <div style="flex:1;">
+                            <div class="song-row-title">${s.title}</div>
+                            <div style="font-size:0.8rem;">${artist}</div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function playSingle(id) {
