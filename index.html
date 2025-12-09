@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- Asegurando un viewport adaptable para PWA -->
+    <!-- Viewport ajustado para PWA -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>KLMZ MUSIC</title>
     <meta name="theme-color" content="#121212">
@@ -142,51 +142,56 @@
         }
         .full-player-backdrop.active { animation: slideUp 0.3s ease-out; display: flex; }
 
-        /* FIX: IMAGEN Y CONTENEDOR AJUSTADO (más pequeño y COMPLETO) */
+        /* FIX: WRAPPER PARA LA IMAGEN Y EL BOTÓN DE CIERRE */
+        .full-cover-wrapper {
+            position: relative; /* Clave para posicionar el botón X relativo a esto */
+            width: fit-content;
+            margin: 20px auto 30px;
+        }
+
+        /* CONTENEDOR DE LA IMAGEN (Con bordes redondeados y recorte) */
         .full-cover-container { 
             width: 100%; 
-            /* Usamos vmin para un tamaño responsive que respete la orientación */
+            /* Tamaño responsive con vmin para que no sea gigante */
             max-width: 50vmin; 
             max-height: 50vmin; 
             height: auto;
             aspect-ratio: 1; 
-            margin: 20px auto 30px; 
             border-radius: 12px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.5); 
-            overflow: hidden;
+            overflow: hidden; /* Recorta la imagen si se sale */
             background: #111; 
-            position: relative;
         }
+        
         .full-cover-large { 
             width: 100%; 
             height: 100%; 
-            /* FIX: Usamos 'contain' para asegurar que la imagen se vea completa, sin cortes */
-            object-fit: contain; 
+            object-fit: cover; /* Llena el contenedor */
             display: block;
         }
 
-        /* BOTÓN CERRAR - FUERA DE LA PORTADA */
+        /* BOTÓN CERRAR - PEGADITO A LA ESQUINA POR FUERA */
         .close-player-btn-corner {
             position: absolute; 
-            top: 20px;
-            right: 20px;
-            background: rgba(40, 40, 40, 0.8); 
+            top: -12px;  /* Sube un poco para salir de la imagen */
+            right: -12px; /* A la derecha para salir de la imagen */
+            background: rgba(40, 40, 40, 0.9); /* Fondo más sólido */
             color: #fff;
             border: 1px solid rgba(255,255,255,0.2);
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            z-index: 50;
-            font-size: 1.5rem;
+            z-index: 50; /* Por encima de la imagen */
+            font-size: 1rem;
             line-height: 1;
-            transition: transform 0.2s, background 0.2s;
-            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
         }
-        .close-player-btn-corner:active { transform: scale(0.9); background: rgba(0,0,0,0.8); }
+        .close-player-btn-corner:active { transform: scale(0.9); }
         
         .full-info-container { text-align: left; width: 100%; max-width: 350px; margin: 0 auto 20px; }
         .full-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
@@ -403,11 +408,12 @@
     <!-- FULL PLAYER -->
     <div class="full-player-backdrop" id="full-player">
         
-        <!-- BOTÓN CERRAR - FUERA DE LA PORTADA -->
-        <button class="close-player-btn-corner" onclick="closeFullPlayer()">✕</button>
-
-        <div class="full-cover-container">
-            <img id="full-cover" class="full-cover-large">
+        <!-- WRAPPER para posicionar el botón X por fuera de la imagen -->
+        <div class="full-cover-wrapper">
+            <button class="close-player-btn-corner" onclick="closeFullPlayer()">✕</button>
+            <div class="full-cover-container">
+                <img id="full-cover" class="full-cover-large">
+            </div>
         </div>
         
         <div class="full-info-container">
@@ -785,13 +791,12 @@
                 // La función 'togglePlay' debe manejar el estado de la UI
                 
                 navigator.mediaSession.setActionHandler('play', () => { 
-                    // FIX: Llamar a togglePlay, que tiene la lógica de play/pause/promesa.
-                    togglePlay();
+                    // FIX: Direct audio.play() for PWA
+                    audio.play().catch(e => console.error("MediaSession Play Error:", e));
                 });
                 
                 navigator.mediaSession.setActionHandler('pause', () => { 
-                    // FIX: Llamar a togglePlay, que tiene la lógica de play/pause/promesa.
-                    togglePlay();
+                    audio.pause();
                 });
                 
                 navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
@@ -1573,4 +1578,5 @@
     </script>
 </body>
 </html>
+
 
