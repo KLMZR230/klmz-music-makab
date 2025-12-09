@@ -92,7 +92,7 @@
             opacity: 0; 
             transform: translateY(8px); 
             transition: 0.3s; 
-            color: #000; /* Color del icono (negro) */
+            color: #000; 
             box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
             z-index: 10;
         }
@@ -118,20 +118,39 @@
         .action-btn:hover { color: #fff; transform: scale(1.1); }
         .action-btn.liked { color: var(--primary); }
 
-        /* Full Player Overlay */
+        /* FULL PLAYER - CENTRADO PERFECTO */
         .full-player-backdrop {
-            display: none; position: fixed; inset: 0; z-index: 9999;
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            z-index: 9999;
             background: linear-gradient(180deg, #222 0%, #000 100%);
-            flex-direction: column; padding: 30px 20px; overflow-y: auto;
+            flex-direction: column; 
+            justify-content: center; /* ESTO CENTRA TODO VERTICALMENTE */
+            padding: 30px 20px; 
+            overflow-y: auto;
         }
         .full-player-backdrop.active { display: flex; animation: slideUp 0.3s ease-out; }
 
-        /* IMAGEN FULL PLAYER (ARREGLADA: MÁS PEQUEÑA) */
+        /* Botón cerrar flotante arriba a la derecha */
+        .close-player-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            padding: 10px;
+            z-index: 10;
+        }
+
+        /* IMAGEN FULL PLAYER (TAMAÑO AJUSTADO) */
         .full-cover-container { 
             width: 100%; 
             max-width: 320px;
             height: auto;
-            max-height: 30vh; /* REDUCIDO para que no ocupe tanto */
+            max-height: 30vh; /* Altura controlada */
             aspect-ratio: 1; 
             margin: 20px auto 30px; 
             border-radius: 12px; 
@@ -152,7 +171,7 @@
         .full-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
         .full-artist { font-size: 1rem; color: var(--text-sub); }
         
-        /* REPRODUCCIÓN: Barra funcional pero minimalista */
+        /* REPRODUCCIÓN: Barra NÍTIDA */
         .full-progress-bar { width: 100%; max-width: 350px; margin: 0 auto 30px; display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: #b3b3b3; font-family: monospace; }
         
         .seek-slider {
@@ -166,15 +185,14 @@
             z-index: 2;
         }
         
-        /* TRUCO: Thumb invisible pero GRANDE para que funcione el touch */
         .seek-slider::-webkit-slider-thumb { 
             -webkit-appearance: none; 
-            width: 20px; /* Ancho para el dedo */
-            height: 20px; /* Alto para el dedo */
-            background: transparent; /* Invisible */
+            width: 20px; 
+            height: 20px; 
+            background: transparent; 
             border: none;
             cursor: pointer;
-            margin-top: -9px; /* Centrarlo */
+            margin-top: -9px; 
         }
         .seek-slider::-moz-range-thumb {
             width: 20px;
@@ -234,7 +252,6 @@
             .sidebar { display: none; }
             .top-bar { padding: 15px; }
             .player-dock { bottom: 65px; }
-            /* Play visible en movil */
             .play-overlay { opacity: 1; transform: translateY(0); width: 40px; height: 40px; }
         }
         
@@ -349,9 +366,7 @@
 
     <!-- FULL PLAYER -->
     <div class="full-player-backdrop" id="full-player">
-        <div style="display:flex; justify-content:flex-end;">
-            <button onclick="closeFullPlayer()" style="background:none; border:none; color:#fff; font-size:1.5rem; padding:10px;">﹀</button>
-        </div>
+        <button class="close-player-btn" onclick="closeFullPlayer()">﹀</button>
         
         <div class="full-cover-container">
             <img id="full-cover" class="full-cover-large">
@@ -691,14 +706,28 @@
             favBtn.textContent = favs.includes(currentSong.id) ? '❤️' : '♡';
             favBtn.style.color = favs.includes(currentSong.id) ? 'var(--primary)' : '#fff';
             
-            // Media Session (NOTIFICATION CONTROLS FIXED)
+            // Media Session (NOTIFICATION CONTROLS FIXED - ASYNC HANDLING)
             if('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
                 
-                navigator.mediaSession.setActionHandler('play', () => { togglePlay(); });
-                navigator.mediaSession.setActionHandler('pause', () => { togglePlay(); });
+                // FORCE PLAY
+                navigator.mediaSession.setActionHandler('play', async () => { 
+                    try {
+                        await audio.play();
+                        isPlaying = true;
+                        updatePlayerUI();
+                    } catch(e) { console.error(e); }
+                });
+                
+                // FORCE PAUSE
+                navigator.mediaSession.setActionHandler('pause', () => { 
+                    audio.pause();
+                    isPlaying = false;
+                    updatePlayerUI();
+                });
+                
                 navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
                 navigator.mediaSession.setActionHandler('previoustrack', () => { prevSong(); });
                 
@@ -717,11 +746,13 @@
             }
         }
 
-        function togglePlay() {
+        async function togglePlay() {
             if(!audio.src) return;
             if(audio.paused) { 
-                audio.play(); 
-                isPlaying = true;
+                try {
+                    await audio.play(); 
+                    isPlaying = true;
+                } catch(e) { console.error(e); isPlaying = false; }
             } else { 
                 audio.pause(); 
                 isPlaying = false;
