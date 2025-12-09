@@ -403,7 +403,6 @@
 
         <div class="full-progress-bar">
             <span id="curr-time">0:00</span>
-            <!-- Se eliminó onchange y se dejó solo oninput para la interacción -->
             <input type="range" class="seek-slider" id="seek-slider" min="0" max="100" value="0" oninput="onSeekInput(this.value)" onchange="onSeekChange(this.value)">
             <span id="tot-time">0:00</span>
         </div>
@@ -501,11 +500,20 @@
             await initDB();
             await loadContent();
             
-            // Audio events
+            // Audio events - Estos se encargan de sincronizar el estado isPlaying y la UI
             audio.addEventListener('timeupdate', updateProgress);
             audio.addEventListener('ended', nextSong);
-            audio.addEventListener('play', () => { isPlaying = true; updatePlayerUI(); });
-            audio.addEventListener('pause', () => { isPlaying = false; updatePlayerUI(); });
+            // Sincronización crucial para MediaSession
+            audio.addEventListener('play', () => { 
+                isPlaying = true; 
+                updatePlayerUI(); 
+                if('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing"; // Forzar estado MediaSession
+            });
+            audio.addEventListener('pause', () => { 
+                isPlaying = false; 
+                updatePlayerUI(); 
+                if('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused"; // Forzar estado MediaSession
+            });
             
             // ERROR HANDLING
             audio.addEventListener('error', (e) => {
@@ -747,26 +755,23 @@
             favBtn.textContent = favs.includes(currentSong.id) ? '❤️' : '♡';
             favBtn.style.color = favs.includes(currentSong.id) ? 'var(--primary)' : '#fff';
             
-            // Media Session (NOTIFICATION CONTROLS FIXED - ASYNC HANDLING)
+            // Media Session (SYNCHRONIZATION FIXED)
             if('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
                 
-                // FORCE PLAY
-                navigator.mediaSession.setActionHandler('play', async () => { 
-                    try {
-                        await audio.play();
-                        isPlaying = true;
-                        updatePlayerUI();
-                    } catch(e) { console.error(e); }
+                // Los handlers solo envían comandos al elemento <audio>
+                // Los eventos 'play' y 'pause' del audio se encargan de actualizar la UI
+                
+                // FIX: Al presionar PLAY en notificaciones/lock screen
+                navigator.mediaSession.setActionHandler('play', () => { 
+                    audio.play().catch(e => console.error("MediaSession Play Error:", e));
                 });
                 
-                // FORCE PAUSE
+                // FIX: Al presionar PAUSE en notificaciones/lock screen
                 navigator.mediaSession.setActionHandler('pause', () => { 
-                    audio.pause();
-                    isPlaying = false;
-                    updatePlayerUI();
+                    audio.pause(); 
                 });
                 
                 navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
@@ -782,8 +787,7 @@
                     updateProgress();
                 });
                 
-                // Update Playback State
-                navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+                // NOTA: El estado playbackState se actualiza en los listeners de 'play' y 'pause'
             }
         }
 
@@ -791,14 +795,13 @@
             if(!audio.src) return;
             if(audio.paused) { 
                 try {
+                    // Esto dispara el evento 'play' que actualiza la UI
                     await audio.play(); 
-                    isPlaying = true;
                 } catch(e) { console.error(e); isPlaying = false; }
             } else { 
+                // Esto dispara el evento 'pause' que actualiza la UI
                 audio.pause(); 
-                isPlaying = false;
             }
-            updatePlayerUI();
         }
 
         function nextSong() {
@@ -1544,3 +1547,4 @@
     </script>
 </body>
 </html>
+
