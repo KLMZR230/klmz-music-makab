@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- Ajuste del viewport para una mejor compatibilidad con PWA y fluid-layout -->
+    <!-- Asegurando un viewport adaptable para PWA -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>KLMZ MUSIC</title>
     <meta name="theme-color" content="#121212">
@@ -32,9 +32,7 @@
             background-color: var(--bg-base);
             color: var(--text-base);
             width: 100%;
-            /* Uso de 100vh y ajuste para asegurar que el layout se adapte al PWA */
-            height: 100vh;
-            height: 100dvh; /* Unidad dinámica para mejor soporte móvil/PWA */
+            height: 100dvh; 
             overflow: hidden;
             user-select: none;
         }
@@ -63,7 +61,6 @@
             overflow-y: auto; 
             position: relative; 
             padding: 20px; 
-            /* Se mantiene el padding inferior grande para dejar espacio al dock/nav */
             padding-bottom: 160px; 
             scroll-behavior: smooth;
         }
@@ -141,17 +138,16 @@
             justify-content: center; 
             padding: 30px 20px; 
             overflow-y: auto;
-            /* Asegura que el player ocupe toda la altura disponible */
             height: 100dvh; 
         }
-        .full-player-backdrop.active { display: flex; animation: slideUp 0.3s ease-out; }
+        .full-player-backdrop.active { animation: slideUp 0.3s ease-out; display: flex; }
 
-        /* FIX: IMAGEN Y CONTENEDOR AJUSTADO */
+        /* FIX: IMAGEN Y CONTENEDOR AJUSTADO (más pequeño y COMPLETO) */
         .full-cover-container { 
             width: 100%; 
-            max-width: 320px;
-            /* Reducción de la altura máxima para dejar espacio a los controles y título */
-            max-height: 40vh; 
+            /* Usamos vmin para un tamaño responsive que respete la orientación */
+            max-width: 50vmin; 
+            max-height: 50vmin; 
             height: auto;
             aspect-ratio: 1; 
             margin: 20px auto 30px; 
@@ -164,7 +160,8 @@
         .full-cover-large { 
             width: 100%; 
             height: 100%; 
-            object-fit: cover; 
+            /* FIX: Usamos 'contain' para asegurar que la imagen se vea completa, sin cortes */
+            object-fit: contain; 
             display: block;
         }
 
@@ -285,7 +282,7 @@
             .sidebar { display: flex; }
             .bottom-nav { display: none; }
             .player-dock { left: 0; right: 0; bottom: 0; height: 90px; border-radius: 0; padding: 0 20px; border-top: 1px solid #282828; }
-            .full-player-backdrop { width: 400px; right: 0; left: auto; border-left: 1px solid #333; inset: 0; height: 100vh; }
+            .full-player-backdrop { width: 400px; right: 0; left: auto; inset: 0; height: 100vh; }
         }
         @media(max-width: 768px) {
             .sidebar { display: none; }
@@ -521,8 +518,7 @@
             audio.addEventListener('timeupdate', updateProgress);
             audio.addEventListener('ended', nextSong);
             
-            // ** FIX: Sincronización de estado para MediaSession y UI **
-            // Los eventos play/pause del audio son la ÚNICA fuente de verdad para el estado isPlaying y la UI.
+            // Sincronización crucial para MediaSession y UI
             audio.addEventListener('play', () => { 
                 isPlaying = true; 
                 updatePlayerUI(); 
@@ -716,7 +712,7 @@
                 // Lógica de Playlist
             } 
             else {
-                // FIX: Es un Album ID. La lista debe ser de canciones de ESE álbum.
+                // Es un Album ID
                 list = allSongs.filter(s => s.album_id === contextId);
                 albumInfo = allAlbums.find(a => a.id === contextId);
             }
@@ -785,17 +781,17 @@
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
                 
-                // ** FIX: Volvemos a una lógica más sencilla en los handlers **
-                // La clave es llamar a la función que dispara el play/pause del audio,
-                // para que el evento 'play'/'pause' del audio actualice el estado global.
-
+                // La clave aquí es que MediaSession solo llama a las funciones. 
+                // La función 'togglePlay' debe manejar el estado de la UI
+                
                 navigator.mediaSession.setActionHandler('play', () => { 
-                    // No necesitas verificar si está pausado o no, solo llama al play
-                    audio.play().catch(e => console.error("MediaSession Play Error:", e));
+                    // FIX: Llamar a togglePlay, que tiene la lógica de play/pause/promesa.
+                    togglePlay();
                 });
                 
                 navigator.mediaSession.setActionHandler('pause', () => { 
-                    audio.pause(); 
+                    // FIX: Llamar a togglePlay, que tiene la lógica de play/pause/promesa.
+                    togglePlay();
                 });
                 
                 navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
@@ -817,15 +813,15 @@
             if(!audio.src) return;
             if(audio.paused) { 
                 try {
-                    // Esto dispara el evento 'play' que actualiza la UI
+                    // FIX: Siempre intentar el play() con promesa en la PWA
                     await audio.play(); 
                 } catch(e) { 
-                    console.error("Toggle Play Error:", e);
-                    // Si falla el play (ej. no interacción del usuario), forzar pausa visualmente.
+                    console.error("Toggle Play Error (No user interaction or failed promise):", e);
+                    // Si falla (ej. si el SO bloquea el autoplay), forzar la pausa visual.
                     audio.pause(); 
                 }
             } else { 
-                // Esto dispara el evento 'pause' que actualiza la UI
+                // FIX: El pause() es síncrono y debe funcionar
                 audio.pause(); 
             }
         }
