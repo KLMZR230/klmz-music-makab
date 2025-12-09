@@ -520,16 +520,18 @@
             // Audio events - Estos se encargan de sincronizar el estado isPlaying y la UI
             audio.addEventListener('timeupdate', updateProgress);
             audio.addEventListener('ended', nextSong);
-            // Sincronización crucial para MediaSession
+            
+            // ** FIX: Sincronización de estado para MediaSession y UI **
+            // Los eventos play/pause del audio son la ÚNICA fuente de verdad para el estado isPlaying y la UI.
             audio.addEventListener('play', () => { 
                 isPlaying = true; 
                 updatePlayerUI(); 
-                if('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing"; // Forzar estado MediaSession
+                if('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing"; 
             });
             audio.addEventListener('pause', () => { 
                 isPlaying = false; 
                 updatePlayerUI(); 
-                if('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused"; // Forzar estado MediaSession
+                if('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused"; 
             });
             
             // ERROR HANDLING
@@ -714,17 +716,14 @@
                 // Lógica de Playlist
             } 
             else {
-                // Es un Album ID
+                // FIX: Es un Album ID. La lista debe ser de canciones de ESE álbum.
                 list = allSongs.filter(s => s.album_id === contextId);
                 albumInfo = allAlbums.find(a => a.id === contextId);
             }
 
             if(list.length > 0) {
-                // FIX: Asegurar que el albumInfo se pasa correctamente al iniciar la reproducción
                 const songToPlay = list[index];
                 
-                // Si albumInfo es nulo (ej. si venía de favoritos pero lo queremos para playSong), 
-                // lo buscamos por el ID de la canción si es necesario, aunque en esta lógica ya debería estar cubierto.
                 const finalAlbumInfo = albumInfo || allAlbums.find(a => a.id === songToPlay.album_id);
                 
                 playSong(songToPlay, finalAlbumInfo, list, index);
@@ -786,15 +785,15 @@
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
                 
-                // Los handlers solo envían comandos al elemento <audio>
-                // Los eventos 'play' y 'pause' del audio se encargan de actualizar la UI
-                
-                // FIX: Al presionar PLAY en notificaciones/lock screen
+                // ** FIX: Volvemos a una lógica más sencilla en los handlers **
+                // La clave es llamar a la función que dispara el play/pause del audio,
+                // para que el evento 'play'/'pause' del audio actualice el estado global.
+
                 navigator.mediaSession.setActionHandler('play', () => { 
+                    // No necesitas verificar si está pausado o no, solo llama al play
                     audio.play().catch(e => console.error("MediaSession Play Error:", e));
                 });
                 
-                // FIX: Al presionar PAUSE en notificaciones/lock screen
                 navigator.mediaSession.setActionHandler('pause', () => { 
                     audio.pause(); 
                 });
@@ -811,8 +810,6 @@
                     audio.currentTime = details.seekTime;
                     updateProgress();
                 });
-                
-                // NOTA: El estado playbackState se actualiza en los listeners de 'play' y 'pause'
             }
         }
 
@@ -822,7 +819,11 @@
                 try {
                     // Esto dispara el evento 'play' que actualiza la UI
                     await audio.play(); 
-                } catch(e) { console.error(e); isPlaying = false; }
+                } catch(e) { 
+                    console.error("Toggle Play Error:", e);
+                    // Si falla el play (ej. no interacción del usuario), forzar pausa visualmente.
+                    audio.pause(); 
+                }
             } else { 
                 // Esto dispara el evento 'pause' que actualiza la UI
                 audio.pause(); 
@@ -833,12 +834,9 @@
             if(currentIndex < currentPlaylist.length - 1) {
                 playSong(currentPlaylist[currentIndex + 1], currentAlbum, currentPlaylist, currentIndex + 1); 
             } else {
-                // If playlist ends or context was null (favorites), try to find album for next song
-                const nextS = currentPlaylist[currentIndex + 1];
-                if(nextS) {
-                     const nextAlb = currentAlbum || allAlbums.find(a => a.id === nextS.album_id);
-                     playSong(nextS, nextAlb, currentPlaylist, currentIndex + 1);
-                }
+                // If playlist ends, optionally loop or stop
+                showToast("Fin de la lista de reproducción", "info");
+                audio.pause();
             }
         }
 
