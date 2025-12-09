@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport ajustado para PWA -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>KLMZ MUSIC</title>
     <meta name="theme-color" content="#121212">
@@ -38,13 +37,9 @@
         }
 
         /* --- LAYOUT --- */
-        .app-layout { 
-            display: flex; 
-            height: 100%; 
-            width: 100%; 
-        }
+        .app-layout { display: flex; height: 100%; width: 100%; }
         
-        /* Sidebar (Desktop) */
+        /* Sidebar */
         .sidebar {
             width: var(--sidebar-width); background: #000; display: none;
             flex-direction: column; padding: 24px 12px; gap: 8px; border-right: 1px solid #222;
@@ -127,7 +122,7 @@
         .action-btn:hover { color: #fff; transform: scale(1.1); }
         .action-btn.liked { color: var(--primary); }
 
-        /* FULL PLAYER - CENTRADO PERFECTO */
+        /* FULL PLAYER BACKDROP */
         .full-player-backdrop {
             display: none; 
             position: fixed; 
@@ -142,54 +137,50 @@
         }
         .full-player-backdrop.active { animation: slideUp 0.3s ease-out; display: flex; }
 
-        /* FIX: WRAPPER PARA LA IMAGEN Y EL BOTÓN DE CIERRE */
+        /* FIX: IMAGEN Y BOTÓN DE CIERRE 
+           Se usa un wrapper con fit-content para que el botón se posicione relativo 
+           al tamaño real de la imagen, no al ancho de la pantalla.
+        */
         .full-cover-wrapper {
-            position: relative; /* Clave para posicionar el botón X relativo a esto */
-            width: fit-content;
-            margin: 20px auto 30px;
+            position: relative;
+            width: fit-content; /* Se ajusta al contenido (la imagen) */
+            margin: 20px auto 40px; /* Margen para separar */
+            display: flex;
+            justify-content: center;
         }
 
-        /* CONTENEDOR DE LA IMAGEN (Con bordes redondeados y recorte) */
-        .full-cover-container { 
-            width: 100%; 
-            /* Tamaño responsive con vmin para que no sea gigante */
-            max-width: 50vmin; 
-            max-height: 50vmin; 
+        /* La imagen define el tamaño del wrapper */
+        .full-cover-img { 
+            /* Unidades relativas para no ser gigante */
+            max-width: 75vw; 
+            max-height: 45vh; 
             height: auto;
-            aspect-ratio: 1; 
             border-radius: 12px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5); 
-            overflow: hidden; /* Recorta la imagen si se sale */
-            background: #111; 
-        }
-        
-        .full-cover-large { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; /* Llena el contenedor */
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6); 
             display: block;
+            object-fit: cover;
         }
 
-        /* BOTÓN CERRAR - PEGADITO A LA ESQUINA POR FUERA */
+        /* BOTÓN CERRAR - ESQUINA SUPERIOR DERECHA EXTERNA */
         .close-player-btn-corner {
             position: absolute; 
-            top: -12px;  /* Sube un poco para salir de la imagen */
-            right: -12px; /* A la derecha para salir de la imagen */
-            background: rgba(40, 40, 40, 0.9); /* Fondo más sólido */
+            top: -15px;  /* Hacia arriba */
+            right: -15px; /* Hacia la derecha */
+            background: rgba(60, 60, 60, 0.9); /* Fondo sólido */
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
-            width: 32px;
-            height: 32px;
+            border: 2px solid rgba(0,0,0,0.5);
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            z-index: 50; /* Por encima de la imagen */
+            z-index: 100; /* Asegurar que esté encima */
             font-size: 1rem;
             line-height: 1;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
+            transition: transform 0.1s;
         }
         .close-player-btn-corner:active { transform: scale(0.9); }
         
@@ -197,7 +188,7 @@
         .full-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
         .full-artist { font-size: 1rem; color: var(--text-sub); }
         
-        /* REPRODUCCIÓN: Barra NÍTIDA Y PEQUEÑA */
+        /* REPRODUCCIÓN */
         .full-progress-bar { 
             width: 100%; 
             max-width: 350px; 
@@ -408,12 +399,11 @@
     <!-- FULL PLAYER -->
     <div class="full-player-backdrop" id="full-player">
         
-        <!-- WRAPPER para posicionar el botón X por fuera de la imagen -->
+        <!-- WRAPPER para posicionar el botón X y la imagen -->
         <div class="full-cover-wrapper">
+            <!-- BOTÓN CERRAR - PEGADITO A LA ESQUINA POR FUERA -->
             <button class="close-player-btn-corner" onclick="closeFullPlayer()">✕</button>
-            <div class="full-cover-container">
-                <img id="full-cover" class="full-cover-large">
-            </div>
+            <img id="full-cover" class="full-cover-img">
         </div>
         
         <div class="full-info-container">
@@ -781,22 +771,22 @@
             favBtn.textContent = favs.includes(currentSong.id) ? '❤️' : '♡';
             favBtn.style.color = favs.includes(currentSong.id) ? 'var(--primary)' : '#fff';
             
-            // Media Session (SYNCHRONIZATION FIXED)
+            // Media Session (SYNCHRONIZATION FIXED FOR PWA)
             if('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
                 
-                // La clave aquí es que MediaSession solo llama a las funciones. 
-                // La función 'togglePlay' debe manejar el estado de la UI
-                
+                // CRUCIAL PWA FIX: Direct calls to audio.play/pause
                 navigator.mediaSession.setActionHandler('play', () => { 
-                    // FIX: Direct audio.play() for PWA
-                    audio.play().catch(e => console.error("MediaSession Play Error:", e));
+                    audio.play()
+                        .then(() => navigator.mediaSession.playbackState = "playing")
+                        .catch(e => console.error("MediaSession Play Error:", e));
                 });
                 
                 navigator.mediaSession.setActionHandler('pause', () => { 
                     audio.pause();
+                    navigator.mediaSession.playbackState = "paused";
                 });
                 
                 navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
