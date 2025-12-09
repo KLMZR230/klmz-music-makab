@@ -777,17 +777,19 @@
                     title: currentSong.title, artist: album.artist, artwork: [{ src: album.cover_url }]
                 });
                 
-                // CRUCIAL PWA FIX: Direct calls to audio.play/pause
+                // CRUCIAL PWA FIX: Direct calls to audio.play/pause. 
+                // Eliminamos las actualizaciones explícitas de playbackState para depender
+                // de los eventos 'play' y 'pause' del audio, que son más fiables.
                 navigator.mediaSession.setActionHandler('play', () => { 
-                    // FIX: Al presionar PLAY en la notificación, forzamos la reproducción
-                    audio.play()
-                        .then(() => navigator.mediaSession.playbackState = "playing")
-                        .catch(e => console.error("MediaSession Play Error:", e));
+                    // FIX: Al presionar PLAY en la notificación, forzamos la reproducción. 
+                    // El evento 'play' global del audio se encargará de sincronizar la UI y MediaSession.
+                    audio.play().catch(e => console.error("MediaSession Play Error:", e));
                 });
                 
                 navigator.mediaSession.setActionHandler('pause', () => { 
+                    // FIX: Al presionar PAUSE en la notificación, forzamos la pausa.
+                    // El evento 'pause' global del audio se encargará de sincronizar la UI y MediaSession.
                     audio.pause();
-                    navigator.mediaSession.playbackState = "paused";
                 });
                 
                 navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
